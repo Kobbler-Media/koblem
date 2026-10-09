@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE llm_logs\n        SET status = 'cancelled', updated_at = NOW()\n        WHERE status = 'running'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "863f7827194de2773b6e08edaa6d92f7e93f1d8bfecff12a51522ba377fa1307"
+}

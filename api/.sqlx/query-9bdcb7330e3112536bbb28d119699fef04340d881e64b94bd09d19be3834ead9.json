@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT MIN(queue_rank) FROM gpu_jobs\n           WHERE band = (SELECT band FROM gpu_jobs WHERE id = $1)\n             AND state IN ('queued', 'held') AND id <> $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "min",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9bdcb7330e3112536bbb28d119699fef04340d881e64b94bd09d19be3834ead9"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_logs SET created_at = NOW() - INTERVAL '30 days'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "04ada655f611ed7d38b066160f0f3ffa3b487645dff25d4ad674d11ef21f9ace"
+}

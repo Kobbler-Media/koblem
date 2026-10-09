@@ -1,0 +1,41 @@
+/* Koblem global styles — shared design tokens with kobbler */
+
+@import '@koblibs/ui/styles/shared.css';
+
+/* Responsive stops — a registry, not a mechanism. Custom properties cannot be read inside
+ * `@media`, so every media query in src/ repeats its number literally and `DIRECTOR_COMPACT` in
+ * lib/director/viewport.svelte.ts repeats --bp-tablet. Changing a value here changes nothing on
+ * its own: grep the old number and edit each site.
+ *
+ * The ladder is really about CONTENT width but has to be written as VIEWPORT width, and the two
+ * differ by surface. App pages sit to the right of a 221px sidebar (220px + border) whenever the
+ * viewport is above --bp-tablet; /director hides the global chrome and fills the viewport. That
+ * 221px is why the Director's own stops sit ~220px lower than the app's for the same content
+ * width. Below --bp-tablet there is no sidebar and both surfaces share the same numbers.
+ */
+:root {
+  /* Phone. Remaining multi-column rows go single-column; chrome sheds text labels for icons. */
+  --bp-phone: 600px;
+
+  /* The chrome switch: sidebar → hamburger, so content GAINS 221px crossing down through this
+   * stop. The Director replaces its whole desktop shell — app bar, work grid and timeline — with
+   * the phone shell here; that swap is JS, so it lives in DIRECTOR_COMPACT and must be edited
+   * alongside, and a `.dw` rule aimed at a desktop-only component below this width styles nothing.
+   * MobileMenu's `min-width: 769px` is this stop's complement, not a stop of its own. */
+  --bp-tablet: 768px;
+
+  /* App surface only, content ≈ 680px: two side-by-side working panes stack. */
+  --bp-laptop: 900px;
+
+  /* Content ≈ 860px: multi-column card/bucket grids collapse to one column. */
+  --bp-desktop: 1080px;
+
+  /* The same content width as --bp-desktop, measured on the chromeless Director surface: its
+   * render grid collapses and its app bar sheds into the ⋯ sheet. The Director also hides its
+   * right rail (and reveals the Panels button) at --bp-desktop, where it has no sidebar to
+   * subtract and 1080px of viewport really is 1080px of content. */
+  --bp-director-desktop: 860px;
+
+  /* Director only, and a min-width: above this the stage splits into shot + detail columns. */
+  --bp-director-split: 1240px;
+}

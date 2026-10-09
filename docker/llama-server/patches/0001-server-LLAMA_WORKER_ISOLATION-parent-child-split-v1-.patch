@@ -1,0 +1,982 @@
+From 177a650aee493fe1484a62e1ae5a7c52d8b14ae5 Mon Sep 17 00:00:00 2001
+From: Kobbler-Media <dev@kobbler.invalid>
+Date: Tue, 14 Jul 2026 14:49:53 +1000
+Subject: [PATCH] server: LLAMA_WORKER_ISOLATION parent/child split +
+ /v1/admin/{drain,load,unload}
+
+Re-graft of the one non-perf kobbler patch that upstream lacks, required before
+the vanilla-tip build can replace the turboquant prod image (koblem-llama).
+
+WHY: koblibs kob-gpu-gate lets avatar/video jobs borrow the GPU from the LLM.
+That requires the LLM to release ALL its VRAM on demand and reclaim it later.
+A single-process llama-server cannot: the CUDA primary context is never torn
+down until the process exits. Solution: a CUDA-free parent that owns the HTTP
+port and fork+execv's a child holding the model + GPU. POST /v1/admin/unload
+SIGKILLs the child -> primary context teardown -> all VRAM returned to the card.
+
+DESIGN: opt-in via env LLAMA_WORKER_ISOLATION=1 (child sees
+LLAMA_WORKER_ISOLATION_CHILD=1 and runs as a normal single-process server, so
+the hot path is byte-identical to upstream). The parent rebinds every
+model-facing route to a proxy through the child (server_http_proxy, the same
+SSE-relay primitive the router server uses), so it transparently exposes the
+FULL upstream API on top of which it adds the admin lifecycle endpoints:
+  - POST /v1/admin/drain  -> 503 new requests; in-flight streams finish
+  - POST /v1/admin/unload -> SIGKILL child, reclaim all VRAM (idempotent)
+  - POST /v1/admin/load   -> lazy pre-warm + clear drain flag
+/health stays parent-side and reports {loaded,busy,draining,in_flight} for the
+kob-gpu-gate drain loop. Per-request GPU placement via X-Worker-Gpu header /
+WORKER_DEFAULT_GPU env (index or GPU-UUID). Heavy inference endpoints are
+drain-gated + in_flight-counted + lazy-spawning; metadata/tokenizer/stream
+endpoints proxy without gating and never re-fork an evicted worker.
+
+GPU-VALIDATED on RTX 3060 (2026-07-14): parent idle 130 MiB (CUDA-free);
+first chat lazy-spawns child (7543 MiB); /props + /v1/models proxied; drain
+returns 503; unload drops VRAM 7543 -> 130 MiB (fully reclaimed);
+load/next-request re-spawns; legacy /admin/* aliases work; child logs relayed.
+
+Ported from the turboquant fork (hbd-llama-cpp-turboquant, worker_isolation.*
++ server.cpp hooks) and adapted to upstream's split server.cpp / server_routes
+(the fork's unrelated post_control/*_tok/count_tokens deltas are already
+upstream and were NOT re-applied).
+---
+ tools/server/CMakeLists.txt       |   2 +
+ tools/server/server.cpp           | 217 +++++++++++++-
+ tools/server/worker_isolation.cpp | 458 ++++++++++++++++++++++++++++++
+ tools/server/worker_isolation.h   | 160 +++++++++++
+ 4 files changed, 834 insertions(+), 3 deletions(-)
+ create mode 100644 tools/server/worker_isolation.cpp
+ create mode 100644 tools/server/worker_isolation.h
+
+diff --git a/tools/server/CMakeLists.txt b/tools/server/CMakeLists.txt
+index 280bd9e19..5e7e8a648 100644
+--- a/tools/server/CMakeLists.txt
++++ b/tools/server/CMakeLists.txt
+@@ -43,6 +43,8 @@ add_library(${TARGET}
+     server-http.h
+     server-models.cpp
+     server-models.h
++    worker_isolation.cpp
++    worker_isolation.h
+ )
+ set_target_properties(${TARGET} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+ 
+diff --git a/tools/server/server.cpp b/tools/server/server.cpp
+index 6d1aa4351..439f29e70 100644
+--- a/tools/server/server.cpp
++++ b/tools/server/server.cpp
+@@ -4,6 +4,7 @@
+ #include "server-cors-proxy.h"
+ #include "server-stream.h"
+ #include "server-tools.h"
++#include "worker_isolation.h"
+ 
+ #include "arg.h"
+ #include "build-info.h"
+@@ -14,7 +15,9 @@
+ 
+ #include <atomic>
+ #include <clocale>
++#include <cstdlib>
+ #include <exception>
++#include <memory>
+ #include <signal.h>
+ #include <thread> // for std::thread::hardware_concurrency
+ 
+@@ -135,10 +138,29 @@ int llama_server(common_params & params, int argc, char ** argv) {
+     const bool is_router_server = params.model.path.empty()
+                                && params.model.hf_repo.empty();
+ 
++    // worker-isolation parent mode: opt-in via LLAMA_WORKER_ISOLATION=1.
++    // The parent stays CUDA-free (never loads a model in this process), owns
++    // the inbound HTTP port, and fork+execv's a child on a private port that
++    // holds the model + GPU. SIGKILLing the child via POST /v1/admin/unload
++    // reclaims ALL VRAM (primary CUDA context teardown), letting avatar/video
++    // share the card (koblibs kob-gpu-gate). The child sees
++    // LLAMA_WORKER_ISOLATION_CHILD=1 and runs as a normal single-process
++    // llama-server. Every model-facing route is proxied to the child so the
++    // parent transparently exposes the full upstream API. See worker_isolation.h.
++    auto getenv_truthy = [](const char * name) {
++        const char * v = std::getenv(name);
++        return v && v[0] && v[0] != '0';
++    };
++    const bool worker_iso_parent =
++        getenv_truthy("LLAMA_WORKER_ISOLATION") &&
++        !getenv_truthy("LLAMA_WORKER_ISOLATION_CHILD");
++    // parent-only = holds the port + proxies, loads no model in this process.
++    const bool is_parent_only = is_router_server || worker_iso_parent;
++
+     // skip device enumeration so the CUDA primary context stays uncreated
+-    common_params_print_info(params, !is_router_server);
++    common_params_print_info(params, !is_parent_only);
+ 
+-    if (!is_router_server) {
++    if (!is_parent_only) {
+         // validate batch size for embeddings
+         // embeddings require all tokens to be processed in a single ubatch
+         // see https://github.com/ggml-org/llama.cpp/issues/12836
+@@ -183,6 +205,95 @@ int llama_server(common_params & params, int argc, char ** argv) {
+     server_routes routes(params, ctx_server);
+     server_tools tools;
+ 
++    // worker-isolation parent state. Spawns the child lazily on the first
++    // model-bound request; every route below is rebound to proxy through it
++    // so the parent transparently exposes the full upstream API on top of
++    // which we add the /v1/admin/{drain,load,unload} lifecycle endpoints.
++    std::unique_ptr<worker_isolation> worker_iso;
++    if (worker_iso_parent) {
++        SRV_INF("%s", "worker-isolation: parent mode active (LLAMA_WORKER_ISOLATION=1)\n");
++        SRV_INF("%s", "  parent stays CUDA-free, child holds model + GPU\n");
++        SRV_INF("%s", "  POST /v1/admin/unload SIGKILLs child -> all VRAM reclaimed\n");
++        worker_iso = std::make_unique<worker_isolation>(params, argc, argv);
++
++        // Default GPU for the child: env WORKER_DEFAULT_GPU (a
++        // CUDA_VISIBLE_DEVICES value - index or "GPU-..." UUID). Empty ->
++        // inherit the container CUDA_VISIBLE_DEVICES (backward compatible).
++        // Per-request override is the X-Worker-Gpu header (see worker_isolation).
++        if (const char * dg = std::getenv("WORKER_DEFAULT_GPU"); dg && dg[0]) {
++            worker_iso->set_default_gpu(dg);
++            SRV_INF("  WORKER_DEFAULT_GPU=%s (per-request override: X-Worker-Gpu header)\n", dg);
++        }
++
++        auto wi = worker_iso.get();
++        // Heavy inference endpoints: drain-gated + counted toward in_flight,
++        // lazily (re)spawn the child. Drain is checked at handler entry so
++        // streaming responses already in flight are never aborted.
++        auto proxy_post_with_drain = [wi](const server_http_req & req) -> server_http_res_ptr {
++            if (wi->is_draining()) {
++                auto res = std::make_unique<server_http_res>();
++                res->status = 503;
++                res->data = safe_json_to_str({{"error", format_error_response(
++                    "service is draining; new requests rejected (admin/drain in effect)",
++                    ERROR_TYPE_UNAVAILABLE)}});
++                return res;
++            }
++            return wi->proxy(req, "POST");
++        };
++        // Metadata / tokenizer endpoints: proxy but don't gate or count, and
++        // never lazily spawn (a routine poll must not re-fork an evicted
++        // worker back into VRAM). 503 when the child is down.
++        auto proxy_post_no_drain = [wi](const server_http_req & req) -> server_http_res_ptr {
++            return wi->proxy_noflight(req, "POST");
++        };
++        auto proxy_get_no_drain  = [wi](const server_http_req & req) -> server_http_res_ptr {
++            return wi->proxy_noflight(req, "GET");
++        };
++
++        // Model-bearing endpoints (real GPU work) -> drain-gated.
++        routes.post_completions            = proxy_post_with_drain;
++        routes.post_completions_oai        = proxy_post_with_drain;
++        routes.post_chat_completions       = proxy_post_with_drain;
++        routes.post_control                = proxy_post_with_drain;
++        routes.post_responses_oai          = proxy_post_with_drain;
++        routes.post_transcriptions_oai     = proxy_post_with_drain;
++        routes.post_anthropic_messages     = proxy_post_with_drain;
++        routes.post_infill                 = proxy_post_with_drain;
++        routes.post_embeddings             = proxy_post_with_drain;
++        routes.post_embeddings_oai         = proxy_post_with_drain;
++        routes.post_rerank                 = proxy_post_with_drain;
++        // Tokenizer / metadata / counting endpoints -> proxy, ungated.
++        routes.post_chat_completions_tok   = proxy_post_no_drain;
++        routes.post_responses_tok_oai      = proxy_post_no_drain;
++        routes.post_anthropic_count_tokens = proxy_post_no_drain;
++        routes.post_apply_template         = proxy_post_no_drain;
++        routes.post_tokenize               = proxy_post_no_drain;
++        routes.post_detokenize             = proxy_post_no_drain;
++        routes.get_metrics                 = proxy_get_no_drain;
++        routes.get_slots                   = proxy_get_no_drain;
++        routes.post_slots                  = proxy_post_no_drain;
++        routes.get_props                   = proxy_get_no_drain;
++        routes.post_props                  = proxy_post_no_drain;
++        routes.get_models                  = proxy_get_no_drain;
++        routes.get_lora_adapters           = proxy_get_no_drain;
++        routes.post_lora_adapters          = proxy_post_no_drain;
++        // /health stays parent-side and reports the isolation lifecycle state
++        // that kob-gpu-gate's drain loop polls.
++        routes.get_health = [wi](const server_http_req &) -> server_http_res_ptr {
++            auto res = std::make_unique<server_http_res>();
++            res->status = 200;
++            json body = {
++                {"status",    "ok"},
++                {"loaded",    wi->is_loaded()},
++                {"busy",      wi->in_flight() > 0},
++                {"draining",  wi->is_draining()},
++                {"in_flight", wi->in_flight()},
++            };
++            res->data = safe_json_to_str(body);
++            return res;
++        };
++    }
++
+     std::optional<server_models_routes> models_routes{};
+     if (is_router_server) {
+         // setup server instances manager
+@@ -272,6 +383,66 @@ int llama_server(common_params & params, int argc, char ** argv) {
+     ctx_http.get ("/slots",                    ex_wrapper(routes.get_slots));
+     ctx_http.post("/slots/:id_slot",           ex_wrapper(routes.post_slots));
+ 
++    // worker-isolation admin endpoints - registered only in parent mode.
++    // These match kob-gpu-gate's expected paths (koblibs kob-gpu-gate
++    // acquire_for_avatar: drain -> wait for in_flight==0 -> unload).
++    if (worker_iso_parent) {
++        auto wi = worker_iso.get();
++        // POST /v1/admin/drain - 503 new requests; in-flight streams finish.
++        auto drain_handler = [wi](const server_http_req &) -> server_http_res_ptr {
++            wi->set_draining(true);
++            auto res = std::make_unique<server_http_res>();
++            res->status = 200;
++            res->data = safe_json_to_str({
++                {"status",    "ok"},
++                {"draining",  true},
++                {"in_flight", wi->in_flight()},
++            });
++            return res;
++        };
++        // POST /v1/admin/unload - SIGKILL child, reclaim all VRAM. Clears the
++        // drain flag so the next inference request lazily re-spawns the child.
++        auto unload_handler = [wi](const server_http_req &) -> server_http_res_ptr {
++            bool killed = wi->shutdown_child();
++            wi->set_draining(false);
++            auto res = std::make_unique<server_http_res>();
++            res->status = 200;
++            res->data = safe_json_to_str({
++                {"status",   killed ? "ok" : "idle"},
++                {"loaded",   wi->is_loaded()},
++                {"unloaded", killed},
++            });
++            return res;
++        };
++        // POST /v1/admin/load - pre-warm child + clear drain flag.
++        auto load_handler = [wi](const server_http_req &) -> server_http_res_ptr {
++            wi->set_draining(false);
++            bool was_loaded = wi->is_loaded();
++            bool ok = wi->ensure_loaded();
++            auto res = std::make_unique<server_http_res>();
++            if (!ok) {
++                res->status = 500;
++                res->data = safe_json_to_str({{"error", format_error_response(
++                    "failed to load worker child", ERROR_TYPE_SERVER)}});
++                return res;
++            }
++            res->status = 200;
++            res->data = safe_json_to_str({
++                {"status",     "ok"},
++                {"loaded",     wi->is_loaded()},
++                {"was_loaded", was_loaded},
++            });
++            return res;
++        };
++        ctx_http.post("/v1/admin/drain",  ex_wrapper(drain_handler));
++        ctx_http.post("/v1/admin/unload", ex_wrapper(unload_handler));
++        ctx_http.post("/v1/admin/load",   ex_wrapper(load_handler));
++        // legacy aliases without /v1 prefix.
++        ctx_http.post("/admin/drain",     ex_wrapper(drain_handler));
++        ctx_http.post("/admin/unload",    ex_wrapper(unload_handler));
++        ctx_http.post("/admin/load",      ex_wrapper(load_handler));
++    }
++
+     // resumable streaming: a child binds the local session factories, the router binds
+     // proxies that resolve the owning child, see server-stream.h
+     server_http_context::handler_t stream_get_h;
+@@ -281,6 +452,12 @@ int llama_server(common_params & params, int argc, char ** argv) {
+         stream_get_h     = models_routes->router_stream_get;
+         streams_lookup_h = models_routes->router_streams_lookup;
+         stream_delete_h  = models_routes->router_stream_delete;
++    } else if (worker_iso_parent) {
++        // resumable-stream session state lives on the child; proxy through.
++        auto wi = worker_iso.get();
++        stream_get_h     = [wi](const server_http_req & req) { return wi->proxy_noflight(req, "GET"); };
++        streams_lookup_h = [wi](const server_http_req & req) { return wi->proxy_noflight(req, "POST"); };
++        stream_delete_h  = [wi](const server_http_req & req) { return wi->proxy_noflight(req, "DELETE"); };
+     } else {
+         stream_get_h     = server_stream_make_get_handler();
+         streams_lookup_h = server_stream_make_lookup_handler();
+@@ -375,7 +552,7 @@ int llama_server(common_params & params, int argc, char ** argv) {
+ 
+     if (child.is_child() && child.get_mode() == SERVER_CHILD_MODE_DOWNLOAD) {
+         return child.run_download(params);
+-    } else if (!is_router_server && !is_run_by_cli) {
++    } else if (!is_parent_only && !is_run_by_cli) {
+         // single-model mode (NOT spawned by router)
+         // if this is invoked by CLI, model downloading should be already handled
+         try {
+@@ -423,6 +600,34 @@ int llama_server(common_params & params, int argc, char ** argv) {
+             ctx_http.stop();
+         };
+ 
++    } else if (worker_iso_parent) {
++        SRV_INF("%s", "starting worker-isolation parent (no model loaded in this process)\n");
++        SRV_INF("%s", "  child will be spawned lazily on first model-bound request\n");
++
++        clean_up = [&ctx_http, &worker_iso]() {
++            SRV_INF("%s: cleaning up before exit...\n", __func__);
++            server_stream_session_manager_stop();
++            if (worker_iso) {
++                worker_iso->shutdown_child();
++            }
++            ctx_http.stop();
++            llama_backend_free();
++        };
++
++        if (!ctx_http.start()) {
++            clean_up();
++            SRV_ERR("%s", "exiting due to HTTP server error\n");
++            return 1;
++        }
++        ctx_http.is_ready.store(true);
++
++        shutdown_handler = [&](int) {
++            if (worker_iso) {
++                worker_iso->shutdown_child();
++            }
++            ctx_http.stop();
++        };
++
+     } else {
+         // setup clean up function, to be called before exit
+         clean_up = [&ctx_http, &ctx_server, &mcp_mgr]() {
+@@ -508,6 +713,12 @@ int llama_server(common_params & params, int argc, char ** argv) {
+ 
+         // when the HTTP server stops, clean up and exit
+         clean_up();
++    } else if (worker_iso_parent) {
++        SRV_INF("worker-isolation parent listening on %s\n", ctx_http.listening_address.c_str());
++        if (ctx_http.thread.joinable()) {
++            ctx_http.thread.join(); // keep the main thread alive
++        }
++        clean_up();
+     } else {
+         // optionally, notify router server that this instance is ready
+         std::thread monitor_thread;
+diff --git a/tools/server/worker_isolation.cpp b/tools/server/worker_isolation.cpp
+new file mode 100644
+index 000000000..20afdfb79
+--- /dev/null
++++ b/tools/server/worker_isolation.cpp
+@@ -0,0 +1,458 @@
++// worker_isolation.cpp — see worker_isolation.h.
++//
++// Implementation notes:
++//   - Child spawn uses sheredom/subprocess (same as the router server)
++//     so we get cross-platform process handling out of the box.
++//   - We do NOT capture stdout — the child logs directly to stderr and
++//     we want those log lines visible in `docker logs` without an extra
++//     marshalling thread. SUBPROCESS_OPTION_INHERIT_ENVIRONMENT preserves
++//     env across exec.
++//   - Health probe: parent polls http://127.0.0.1:<child_port>/health
++//     every 250 ms until 200, up to 60 s (warm-page-cache 5-10s, cold
++//     ~20-30s). Same shape as docker-compose's healthcheck loop.
++
++#include "worker_isolation.h"
++#include "server-common.h"
++#include "server-models.h"      // for server_http_proxy
++#include "common.h"
++
++#include <cpp-httplib/httplib.h>
++#include <sheredom/subprocess.h>
++
++#include <algorithm>
++#include <cctype>
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <thread>
++
++#ifdef _WIN32
++#  include <winsock2.h>
++#  include <windows.h>
++#else
++#  include <arpa/inet.h>
++#  include <netinet/in.h>
++#  include <sys/socket.h>
++#  include <unistd.h>
++extern char ** environ;
++#endif
++
++namespace {
++
++// Same helper as server-models.cpp; kept private here so we don't
++// expose more of that translation unit's internals.
++int get_free_port() {
++#ifdef _WIN32
++    WSADATA wsaData;
++    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) return -1;
++    typedef SOCKET sock_t;
++#  define INV INVALID_SOCKET
++#  define CLOSEME(s) closesocket(s)
++#else
++    typedef int sock_t;
++#  define INV -1
++#  define CLOSEME(s) ::close(s)
++#endif
++    sock_t s = ::socket(AF_INET, SOCK_STREAM, 0);
++    if (s == INV) {
++#ifdef _WIN32
++        WSACleanup();
++#endif
++        return -1;
++    }
++    sockaddr_in addr{};
++    addr.sin_family = AF_INET;
++    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
++    addr.sin_port = htons(0);
++    if (::bind(s, (sockaddr *) &addr, sizeof(addr)) != 0) {
++        CLOSEME(s);
++#ifdef _WIN32
++        WSACleanup();
++#endif
++        return -1;
++    }
++#ifdef _WIN32
++    int len = sizeof(addr);
++#else
++    socklen_t len = sizeof(addr);
++#endif
++    if (::getsockname(s, (sockaddr *) &addr, &len) != 0) {
++        CLOSEME(s);
++#ifdef _WIN32
++        WSACleanup();
++#endif
++        return -1;
++    }
++    int port = ntohs(addr.sin_port);
++    CLOSEME(s);
++#ifdef _WIN32
++    WSACleanup();
++#endif
++    return port;
++}
++
++// Read /proc/self/exe (Linux) or fall back to argv[0]. The subprocess
++// API wants a full path so it can execv directly without /bin/sh.
++std::string self_exe_path(const char * argv0_fallback) {
++#ifdef __linux__
++    char buf[4096];
++    ssize_t n = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
++    if (n > 0) {
++        buf[n] = '\0';
++        return std::string(buf);
++    }
++#endif
++    return std::string(argv0_fallback ? argv0_fallback : "llama-server");
++}
++
++// Build child argv by stripping out --host/--port (we override) + the
++// usual reserved-arg pattern. We pass the child the same model/mmproj/
++// quantization/sampling/etc. flags so its config is bit-identical to
++// the user's intent — only HOST + PORT differ.
++//
++// `argv` here is the parent's argv. We skip:
++//   * `--host` / `-H` / `--hostname` <val>  — we force 127.0.0.1
++//   * `--port` / `-p`                <val>  — we force the random port
++// Everything else flows through.
++std::vector<std::string> sanitize_child_argv(int argc, char ** argv) {
++    std::vector<std::string> out;
++    out.reserve(argc);
++    for (int i = 1; i < argc; ++i) {
++        std::string a = argv[i];
++        if (a == "--host" || a == "-H" || a == "--hostname" ||
++            a == "--port" || a == "-p") {
++            if (i + 1 < argc) i++;  // skip its value
++            continue;
++        }
++        out.push_back(std::move(a));
++    }
++    return out;
++}
++
++} // namespace
++
++worker_isolation::worker_isolation(const common_params & params, int argc, char ** argv) {
++    argv0_         = self_exe_path(argv[0]);
++    child_argv_    = sanitize_child_argv(argc, argv);
++    parent_port_   = params.port;
++    read_timeout_  = params.timeout_read  > 0 ? params.timeout_read  : 600;
++    write_timeout_ = params.timeout_write > 0 ? params.timeout_write : 600;
++}
++
++worker_isolation::~worker_isolation() {
++    // Kill the child on parent exit so we don't leak a process.
++    std::lock_guard<std::mutex> lk(spawn_mutex_);
++    reap_locked();
++}
++
++bool worker_isolation::is_loaded() const {
++    return loaded_.load() && subproc_ != nullptr;
++}
++
++bool worker_isolation::ensure_loaded(const std::string & want_gpu) {
++    // Resolve the target card: explicit override, else the configured default.
++    // Empty → inherit the container CUDA_VISIBLE_DEVICES (legacy behaviour).
++    const std::string target = want_gpu.empty() ? default_gpu_ : want_gpu;
++
++    // Fast path: live child already on the right card.
++    if (loaded_.load() && subproc_ && subprocess_alive(subproc_.get()) &&
++        worker_gpu_ == target) {
++        return true;
++    }
++    std::lock_guard<std::mutex> lk(spawn_mutex_);
++    if (loaded_.load() && subproc_ && subprocess_alive(subproc_.get()) &&
++        worker_gpu_ == target) {
++        return true;
++    }
++    // Relocation: a live child on a different card must be killed + respawned
++    // on the target. Drain first so in-flight proxy streams aren't severed
++    // mid-response (handler-entry drain gate already 503's NEW requests; the
++    // request driving this relocation is itself pre-drain by contract — the
++    // gate sequences drain→wait→relocate upstream).
++    if (subproc_ && subprocess_alive(subproc_.get()) && worker_gpu_ != target) {
++        SRV_INF("worker-isolation: relocating child GPU '%s' -> '%s'\n",
++                worker_gpu_.empty() ? "(inherit)" : worker_gpu_.c_str(),
++                target.empty()      ? "(inherit)" : target.c_str());
++        reap_locked();
++    } else if (subproc_ && !subprocess_alive(subproc_.get())) {
++        // Child existed but died; reap before respawn.
++        reap_locked();
++    }
++    want_gpu_ = target;
++    return spawn_locked();
++}
++
++bool worker_isolation::shutdown_child() {
++    std::lock_guard<std::mutex> lk(spawn_mutex_);
++    if (!subproc_) return false;
++    bool alive = subprocess_alive(subproc_.get());
++    reap_locked();
++    return alive;
++}
++
++void worker_isolation::reap_locked() {
++    if (!subproc_) return;
++    if (subprocess_alive(subproc_.get())) {
++        // SIGKILL on POSIX, TerminateProcess on Windows — same effect:
++        // primary CUDA context teardown is immediate, all VRAM is
++        // reclaimed by the kernel.
++        subprocess_terminate(subproc_.get());
++    }
++    int code = 0;
++    subprocess_join(subproc_.get(), &code);
++    subprocess_destroy(subproc_.get());
++    subproc_.reset();
++    child_port_.store(0);
++    loaded_.store(false);
++    worker_gpu_.clear();
++    // log_thread_ exits when fgets hits EOF, which subprocess_destroy
++    // triggers by closing the read fd. Join here so the next spawn
++    // doesn't race.
++    if (log_thread_.joinable()) log_thread_.join();
++}
++
++bool worker_isolation::spawn_locked() {
++    int port = get_free_port();
++    if (port <= 0) {
++        SRV_ERR("%s", "worker-isolation: failed to allocate child port\n");
++        return false;
++    }
++
++    // Compose argv: <exe> <user-args-minus-host-port> --host 127.0.0.1 --port <child_port>
++    std::vector<std::string> args;
++    args.reserve(child_argv_.size() + 5);
++    args.push_back(argv0_);
++    for (const auto & a : child_argv_) args.push_back(a);
++    args.emplace_back("--host");
++    args.emplace_back("127.0.0.1");
++    args.emplace_back("--port");
++    args.emplace_back(std::to_string(port));
++
++    std::vector<char *> argv_p;
++    argv_p.reserve(args.size() + 1);
++    for (auto & s : args) argv_p.push_back(const_cast<char *>(s.c_str()));
++    argv_p.push_back(nullptr);
++
++    // env: inherit + force LLAMA_WORKER_ISOLATION=0 so the child
++    // doesn't re-recurse, + LLAMA_WORKER_ISOLATION_CHILD=1 as a
++    // sentinel future-readers can grep for.
++    std::vector<std::string> env_owned;
++#ifdef _WIN32
++    // not implementing the Windows env-block path here; subprocess.h's
++    // inherit-environment option suffices on Windows.
++#else
++    // When pinning to a specific card we override CUDA_VISIBLE_DEVICES in the
++    // child env (parent is CUDA-free, so its primary context lands on the
++    // requested device). Empty want_gpu_ → leave the inherited value untouched
++    // (fully backward compatible).
++    const bool pin_gpu = !want_gpu_.empty();
++    if (environ) {
++        for (char ** e = environ; *e; ++e) {
++            std::string ev = *e;
++            // Drop any prior LLAMA_WORKER_ISOLATION* — we set our own.
++            if (ev.rfind("LLAMA_WORKER_ISOLATION", 0) == 0) continue;
++            // Drop inherited CUDA_VISIBLE_DEVICES when we're pinning — we
++            // re-add the targeted value below.
++            if (pin_gpu && ev.rfind("CUDA_VISIBLE_DEVICES=", 0) == 0) continue;
++            env_owned.push_back(std::move(ev));
++        }
++    }
++#endif
++    env_owned.emplace_back("LLAMA_WORKER_ISOLATION=0");
++    env_owned.emplace_back("LLAMA_WORKER_ISOLATION_CHILD=1");
++    if (pin_gpu) {
++        env_owned.emplace_back("CUDA_VISIBLE_DEVICES=" + want_gpu_);
++    }
++
++    std::vector<char *> envp;
++    envp.reserve(env_owned.size() + 1);
++    for (auto & s : env_owned) envp.push_back(const_cast<char *>(s.c_str()));
++    envp.push_back(nullptr);
++
++    SRV_INF("worker-isolation: spawning child on 127.0.0.1:%d\n", port);
++    for (size_t i = 0; i < args.size(); ++i) {
++        SRV_INF("  argv[%zu] = %s\n", i, args[i].c_str());
++    }
++
++    subproc_ = std::make_shared<subprocess_s>();
++    // Combine the child's stdout + stderr into one pipe so we can drain
++    // it with a single reader thread; without a drain, the child's log
++    // pipe fills + blocks the child's writes during model load (was
++    // costing us 2-minute spawn-time hangs on cold reload paths).
++    int options = subprocess_option_no_window | subprocess_option_combined_stdout_stderr;
++    // nullptr cwd = inherit the parent's working directory (upstream added the
++    // process_cwd parameter to the vendored sheredom/subprocess.h after 2969d6d15).
++    int rc = subprocess_create_ex(argv_p.data(), options, envp.data(), nullptr, subproc_.get());
++    if (rc != 0) {
++        SRV_ERR("%s", "worker-isolation: subprocess_create_ex failed\n");
++        subproc_.reset();
++        return false;
++    }
++
++    child_port_.store(port);
++
++    // Start the log-relay thread now. It exits when the child's pipe
++    // hits EOF (subprocess teardown closes the read end).
++    if (log_thread_.joinable()) log_thread_.join();
++    {
++        auto sp = subproc_;
++        log_thread_ = std::thread([sp, port]() {
++            FILE * out = subprocess_stdout(sp.get());
++            if (!out) return;
++            char buf[8 * 1024];
++            while (fgets(buf, sizeof(buf), out) != nullptr) {
++                // Forward verbatim with a per-port prefix so concurrent
++                // child lines are distinguishable from parent lines.
++                std::fprintf(stderr, "[child:%d] %s", port, buf);
++            }
++        });
++    }
++
++    // Poll child health until ready or timeout.
++    constexpr int health_timeout_ms = 120 * 1000; // 2 min cold-load
++    if (!wait_for_child_health_locked(health_timeout_ms)) {
++        SRV_ERR("worker-isolation: child failed to become healthy within %d ms — killing\n",
++                health_timeout_ms);
++        reap_locked();
++        return false;
++    }
++
++    loaded_.store(true);
++    worker_gpu_ = want_gpu_;
++    SRV_INF("worker-isolation: child ready on 127.0.0.1:%d (pid alive) gpu=%s\n",
++            port, worker_gpu_.empty() ? "(inherit)" : worker_gpu_.c_str());
++    return true;
++}
++
++bool worker_isolation::wait_for_child_health_locked(int timeout_ms) {
++    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
++    httplib::Client cli("127.0.0.1", child_port_.load());
++    cli.set_connection_timeout(2, 0);
++    cli.set_read_timeout(2, 0);
++    while (std::chrono::steady_clock::now() < deadline) {
++        // If the child died, give up immediately.
++        if (!subprocess_alive(subproc_.get())) {
++            SRV_ERR("%s", "worker-isolation: child died during startup\n");
++            return false;
++        }
++        auto res = cli.Get("/health");
++        if (res && res->status == 200) {
++            return true;
++        }
++        std::this_thread::sleep_for(std::chrono::milliseconds(250));
++    }
++    return false;
++}
++
++// Internal helper: builds a server_http_proxy wrapped to release
++// in_flight_ on destruction (matches lifetime of the streaming response).
++namespace {
++
++struct proxied_with_in_flight : server_http_res {
++    // Holds the underlying proxy + the in-flight guard. The proxy is
++    // a server_http_res itself (subclass), so we wrap its `next` and
++    // copy out status/headers/content_type/data.
++    std::unique_ptr<server_http_res>           inner;
++    std::unique_ptr<worker_isolation::in_flight_guard> ifg;
++    proxied_with_in_flight(std::unique_ptr<server_http_res> p,
++                           std::unique_ptr<worker_isolation::in_flight_guard> g)
++        : inner(std::move(p)), ifg(std::move(g)) {
++        status       = inner->status;
++        headers      = inner->headers;
++        content_type = inner->content_type;
++        data         = inner->data;
++        if (inner->is_stream()) {
++            // bind a shared_ptr so the wrapper survives until last chunk.
++            auto inner_raw = inner.get();
++            this->next = [inner_raw](std::string & out) -> bool {
++                return inner_raw->next(out);
++            };
++        }
++    }
++};
++
++} // namespace
++
++// Forward to the already-running child. NEVER spawns — callers that want a
++// lazy cold-load must call ensure_loaded() first. Returns 503 when the child
++// is down so a metadata poll can't drag the model back into VRAM.
++server_http_res_ptr worker_isolation::forward_to_child(const server_http_req & req, const std::string & method) {
++    int port = child_port_.load();
++    if (port <= 0 || !loaded_.load()) {
++        auto res = std::make_unique<server_http_res>();
++        res->status = 503;
++        res->data = safe_json_to_str({{"error", format_error_response("worker child not loaded", ERROR_TYPE_UNAVAILABLE)}});
++        return res;
++    }
++    std::string proxy_path = req.path;
++    if (!req.query_string.empty()) proxy_path += '?' + req.query_string;
++    auto proxy = std::make_unique<server_http_proxy>(
++        method,
++        "http",
++        "127.0.0.1",
++        port,
++        proxy_path,
++        req.headers,
++        req.body,
++        req.files,
++        req.should_stop,
++        read_timeout_,
++        write_timeout_);
++    return proxy;
++}
++
++server_http_res_ptr worker_isolation::proxy_noflight(const server_http_req & req, const std::string & method) {
++    // Metadata / introspection endpoints (/v1/models, /props, /metrics,
++    // /slots, tokenize, …). These must NOT lazily spawn the child: an
++    // idle/evicted worker (e.g. while an Avatar/Flux render holds the GPU and
++    // kob-gpu-gate has unloaded the LLM) would be re-forked by a routine
++    // health/model-name poll, double-loading the model into VRAM on top of
++    // the render → OOM. Forward only when the child is already up; else 503.
++    return forward_to_child(req, method);
++}
++
++std::string worker_isolation::resolve_target_gpu(const server_http_req & req) const {
++    // Case-insensitive lookup of "X-Worker-Gpu". httplib preserves the
++    // client's header casing, so we can't rely on a fixed key. Empty value
++    // (or absent header) → keep current/default card.
++    for (const auto & [k, v] : req.headers) {
++        if (k.size() != std::string("X-Worker-Gpu").size()) continue;
++        bool match = true;
++        const char * want = "x-worker-gpu";
++        for (size_t i = 0; i < k.size(); ++i) {
++            if (std::tolower((unsigned char) k[i]) != want[i]) { match = false; break; }
++        }
++        if (match) {
++            // trim surrounding whitespace
++            size_t a = v.find_first_not_of(" \t");
++            if (a == std::string::npos) return std::string();
++            size_t b = v.find_last_not_of(" \t");
++            return v.substr(a, b - a + 1);
++        }
++    }
++    return std::string();
++}
++
++server_http_res_ptr worker_isolation::proxy(const server_http_req & req, const std::string & method) {
++    // Inference path: this is the only place allowed to lazily cold-load the
++    // child (the keep-warm "reload on next chat" contract). kob-gpu-gate gates
++    // these upstream so a chat can't reload the model mid-render.
++    //
++    // X-Worker-Gpu header (per-request override) places / relocates the child
++    // onto a specific card before serving. Empty/absent → default_gpu_.
++    const std::string target_gpu = resolve_target_gpu(req);
++    if (!ensure_loaded(target_gpu)) {
++        auto res = std::make_unique<server_http_res>();
++        res->status = 503;
++        res->data = safe_json_to_str({{"error", format_error_response("worker child failed to start", ERROR_TYPE_UNAVAILABLE)}});
++        return res;
++    }
++    auto raw = forward_to_child(req, method);
++    if (raw->status >= 500 && raw->data.find("worker child") != std::string::npos) {
++        // Don't wrap an error response with an in-flight guard.
++        return raw;
++    }
++    auto guard = std::make_unique<in_flight_guard>(this);
++    return std::make_unique<proxied_with_in_flight>(std::move(raw), std::move(guard));
++}
+diff --git a/tools/server/worker_isolation.h b/tools/server/worker_isolation.h
+new file mode 100644
+index 000000000..704697181
+--- /dev/null
++++ b/tools/server/worker_isolation.h
+@@ -0,0 +1,160 @@
++// worker_isolation.h — `LLAMA_WORKER_ISOLATION=1` parent/child split for
++// llama-server, matching the shape used in qwen3-tts.cpp + siglip2.cpp.
++//
++// PARENT (no env var change after this point):
++//   - skips llama_backend_init() / model load → CUDA primary context is
++//     NEVER created in this process. nvidia-smi shows ~0 MiB for the
++//     parent's pid.
++//   - owns the inbound HTTP port (params.port).
++//   - on the first /v1/chat/completions (or /v1/completions, or
++//     /v1/embeddings) request, fork+execv's its own argv with
++//     LLAMA_WORKER_ISOLATION cleared + LLAMA_WORKER_ISOLATION_CHILD=1 set,
++//     listening on a private localhost port. Subsequent requests are
++//     proxied to that child via server_http_proxy (same primitive the
++//     router server already uses — gives us streaming SSE relay for free).
++//   - tracks an in-flight chat counter and a "draining" flag.
++//   - registers /v1/admin/{drain,load,unload} that operate on the child.
++//
++// CHILD:
++//   - sees LLAMA_WORKER_ISOLATION_CHILD=1, skips this code entirely, runs
++//     as a normal single-process llama-server on the private port.
++//
++// SSE relay:
++//   - parent uses server_http_proxy → cpp-httplib request with a
++//     ContentReceiverWithProgress callback. Each chunk written by the
++//     child is enqueued in a pipe_t and re-emitted from the parent's
++//     chunked content provider. No re-encoding. Works for both
++//     streaming (text/event-stream) and non-streaming JSON responses
++//     because httplib uses the same content_receiver path for both.
++//
++// Drain semantics:
++//   - drain=true causes /v1/{chat,}completions + /v1/embeddings + /v1/rerank
++//     to 503 on entry. Existing in-flight proxy streams keep running —
++//     the drain flag is only checked at handler entry, not inside the
++//     proxy. POST /v1/admin/load clears the drain flag.
++
++#pragma once
++
++#include "server-http.h"
++
++#include <atomic>
++#include <memory>
++#include <mutex>
++#include <string>
++#include <vector>
++
++struct subprocess_s;
++struct common_params;
++
++class worker_isolation {
++public:
++    worker_isolation(const common_params & params, int argc, char ** argv);
++    ~worker_isolation();
++
++    // Default GPU (CUDA_VISIBLE_DEVICES value: index or "GPU-..." UUID) for
++    // the child when no per-request override is given. Empty = inherit the
++    // parent/container CUDA_VISIBLE_DEVICES (fully backward-compatible). The
++    // parent is CUDA-free so picking the device per-spawn is always safe; it
++    // lets kob-gpu-gate place / relocate the LLM across cards like the other
++    // kobbler inference servers. Sourced from env WORKER_DEFAULT_GPU.
++    void set_default_gpu(std::string gpu) { default_gpu_ = std::move(gpu); }
++    const std::string & default_gpu() const { return default_gpu_; }
++
++    // GPU the live child is currently pinned to (CUDA_VISIBLE_DEVICES value).
++    // Empty = inherited container env. Used to decide whether a request that
++    // targets a different card needs a relocation (kill + respawn).
++    const std::string & worker_gpu() const { return worker_gpu_; }
++
++    // Ensure the child is loaded on `want_gpu` (empty → default_gpu_). If a
++    // child is already resident on a *different* GPU, it is drained + killed +
++    // respawned on the target card (relocation). Returns true on success.
++    // Caller MUST hold no other lock when entering this.
++    bool ensure_loaded(const std::string & want_gpu);
++
++    // Spawn child + poll its /health until ready (cold reload = ~5-10s).
++    // Returns true on success. Caller MUST hold no other lock when
++    // entering this — internally locks for the spawn duration.
++    bool ensure_loaded() { return ensure_loaded(std::string()); }
++
++    // SIGKILL the child + reap. Idempotent: returns false if already
++    // idle, true if a live child was killed.
++    bool shutdown_child();
++
++    // Set / read drain flag. Drain=true 503's NEW requests; in-flight
++    // proxy streams keep going.
++    void set_draining(bool d) { draining_.store(d); }
++    bool is_draining() const   { return draining_.load(); }
++
++    bool is_loaded() const;
++    int  in_flight() const { return in_flight_.load(); }
++
++    // RAII guard incremented around proxied requests; the parent's
++    // /health reports `in_flight` for the kob-gpu-gate drain loop.
++    struct in_flight_guard {
++        worker_isolation * self;
++        in_flight_guard(worker_isolation * w) : self(w) { if (self) self->in_flight_.fetch_add(1); }
++        ~in_flight_guard()                              { if (self) self->in_flight_.fetch_sub(1); }
++        in_flight_guard(const in_flight_guard &) = delete;
++        in_flight_guard & operator=(const in_flight_guard &) = delete;
++    };
++
++    // Proxy a request to the child. The returned response is either a
++    // streaming wrapper (server_http_proxy) or an error response. On
++    // first call, lazily spawns the child + waits for readiness.
++    // bumps in_flight_ for the lifetime of the returned response.
++    //
++    // The request's `X-Worker-Gpu: <GPU-UUID>` header (case-insensitive),
++    // when present + non-empty + different from where the child is resident,
++    // triggers a relocation: drain in-flight, kill the child, respawn it on
++    // the requested card BEFORE serving. Absent/empty header → keep the
++    // current/default card. This is how kob-gpu-gate places the LLM on a
++    // specific GPU per request without an OpenAI-incompatible body field.
++    server_http_res_ptr proxy(const server_http_req & req, const std::string & method);
++
++    // Same as proxy() but does NOT bump in_flight_ AND never lazily spawns the
++    // child (use for non-chat metadata endpoints like /v1/models / /props).
++    // Returns 503 when the child is down so a routine poll can't re-fork an
++    // intentionally-evicted worker back into VRAM.
++    server_http_res_ptr proxy_noflight(const server_http_req & req, const std::string & method);
++
++    // Child port (random ephemeral). 0 before first ensure_loaded.
++    int child_port() const { return child_port_; }
++    int parent_port() const { return parent_port_; }
++
++private:
++    // Forward to the already-running child; never spawns. Returns 503 if down.
++    server_http_res_ptr forward_to_child(const server_http_req & req, const std::string & method);
++    bool spawn_locked();  // caller holds spawn_mutex_; spawns on want_gpu_
++    bool wait_for_child_health_locked(int timeout_ms);
++    void reap_locked();   // caller holds spawn_mutex_
++    // Resolve the X-Worker-Gpu header (case-insensitive) → target gpu string.
++    std::string resolve_target_gpu(const server_http_req & req) const;
++
++    // captured at construction
++    std::string argv0_;
++    std::vector<std::string> child_argv_;
++    int parent_port_ = 0;
++    int read_timeout_ = 600;
++    int write_timeout_ = 600;
++
++    // serialises spawn/shutdown — proxy itself is wait-free once child
++    // is alive (we re-check is_loaded_ inside ensure_loaded fast path).
++    mutable std::mutex spawn_mutex_;
++    std::shared_ptr<subprocess_s> subproc_;
++    // background log-relay thread (drains child stdout+stderr → parent
++    // stderr) so the child's log pipe never fills + blocks the child.
++    std::thread log_thread_;
++    std::atomic<int> child_port_{0};
++    std::atomic<bool> loaded_{false};
++    std::atomic<bool> draining_{false};
++    std::atomic<int>  in_flight_{0};
++
++    // GPU placement (CUDA_VISIBLE_DEVICES value: index or "GPU-..." UUID).
++    // default_gpu_  = card for un-targeted spawns (env WORKER_DEFAULT_GPU).
++    // want_gpu_     = card the *next* spawn_locked() should pin to (set by
++    //                 ensure_loaded() under spawn_mutex_ before spawning).
++    // worker_gpu_   = card the currently-resident child is pinned to.
++    std::string default_gpu_;
++    std::string want_gpu_;
++    std::string worker_gpu_;
++};
+-- 
+2.55.0
+

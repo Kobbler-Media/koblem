@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT MAX(queue_rank) FROM gpu_jobs WHERE band = $1 AND state IN ('queued', 'held')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "max",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int2"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "363138d5e0a2ae72c527538194452cb9af3dbd7b1831592d85a1af9e267ccff8"
+}

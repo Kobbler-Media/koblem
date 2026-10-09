@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO grammars (name, gbnf, description, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (name) DO UPDATE SET gbnf = $2, description = $3, updated_at = NOW()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd761141693f433a16d3cb13208381e526d0584f5999e8eff71a1b270d79fcfb"
+}

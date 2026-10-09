@@ -1,0 +1,75 @@
+{
+  "source_id": "019cda9d-2195-74f2-a232-a4ce7e0adc41",
+  "wanted_title": "American Dad!",
+  "want": {
+    "kind": "tv_season",
+    "season": "22",
+    "year": 2005,
+    "episodes_needed": [
+      { "season": "22", "episode": "7", "sort_order": 7, "air_date": "2026-05-03", "title": "Reaper Madness", "in_library": false },
+      { "season": "22", "episode": "1", "sort_order": 1, "air_date": "2026-02-22", "title": "Aw Rats, A Pool Party",     "in_library": true,  "library_video_height": 1080 },
+      { "season": "22", "episode": "2", "sort_order": 2, "air_date": "2026-03-01", "title": "The Flume Flume Room",      "in_library": true,  "library_video_height": 1080 },
+      { "season": "22", "episode": "3", "sort_order": 3, "air_date": "2026-03-08", "title": "Powering Through",          "in_library": true,  "library_video_height": 1080 },
+      { "season": "22", "episode": "4", "sort_order": 4, "air_date": "2026-03-15", "title": "Camera Stan",               "in_library": true,  "library_video_height": 1080 },
+      { "season": "22", "episode": "5", "sort_order": 5, "air_date": "2026-04-12", "title": "Idol Threat",               "in_library": true,  "library_video_height": 720 },
+      { "season": "22", "episode": "6", "sort_order": 6, "air_date": "2026-04-26", "title": "The Treasure of Old Chinatown", "in_library": true, "library_video_height": 1080 }
+    ]
+  },
+  "quality_profile": {
+    "max_resolution": "1080p",
+    "preferred_sources": ["web-dl", "webrip", "hdtv"],
+    "preferred_codecs": ["x265", "x264"],
+    "preferred_audio": ["aac", "ddp"],
+    "preferred_languages": ["english"],
+    "rejected_sources": ["cam", "ts", "telecine", "dvdscr", "screener", "telesync", "hdcam"],
+    "rejected_terms": ["ASL", "BSL", ".Signed.", "Sign.Zone", "SignZone", "3D", "HSBS", "Half-SBS", "HOU", "Half-OU", "DCP"],
+    "reject_hardcoded_subs": true,
+    "reject_remux": true
+  },
+  "candidates": [
+    {
+      "name": "American.Dad.2005.S12.1080p.DSNP.Webrip.AV1.10bit.EAC3.5.1.GokiTAoE",
+      "kobload_accepted": false,
+      "kobload_score": 1.375,
+      "parsed_quality": {
+        "audio": "ddp",
+        "codec": "av1",
+        "resolution": "1080p",
+        "source": "webrip",
+        "streaming_service": "disney+"
+      },
+      "publish_date": "Sat, 02 May 2026 04:32:57 +0200",
+      "quality_reject_reasons": ["trash_no_group"],
+      "quality_rejected": false,
+      "structural_reject_reason": "pack_rejected_by_preference"
+    },
+    {
+      "name": "American.Dad.2005.S22.1080p.DSNP.Webrip.x264.EAC3.5.1.NTb",
+      "kobload_accepted": true,
+      "kobload_score": 4.25,
+      "parsed_quality": {
+        "audio": "ddp",
+        "codec": "x264",
+        "resolution": "1080p",
+        "source": "webrip",
+        "streaming_service": "disney+",
+        "release_group": "NTb"
+      },
+      "publish_date": "Sat, 02 May 2026 06:08:14 +0200"
+    },
+    {
+      "name": "American.Dad.S22E07.Reaper.Madness.1080p.DSNP.WEB-DL.DDP5.1.H.264-NTb",
+      "kobload_accepted": true,
+      "kobload_score": 7.0,
+      "parsed_quality": {
+        "audio": "ddp",
+        "codec": "x264",
+        "resolution": "1080p",
+        "source": "web-dl",
+        "streaming_service": "disney+",
+        "release_group": "NTb"
+      },
+      "publish_date": "Sun, 03 May 2026 02:10:00 +0200"
+    }
+  ]
+}

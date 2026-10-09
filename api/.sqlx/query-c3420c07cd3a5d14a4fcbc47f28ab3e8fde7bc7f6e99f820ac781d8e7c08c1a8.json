@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_jobs SET result = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c3420c07cd3a5d14a4fcbc47f28ab3e8fde7bc7f6e99f820ac781d8e7c08c1a8"
+}

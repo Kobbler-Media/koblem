@@ -1,0 +1,1986 @@
+/*
+ * Pocket Director — the phone shell for the LTX/H3 Director.
+ *
+ * ⚠️ IMPORT ORDER IS LOAD-BEARING. `.dwm` mounts INSIDE `.dw`, which is how it inherits the
+ * workspace's local token layer (--bg-3 / --ring-2 / --faint / --warning / --mono, redefined for
+ * light under `[data-theme='light'] .dw`) without restating a single colour. The cost is that every
+ * `.dw …` rule in workspace.css already matches these elements, and a handful of names collide
+ * (.btn .inp .hint .eye .field .fold .viewer .acts .chev .ptrack .pfill). `.dwm .x` and `.dw .x`
+ * have EQUAL specificity, so the winner is source order — which is why DirectorWorkspace imports
+ * workspace.css first and this second, and why every colliding rule below restates the properties
+ * it needs rather than assuming a clean slate. workspace.css has already thrown elements to the top
+ * of the viewport twice this way (see ContinuityPanel.svelte); this is the third guard against it.
+ *
+ * The one name that could not be won this way is `.play` — `.dw .play::after` draws a triangle out
+ * of borders, and cancelling a pseudo-element is worse than not colliding with it. The song bar's
+ * button is `.sb-play`.
+ */
+
+.dwm {
+  /* The one token the global sheet has no name for. Same value `.dw .btn.primary` already hard-codes
+   * for text on the terracotta accent, promoted so the phone's pressed pills and ordinals share it. */
+  --accent-ink: #1a120b;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  max-height: 100%;
+  max-height: 100dvh;
+  min-width: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* `.dw` places its four children into named grid rows. The phone replaces all of them, so it takes
+ * the whole track — otherwise it lands in `auto` row 1 and the 1fr row below it stays empty. */
+.dw.dw-mobile {
+  grid-template-rows: minmax(0, 1fr);
+}
+.dw.dw-mobile > .dwm {
+  grid-row: 1;
+}
+
+.dwm button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ── app bar ──────────────────────────────────────────────────────────────── */
+.dwm .pbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 12px 9px;
+  border-bottom: 1px solid var(--ring);
+  background: var(--bg-2);
+}
+/* 44px, the coarse-pointer target the rest of the workspace already uses. This is the ONLY exit
+   from a pushed sheet, so it is the last control that should be under it. */
+.dwm .pbar .back {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+.dwm .pbar .ttl {
+  min-width: 0;
+  flex: 1;
+}
+/* The tab bodies' title is a BUTTON — it opens the project switcher (`ontitle`). Stripped back to
+ * the text it already was: the affordance is the caret and the press state, not a box drawn around
+ * the project name. The vertical padding is what makes the whole title strip a coarse-pointer
+ * target rather than just the two lines of glyphs. */
+.dwm .pbar button.ttl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 4px 6px 4px 0;
+  text-align: left;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+.dwm .pbar button.ttl:active {
+  background: var(--bg-3);
+}
+/* ⚠️ Resets both, because `.ttl span` below styles the SUBTITLE — 10px and faint — and this wrapper
+ * is a span too. Without it the project name inherits the subtitle's colour. */
+.dwm .pbar .ttl .tstack {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  font-size: inherit;
+  color: inherit;
+}
+.dwm .pbar .ttl .tcar {
+  flex: none;
+  font-size: 11px;
+  color: var(--faint);
+}
+.dwm .pbar .ttl b {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dwm .pbar .ttl span {
+  display: block;
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dwm .pbar .ico {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--muted);
+  border-radius: 9px;
+  font-size: 13px;
+}
+.dwm .savedot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--success);
+  flex: none;
+}
+.dwm .savedot.busy {
+  background: var(--accent);
+}
+.dwm .savedot.dirty {
+  background: var(--warning);
+}
+.dwm .savedot.bad {
+  background: var(--danger);
+}
+
+/* ── body + tab bar ───────────────────────────────────────────────────────── */
+.dwm .pbody {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 11px 12px 18px;
+  min-height: 0;
+}
+.dwm .pbody::-webkit-scrollbar {
+  width: 0;
+}
+/* A `bare` sheet owns the whole body: the block editor's dock has to sit where the keyboard will
+ * be, which it cannot do if the page scrolls under it. */
+.dwm .pbody.bare {
+  padding: 0;
+  overflow: hidden;
+}
+
+.dwm .ptabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--ring);
+  background: var(--bg-2);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.dwm .ptabs button {
+  border: 0;
+  background: transparent;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding: 8px 4px 10px;
+  color: var(--faint);
+  min-height: 54px;
+}
+.dwm .ptabs button .gl {
+  font-size: 15px;
+  line-height: 1;
+}
+.dwm .ptabs button .lb {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.dwm .ptabs button[aria-pressed='true'] {
+  color: var(--accent);
+}
+.dwm .ptabs.muted {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ── live-job strip ───────────────────────────────────────────────────────── */
+.dwm .pjob {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  min-height: 44px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--ring);
+  background: var(--bg-3);
+  text-align: left;
+  font: inherit;
+}
+.dwm .pjob .spin {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 999px;
+  border: 2px solid var(--ring-2);
+  border-top-color: var(--accent);
+  animation: dwm-spin 0.9s linear infinite;
+}
+@keyframes dwm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dwm .pjob .spin {
+    animation: none;
+  }
+}
+.dwm .pjob .txt {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dwm .pjob .txt b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.dwm .pjob .pct {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── primitives ───────────────────────────────────────────────────────────── */
+.dwm .eye {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+  font-weight: 650;
+  margin: 2px 0 7px;
+}
+.dwm .btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--ink);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.dwm .btn.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.dwm .btn.ghost {
+  background: transparent;
+}
+/* 🔴 Not smaller than the DESKTOP's own coarse-pointer bump (`workspace.css`, 40px). This rule is
+   (0,3,0) and beats it, so anything under 40 here makes the phone the harder of the two to hit. */
+.dwm .btn.sm {
+  min-height: 40px;
+  padding: 8px 11px;
+  font-size: 11px;
+}
+.dwm .btn.full {
+  width: 100%;
+}
+.dwm .btn.danger {
+  color: var(--danger);
+  background: var(--bg-3);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--ring));
+}
+.dwm .btn[disabled] {
+  opacity: 0.42;
+  cursor: default;
+}
+.dwm .btn:focus-visible,
+.dwm .ptabs button:focus-visible,
+.dwm .pbar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 🔴 16px on anything focusable is the iOS zoom guard the workspace already carries at
+   `(pointer: coarse) and (max-width: 860px)`. It is not a size choice — below 16px Mobile Safari
+   zooms the page on focus and never zooms back. */
+.dwm .inp,
+.dwm textarea.inp,
+.dwm select.inp {
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  background: var(--bg-3);
+  color: var(--ink);
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+  padding: 9px 11px;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.dwm .inp:focus {
+  outline: 0;
+  border-color: var(--accent);
+}
+.dwm select.inp {
+  min-height: 44px;
+  text-overflow: ellipsis;
+  padding-right: 30px;
+}
+.dwm input.inp {
+  min-height: 44px;
+}
+/* Mono, but NOT smaller: this is the section editor, and it is focusable, so the 16px guard above
+   applies to it as much as to any other field. */
+.dwm textarea.inp.mono {
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.dwm .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  border: 1px solid var(--ring);
+  color: var(--muted);
+  background: var(--bg-3);
+  white-space: nowrap;
+}
+.dwm .pill i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  font-style: normal;
+}
+.dwm .pill.ok {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+}
+.dwm .pill.stale {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.dwm .pill.none {
+  color: var(--faint);
+}
+.dwm .pill.busy {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.dwm .pill.cut {
+  color: var(--accent-2);
+  border-color: color-mix(in srgb, var(--accent-2) 45%, transparent);
+}
+.dwm .pill.bad {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.dwm .hint {
+  font-size: 10.5px;
+  color: var(--faint);
+  line-height: 1.5;
+  margin: 0;
+}
+.dwm .hint.warn {
+  color: var(--warning);
+}
+/* The consequence chip, under the render button rather than on it. */
+.dwm .qline {
+  margin: 7px 0 0;
+  text-align: center;
+}
+.dwm .hint.bad {
+  color: var(--danger);
+}
+
+.dwm .grp {
+  display: grid;
+  gap: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  padding: 11px;
+  margin-bottom: 8px;
+}
+.dwm .grp > .eye {
+  margin: 0 0 2px;
+}
+
+.dwm .field {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+.dwm .field > span {
+  display: block;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+  font-weight: 650;
+  margin: 0;
+}
+
+.dwm .rowline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.dwm .rowline .lbl {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+  font-weight: 650;
+}
+
+.dwm .fold {
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  background: var(--bg-2);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.dwm .fold > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  user-select: none;
+}
+.dwm .fold > summary::-webkit-details-marker {
+  display: none;
+}
+.dwm .fold > summary .chev {
+  margin-left: auto;
+  color: var(--faint);
+  transition: transform 0.15s;
+  width: auto;
+  font-size: 13px;
+}
+.dwm .fold[open] > summary .chev {
+  transform: rotate(90deg);
+}
+.dwm .fold .fbody {
+  padding: 0 11px 11px;
+  display: grid;
+  gap: 9px;
+}
+
+.dwm .alert {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  margin-bottom: 9px;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--ink);
+}
+.dwm .alert.bad {
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+.dwm .alert .gl {
+  color: var(--warning);
+  flex: none;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.dwm .alert.bad .gl {
+  color: var(--danger);
+}
+.dwm .alert .ab {
+  flex: 1;
+  min-width: 0;
+}
+.dwm .alert b {
+  font-weight: 650;
+}
+.dwm .alert .aact {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+/* ── AI-undo toast ────────────────────────────────────────────────────────── */
+/* Anchored to the dock rather than to the shell: the job strip comes and goes mid-render, and a
+   fixed offset off the bottom would put the toast on top of it. */
+.dwm .pdock {
+  position: relative;
+}
+.dwm .toast {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 9px);
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  background: var(--card);
+  border: 1px solid var(--ring-2);
+  border-radius: 11px;
+  box-shadow: var(--shadow);
+  font-size: 11.5px;
+}
+.dwm .toast .tt {
+  flex: 1;
+  min-width: 0;
+}
+.dwm .toast .tt b {
+  font-weight: 650;
+}
+.dwm .toast .tt span {
+  display: block;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+/* ── shots ────────────────────────────────────────────────────────────────── */
+.dwm .songbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  padding: 7px 9px;
+  margin-bottom: 11px;
+}
+.dwm .songbar .sb-play {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 999px;
+  border: 1px solid var(--ring-2);
+  background: var(--bg-3);
+  color: var(--ink);
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+}
+.dwm .songbar .track {
+  flex: 1;
+  min-width: 0;
+}
+/* 11px of padding either side of a 22px bar is what makes the scrub a 44px target without drawing
+   a 44px bar. */
+.dwm .songbar .seek {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 11px 0;
+}
+.dwm .songbar .seek:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.dwm .songbar .wave {
+  height: 22px;
+  width: 100%;
+  display: block;
+  border-radius: 4px;
+  overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--ring-2) 0 2px, transparent 2px 5px);
+  border: 0;
+  padding: 0;
+}
+.dwm .songbar svg.wave {
+  background: none;
+}
+.dwm .songbar .wave .bed {
+  fill: var(--ring-2);
+}
+.dwm .songbar .wave .played {
+  fill: var(--accent);
+}
+.dwm .songbar .tt {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+}
+.dwm .songbar .tt span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dwm .shot {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+  background: var(--card);
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 8px;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+.dwm .shot[data-sel='1'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--card));
+}
+.dwm .shot[data-bad='1'] {
+  border-color: var(--danger);
+}
+.dwm .shot .thumb {
+  aspect-ratio: 16 / 9;
+  border-radius: 7px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  width: 100%;
+}
+.dwm .shot .thumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dwm .shot .thumb img,
+.dwm .shot .thumb video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* The scrim is mixed out of the page background rather than a fixed black, so a badge over a still
+   reads in both themes without a second palette for "on video". */
+.dwm .shot .thumb .pv {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border: 1px solid var(--ring-2);
+  color: var(--ink);
+  font-size: 8px;
+  padding-left: 2px;
+  position: relative;
+}
+.dwm .shot .thumb .idx {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: var(--ink);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.dwm .shot .thumb .dur {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: var(--ink);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.dwm .shot .thumb .bt {
+  position: absolute;
+  bottom: 3px;
+  left: 4px;
+  display: flex;
+  gap: 2px;
+}
+.dwm .shot .thumb .bt span {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ink);
+  opacity: 0.85;
+}
+/* ⚠️ `.dw .empty:not(.refimg)` in workspace.css is the full-page "start a new film" state and is
+   (0,3,0) — it matches this thumb too. `.dwm .shot .thumb` only restates position/display/padding,
+   so `inset`, `z-index: 7` and `gap: 14px` were still leaking through onto a 16:9 button. Cancelled
+   here at (0,4,0) rather than by import order, which cannot win a tie it already has. */
+.dwm .shot .thumb.empty {
+  background: var(--bg-3);
+  border: 1px dashed var(--ring-2);
+  inset: auto;
+  z-index: auto;
+  gap: 0;
+}
+.dwm .shot .thumb.empty .gl {
+  font-size: 14px;
+  color: var(--faint);
+}
+.dwm .shot .open {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  align-self: stretch;
+}
+.dwm .shot .open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dwm .shot .states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dwm .shot .line {
+  font-size: 11.5px;
+  color: var(--ink);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.dwm .shot .line.blank {
+  color: var(--faint);
+  font-style: italic;
+}
+.dwm .shot .arrows {
+  display: grid;
+  gap: 4px;
+}
+.dwm .shot .arrows button {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--muted);
+}
+/* The one pair under 44px on a mouse, and it STACKS — so the pitch has to grow, not just the hit
+ * area: a grown box on the top button would swallow taps meant for the bottom one. */
+@media (pointer: coarse) {
+  .dwm .shot .arrows button {
+    height: 44px;
+  }
+}
+.dwm .shot .arrows button[disabled] {
+  opacity: 0.3;
+  cursor: default;
+}
+.dwm .addrow {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.dwm .addrow .btn {
+  flex: 1;
+}
+.dwm .addrow .btn.icn {
+  flex: none;
+  width: 46px;
+}
+
+/* ── prompt shell ─────────────────────────────────────────────────────────── */
+.dwm .shotnav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  padding: 5px;
+  margin-bottom: 8px;
+}
+.dwm .shotnav button {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.dwm .shotnav button[disabled] {
+  opacity: 0.35;
+  cursor: default;
+}
+.dwm .shotnav .who {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+.dwm .shotnav .who b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.dwm .shotnav .who span {
+  display: block;
+  font-size: 9.5px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.dwm .take {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  padding: 6px;
+  margin-bottom: 9px;
+}
+.dwm .take:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dwm .take .tk-thumb {
+  width: 58px;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  border-radius: 7px;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.dwm .take .tk-thumb .pv {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border: 1px solid var(--ring-2);
+  color: var(--ink);
+  font-size: 7px;
+  padding-left: 2px;
+}
+.dwm .take .tk-meta {
+  flex: 1;
+  min-width: 0;
+}
+.dwm .take .tk-meta b {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+}
+.dwm .take .tk-meta span {
+  display: block;
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.dwm .take .tk-exp {
+  color: var(--faint);
+  font-size: 13px;
+  padding-right: 4px;
+}
+.dwm .take.none {
+  cursor: default;
+}
+.dwm .take.none .tk-thumb {
+  border: 1px dashed var(--ring-2);
+  background: var(--bg-3);
+}
+
+.dwm .takebig {
+  margin-bottom: 9px;
+}
+.dwm .takebig .viewer {
+  margin-bottom: 6px;
+}
+.dwm .takebig .tkrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dwm .takebig .tkrow .lb {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.dwm .budget {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.dwm .budget .brow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9.5px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 650;
+}
+.dwm .budget .brow > span:first-child {
+  width: 44px;
+  flex: none;
+}
+.dwm .budget .btrack {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  overflow: hidden;
+  border: 1px solid var(--ring);
+}
+.dwm .budget .bfill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.dwm .budget .bfill.warn {
+  background: var(--warning);
+}
+.dwm .budget .bfill.bad {
+  background: var(--danger);
+}
+.dwm .budget .bv {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.dwm .refstrip {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 0 0 6px;
+  margin-bottom: 8px;
+}
+.dwm .refstrip::-webkit-scrollbar {
+  height: 0;
+}
+.dwm .ref {
+  flex: none;
+  width: 58px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+.dwm .ref:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.dwm .ref .rv {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.dwm .ref .rv img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dwm .ref .rv .ord {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.dwm .ref .rv.audio {
+  background: var(--bg-3);
+}
+.dwm .ref .rv.scoped {
+  border-color: var(--accent-2);
+  border-style: dashed;
+}
+.dwm .ref .rv .gl {
+  font-size: 14px;
+  color: var(--muted);
+}
+.dwm .ref .rn {
+  font-size: 9px;
+  color: var(--faint);
+  margin-top: 3px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dwm .ref.add .rv {
+  border-style: dashed;
+  background: var(--bg-3);
+}
+
+.dwm .subseg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.dwm .subseg button {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 44px;
+  border: 0;
+  border-right: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--muted);
+}
+.dwm .subseg button:last-child {
+  border-right: 0;
+}
+.dwm .subseg button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Written-from: a fold, collapsed once a prompt exists. */
+.dwm .origin {
+  margin-bottom: 10px;
+}
+.dwm .origin > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  font-size: 11.5px;
+  background: var(--bg-2);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+}
+.dwm .origin[open] > summary {
+  border-radius: 11px 11px 0 0;
+  border-bottom: 0;
+}
+.dwm .origin > summary::-webkit-details-marker {
+  display: none;
+}
+.dwm .origin > summary .ol {
+  font-weight: 650;
+  flex: none;
+}
+.dwm .origin > summary .oq {
+  color: var(--faint);
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+}
+.dwm .origin > summary .chev {
+  color: var(--faint);
+  transition: transform 0.15s;
+  flex: none;
+  width: auto;
+  font-size: 13px;
+}
+.dwm .origin[open] > summary .chev {
+  transform: rotate(90deg);
+}
+.dwm .origin .obody {
+  border: 1px solid var(--ring);
+  border-top: 0;
+  border-radius: 0 0 11px 11px;
+  background: var(--bg-2);
+  padding: 0 11px 11px;
+  display: grid;
+  gap: 9px;
+}
+.dwm .origin .orow {
+  display: flex;
+  gap: 7px;
+}
+.dwm .origin .orow .btn {
+  flex: 1;
+}
+.dwm .origin .orow .btn.icn {
+  flex: none;
+  width: 46px;
+}
+
+.dwm .block {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.62;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  padding: 10px;
+  white-space: pre-wrap;
+  color: var(--muted);
+  overflow-x: auto;
+}
+.dwm .block .sec {
+  display: block;
+  color: var(--accent);
+  font-weight: 700;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-family: var(--mono);
+  font-weight: 700;
+  text-align: left;
+}
+/* A header line the parser does not recognise — same warning hue the block editor paints it. */
+.dwm .block .sec.foreign {
+  color: var(--warning);
+}
+.dwm .block .tag {
+  color: var(--accent-2);
+  font-weight: 600;
+}
+.dwm .block .tc {
+  color: var(--warning);
+}
+.dwm .block .ord {
+  color: var(--ink);
+  background: var(--tag-bg);
+  border-radius: 3px;
+  padding: 0 3px;
+  border: 1px solid var(--ring);
+  font: inherit;
+  font-family: var(--mono);
+}
+/* An ordinal naming nothing is the DESIGNED outcome of taking a reference out of scope, so it is
+ * marked where the author is already reading rather than only inside a card they have to open. */
+.dwm .block .ord.dead {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--ring));
+}
+.dwm .block .ord:focus-visible,
+.dwm .block .sec:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.dwm .aibar {
+  display: flex;
+  gap: 6px;
+  margin: 9px 0 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.dwm .aibar::-webkit-scrollbar {
+  height: 0;
+}
+.dwm .aibar .btn {
+  flex: none;
+}
+
+.dwm .secnav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+.dwm .secnav select {
+  flex: 1;
+  min-width: 0;
+}
+.dwm .secnav button {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.dwm .seccount {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+}
+
+.dwm .beat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+  background: var(--card);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  padding: 9px;
+  margin-bottom: 7px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.dwm .beat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dwm .beat .tc {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+.dwm .beat .bd {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.dwm .beat .bd .tx {
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.dwm .beat .bd .tx u {
+  text-decoration: none;
+  color: var(--accent-2);
+  font-weight: 650;
+}
+.dwm .beat .gr {
+  color: var(--faint);
+  font-size: 13px;
+  padding-top: 2px;
+}
+.dwm .ribbon {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+}
+.dwm .ribbon span {
+  flex: 1;
+  height: 20px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+}
+.dwm .ribbon span img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dwm .framestate {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  padding: 9px 10px;
+}
+.dwm .framestate .fs-ico {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  color: var(--ink);
+  overflow: hidden;
+}
+.dwm .framestate .fs-ico img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dwm .framestate .fs-tx {
+  min-width: 0;
+}
+.dwm .framestate .fs-tx b {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+.dwm .framestate .fs-tx span {
+  display: block;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.dwm .dur-step {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--bg-3);
+}
+.dwm .dur-step button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+.dwm .dur-step button[disabled] {
+  opacity: 0.35;
+  cursor: default;
+}
+.dwm .dur-step .val {
+  min-width: 76px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 12px 0;
+  border-left: 1px solid var(--ring);
+  border-right: 1px solid var(--ring);
+}
+
+.dwm .acts {
+  border-top: 1px solid var(--ring);
+  margin-top: 12px;
+  padding-top: 11px;
+  display: grid;
+  gap: 7px;
+}
+.dwm .acts .arow {
+  display: flex;
+  gap: 7px;
+}
+.dwm .acts .arow .btn {
+  flex: 1;
+}
+
+/* ── full-screen block editor ─────────────────────────────────────────────── */
+.dwm .ed {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+}
+.dwm .ed-rail {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ring);
+  background: var(--bg-2);
+}
+.dwm .ed-rail::-webkit-scrollbar {
+  height: 0;
+}
+.dwm .ed-rail button {
+  flex: none;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 6px 9px;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.dwm .ed-rail button[aria-current='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.dwm .ed-doc {
+  overflow-y: auto;
+  min-height: 0;
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+.dwm .ed-doc::-webkit-scrollbar {
+  width: 0;
+}
+/* `H3BlockEditor` is mounted unchanged, so its own frame has to be told to fill this row instead of
+ * standing at its desktop `rows` height. Its rail and status line are hidden rather than removed:
+ * the rail is the only way in to the editor's caret jump, so `.ed-rail` above forwards a tap to it. */
+.dwm .ed-doc .pe-wrap {
+  display: block;
+  height: 100%;
+}
+.dwm .ed-doc .pe-rail,
+.dwm .ed-doc .pe-status {
+  display: none;
+}
+/* The desktop's `position: fixed` hover card. `.ed-ctx` below is its phone replacement — somewhere
+ * it can STAY — so drawing both would float the desktop one over the full-screen editor, in the
+ * seat the soft keyboard takes. Belt and braces: the editor also stops reporting hover on a coarse
+ * pointer, and this covers the tablet with a mouse still inside the mobile shell. */
+.dwm .ed-doc .pe-card {
+  display: none;
+}
+.dwm .ed-doc .pe {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  resize: none;
+}
+/* 🔴 The same 16px iOS guard as `.inp` above, and for the same reason: CodeMirror's `.cm-content`
+   is a contenteditable, which Mobile Safari zooms into on focus below 16px and never zooms back
+   out of. The desktop theme sets 11px on the editor ROOT and lets it inherit, so both selectors
+   have to be raised; these are (0,3,0) and beat both the generated theme class and `.pe`'s own
+   scoped rule without an `!important`. */
+.dwm .ed-doc .cm-editor,
+.dwm .ed-doc .cm-content {
+  font-size: 16px;
+}
+.dwm .ed-dock {
+  border-top: 1px solid var(--ring);
+  background: var(--bg-2);
+}
+.dwm .ed-ctx {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ring);
+  min-height: 54px;
+}
+.dwm .ed-ctx .cx-th {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 7px;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+}
+.dwm .ed-ctx .cx-th img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dwm .ed-ctx .cx-th.warn {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+.dwm .ed-ctx .cx-tx {
+  flex: 1;
+  min-width: 0;
+}
+.dwm .ed-ctx .cx-tx b {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 650;
+  font-family: var(--mono);
+}
+.dwm .ed-ctx .cx-tx span {
+  display: block;
+  font-size: 10px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dwm .ed-ctx .cx-tx span.warn {
+  color: var(--warning);
+}
+.dwm .ed-ctx .cx-go {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+}
+.dwm .ed-ins {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 7px 12px;
+  align-items: center;
+}
+.dwm .ed-ins::-webkit-scrollbar {
+  height: 0;
+}
+.dwm .ed-ins button {
+  flex: none;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  min-height: 38px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--ink);
+  font-family: var(--mono);
+}
+.dwm .ed-ins button.ord {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--ring));
+  color: var(--accent);
+}
+.dwm .ed-ins .sep {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  background: var(--ring);
+  margin: 0 2px;
+}
+.dwm .ed-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--ring);
+  font-size: 10px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.dwm .ed-foot .grow {
+  flex: 1;
+  height: auto;
+  background: none;
+}
+.dwm .ed-foot .over {
+  color: var(--warning);
+}
+
+/* ── reference card ───────────────────────────────────────────────────────── */
+.dwm .pop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  padding: 22px;
+}
+.dwm .popcard {
+  background: var(--card);
+  border: 1px solid var(--ring-2);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  overflow: hidden;
+}
+.dwm .popcard .pi {
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.dwm .popcard .pi img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dwm .popcard .pi .gl {
+  font-size: 24px;
+  color: var(--muted);
+}
+.dwm .popcard .pi .ord {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+.dwm .popcard .pb {
+  padding: 10px 12px 12px;
+  display: grid;
+  gap: 6px;
+}
+.dwm .popcard .pb b {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.dwm .popcard .pb p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.dwm .popcard .pf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--faint);
+}
+.dwm .popcard .pact {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+.dwm .popcard .pact .btn {
+  flex: 1;
+}
+
+/* ── render ───────────────────────────────────────────────────────────────── */
+.dwm .viewer {
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  border: 1px solid var(--ring);
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  width: 100%;
+  height: auto;
+  max-height: none;
+}
+.dwm .viewer video,
+.dwm .viewer img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--bg-3);
+}
+.dwm .viewer .ctl {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border: 1px solid var(--ring-2);
+  color: var(--ink);
+  font-size: 15px;
+  padding-left: 3px;
+  position: relative;
+}
+.dwm .viewer .tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: var(--ink);
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+
+.dwm .tierseg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.dwm .tierseg button {
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  min-height: 44px;
+  border: 0;
+  border-right: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--muted);
+}
+.dwm .tierseg button:last-child {
+  border-right: 0;
+}
+.dwm .tierseg button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.dwm .scope {
+  background: var(--bg-2);
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  padding: 10px 11px;
+  margin-bottom: 9px;
+  display: grid;
+  gap: 5px;
+}
+.dwm .scope .hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dwm .scope .hd b {
+  font-size: 12px;
+}
+.dwm .scope .det {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+.dwm .scope .det u {
+  text-decoration: none;
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.dwm .ptrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  overflow: hidden;
+  margin: 8px 0 5px;
+  border: 1px solid var(--ring);
+}
+.dwm .pfill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.dwm .telrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.dwm .strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-top: 4px;
+}
+.dwm .strip::-webkit-scrollbar {
+  height: 0;
+}
+.dwm .tile {
+  flex: none;
+  width: 116px;
+}
+.dwm .tile .tv {
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--ring-2), var(--bg-3));
+  border: 1px solid var(--ring);
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 0;
+}
+.dwm .tile .tv video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dwm .tile .tv .pl {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: var(--ink);
+  font-size: 9px;
+  border: 1px solid var(--ring-2);
+  padding-left: 2px;
+  position: relative;
+}
+.dwm .tile .tv.pending {
+  background: var(--bg-3);
+  border-style: dashed;
+}
+.dwm .tile .cap {
+  font-size: 9.5px;
+  color: var(--faint);
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── more / sheets ────────────────────────────────────────────────────────── */
+.dwm .mlist {
+  display: grid;
+  gap: 1px;
+  background: var(--ring);
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dwm .mrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 9px 11px;
+  background: var(--card);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border: 0;
+  width: 100%;
+}
+.dwm .mrow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.dwm .mrow[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.dwm .mrow .gl {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex: none;
+  color: var(--muted);
+}
+.dwm .mrow .tx {
+  flex: 1;
+  min-width: 0;
+}
+.dwm .mrow .tx b {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+.dwm .mrow .tx span {
+  display: block;
+  font-size: 10px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dwm .mrow .ch {
+  color: var(--faint);
+  font-size: 13px;
+  flex: none;
+}
+.dwm .mrow[aria-current='true'] {
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+.dwm .sheetbody {
+  display: grid;
+  gap: 10px;
+}

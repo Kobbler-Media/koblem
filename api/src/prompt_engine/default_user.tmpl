@@ -1,0 +1,66 @@
+CURRENT DATE: {{ today }}
+WANTED: {% if want.kind == "tv_episode" -%}
+"{{ wanted_title }}"{% if want.year %} ({{ want.year }}){% endif %} S{{ want.season }}E{{ want.episode }}{% if want.episode_title %} "{{ want.episode_title }}"{% endif %}{% if want.air_date %} [air date: {{ want.air_date }}]{% endif %}
+{%- elif want.kind == "tv_season" -%}
+"{{ wanted_title }}"{% if want.year %} ({{ want.year }}){% endif %} {% if want.episodes_needed %}{% set sorted = want.episodes_needed | sort(attribute="sort_order") %}{% if sorted | length == 1 %}[episodes needed: S{{ want.season }}E{{ sorted[0].episode }}]{% if sorted[0].title %} "{{ sorted[0].title }}"{% endif %}{% if sorted[0].air_date %} [air date: {{ sorted[0].air_date }}]{% endif %}{% else %}[episodes needed: {% for e in sorted %}S{{ want.season }}E{{ e.episode }}{% if not loop.last %}, {% endif %}{% endfor %}]{% endif %}{% else %}S{{ want.season }} (full season — any episode of this season, or a season pack, is valid){% endif %}
+{%- elif want.kind == "movie" -%}
+"{{ wanted_title }}"{% if want.year %} ({{ want.year }}){% endif %}
+{%- elif want.kind == "sport_event" -%}
+"{{ wanted_title }}"
+LEAGUE: {{ want.league_name }}
+SEASON: {{ want.season }}
+{%- if want.round %}
+ROUND: {{ want.round }}{% endif %}
+{%- if want.location %}
+LOCATION: {{ want.location }}{% endif %}
+{%- if want.session_type %}
+SESSION: {{ want.session_type }}{% endif %}
+{%- if want.event_title %}
+EVENT: "{{ want.event_title }}"{% endif %}
+{%- if want.event_date %}
+EVENT DATE: {{ want.event_date }}{% endif %}
+{%- else -%}
+"{{ wanted_title }}"
+{%- endif %}
+{% if disambiguation.siblings %}{{ disambiguation.siblings | render_siblings }}
+{% endif -%}
+QUALITY WANT:
+{%- if quality_profile %}
+{%- if quality_profile.min_resolution and quality_profile.max_resolution and quality_profile.min_resolution == quality_profile.max_resolution %}
+  PREFERRED RESOLUTION: {{ quality_profile.min_resolution }}
+{%- elif quality_profile.min_resolution and quality_profile.max_resolution %}
+  PREFERRED RESOLUTION: {{ quality_profile.min_resolution }} to {{ quality_profile.max_resolution }}
+{%- elif quality_profile.min_resolution %}
+  MINIMUM RESOLUTION: {{ quality_profile.min_resolution }}
+{%- elif quality_profile.max_resolution %}
+  MAXIMUM RESOLUTION: {{ quality_profile.max_resolution }}
+{%- endif %}
+{%- if quality_profile.preferred_sources %}
+  PREFERRED SOURCES: {{ quality_profile.preferred_sources | join(", ") }}{% endif %}
+{%- if quality_profile.preferred_codecs %}
+  PREFERRED CODECS: {{ quality_profile.preferred_codecs | join(", ") }}{% endif %}
+{%- if quality_profile.preferred_audio %}
+  PREFERRED AUDIO: {{ quality_profile.preferred_audio | join(", ") }}{% endif %}
+{%- if quality_profile.preferred_languages %}
+  PREFERRED LANGUAGES: {{ quality_profile.preferred_languages | join(", ") }}{% endif %}
+{%- if quality_profile.rejected_sources %}
+  REJECT SOURCES: {{ quality_profile.rejected_sources | join(", ") }}{% endif %}
+{%- if quality_profile.rejected_languages %}
+  REJECT LANGUAGES: {{ quality_profile.rejected_languages | join(", ") }}{% endif %}
+{%- if quality_profile.rejected_terms %}
+  REJECT TERMS: {{ quality_profile.rejected_terms | join(", ") }}{% endif %}
+{%- if quality_profile.reject_hardcoded_subs %}
+  REJECT HARDCODED SUBS{% endif %}
+{%- if quality_profile.reject_remux %}
+  REJECT REMUX{% endif %}
+{%- else %} (no preferences){% endif %}
+{% if corrections.rules or corrections.past_mistakes -%}
+{% for r in corrections.rules -%}
+- {% if r.entity_name %}[{{ r.entity_name }}] {% endif %}{{ r.rule }}
+{% endfor -%}
+{% for m in corrections.past_mistakes -%}
+- Previous mistake: {{ m.model_decision }} "{{ m.release_name }}" (should have been {{ m.correct_decision }}): {{ m.reason }}
+{% endfor -%}
+{% endif %}
+CANDIDATES:
+{{ candidates | render_candidate_list }}

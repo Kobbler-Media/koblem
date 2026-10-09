@@ -1,0 +1,16 @@
+# koblem — STT overlay: speech-to-text.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.stt.yml up -d
+#
+# koblem does NOT run the STT engine — it calls one (Parakeet, a separate GPU
+# service, typically in another compose project — e.g. kobbler's own
+# `stt-parakeet-cpp:8023`). Leave the URL empty to disable transcription; there
+# is no default here on purpose, since the hostname only resolves if koblem-api
+# shares a docker network with wherever the engine actually runs.
+#
+# Where to get each engine: docs/engines.md.
+
+services:
+  koblem-api:
+    environment:
+      STT_SERVICE_URL: ${STT_SERVICE_URL:-}

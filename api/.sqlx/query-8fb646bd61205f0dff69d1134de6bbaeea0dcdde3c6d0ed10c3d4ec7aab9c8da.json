@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE gpu_jobs SET\n            state = 'queued', attempt = attempt + 1, error = $2,\n            started_at = NULL, queued_ms = NULL, render_ms = NULL,\n            server_job_id = NULL, units_done = 0, progress = '{}'::jsonb\n        WHERE id = $1 AND state IN ('running', 'collecting') AND attempt < $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8fb646bd61205f0dff69d1134de6bbaeea0dcdde3c6d0ed10c3d4ec7aab9c8da"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM gpu_jobs\n           WHERE state IN ('done', 'failed', 'cancelled')\n             AND finished_at IS NOT NULL\n             AND finished_at < NOW() - make_interval(days => $1::int)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "047af2a395a862cc2d313f8b004a1f6992f0ed57f7b27b0b4d95db7c5446c06f"
+}

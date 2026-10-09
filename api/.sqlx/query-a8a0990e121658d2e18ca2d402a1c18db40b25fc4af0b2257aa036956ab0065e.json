@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_jobs SET target_gpu = $2, force_pin = $3\n           WHERE id = $1 AND state IN ('queued', 'held')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a8a0990e121658d2e18ca2d402a1c18db40b25fc4af0b2257aa036956ab0065e"
+}

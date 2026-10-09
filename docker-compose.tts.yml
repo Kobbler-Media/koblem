@@ -1,0 +1,17 @@
+# koblem — TTS overlay: text-to-speech.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tts.yml up -d
+#
+# koblem does NOT run the TTS engine — it calls one. Breeze is the only
+# supported engine; it runs as a separate GPU service, typically in another
+# compose project (e.g. kobbler's own `tts-breeze:8203`). Leave the URL empty
+# to disable the TTS tab entirely — the GpuLock skips the entry when it is
+# blank. There is no default here on purpose: the hostname only resolves if
+# koblem-api shares a docker network with wherever the engine actually runs.
+#
+# Where to get each engine: docs/engines.md.
+
+services:
+  koblem-api:
+    environment:
+      TTS_BREEZE_SERVICE_URL: ${TTS_BREEZE_SERVICE_URL:-}

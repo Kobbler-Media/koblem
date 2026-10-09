@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH victims AS (\n            SELECT id, sample_id FROM gpu_logs\n            ORDER BY created_at DESC\n            OFFSET $1\n        ),\n        log_delete AS (\n            DELETE FROM gpu_logs WHERE id IN (SELECT id FROM victims)\n        )\n        DELETE FROM gpu_samples\n        WHERE id IN (SELECT sample_id FROM victims WHERE sample_id IS NOT NULL)\n        RETURNING path\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "path",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_samples",
+            "name": "path"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ab29cf4322822b48c4faa54a1c3720379a76ec3dea89e3166e6875782b239fbe"
+}

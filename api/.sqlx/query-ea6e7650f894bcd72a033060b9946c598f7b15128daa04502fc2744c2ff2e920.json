@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_jobs SET state = 'queued', started_at = NULL\n           WHERE state IN ('running', 'collecting') AND server_job_id IS NULL\n           RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ea6e7650f894bcd72a033060b9946c598f7b15128daa04502fc2744c2ff2e920"
+}

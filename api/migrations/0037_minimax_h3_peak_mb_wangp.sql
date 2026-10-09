@@ -1,0 +1,60 @@
+-- Multi-GPU scheduler — re-seed `minimax_h3`'s `peak_mb` for the WanGP backend.
+--
+-- 0035 seeded 15000 MiB. That number was correct for what it described and is now wrong:
+-- it was derived PRE-TUNE from the C++ engine's staging plan (the Qwen3-VL text encoder at
+-- 14,564 MiB resident, staged SEQUENTIALLY with an ~11 GB DiT, so the peak is the larger of
+-- the two rather than their sum) and deliberately seeded at the TOP of that range.
+--
+-- The WanGP-backed engine (`h3-wangp`, docker/h3-wangp/) has now been measured end to end
+-- at production shape — 1344x768, int8 convrot pruned 20B, 20 steps, RTX 5060 Ti:
+--
+--     frames   s/step   PROCESS PEAK   phase owning the peak
+--     141      50.34    10190-10256    VAE decode (DiT phase only 6536)
+--     209      86.27    11416          VAE decode
+--
+-- so 11500 covers the whole ≤209f working range with ~100 MiB of headroom over the worst
+-- measurement, and the direction of the error matters:
+--
+--   * TOO HIGH is conservative. The gate simply refuses to co-schedule work that would in
+--     principle have fitted alongside H3, so throughput drops and nothing breaks. 15000 on a
+--     16311 MiB card means H3 renders ALONE, always.
+--   * TOO LOW is destructive. The scheduler believes there is room, places a second engine,
+--     and the render that is already 800+ seconds in dies on an allocation. That failure is
+--     also the confusing kind: it surfaces inside whichever container asked for memory
+--     second, not the one whose budget was wrong.
+--
+-- 11500 still cannot co-reside with `ltx` (7500) on a 16311 MiB card, so the mutual exclusion
+-- 0035 relies on is unchanged. It DOES leave ~4800 MiB, which is enough for the light
+-- engines — that is the intended effect, and they are already in `minimax_h3`'s
+-- `evictable_by` fan-out from 0035 for the case where they need displacing anyway.
+--
+-- ⚠️ 11500 IS NOT THE CEILING OF THE MODEL, ONLY OF ITS WORKING RANGE.
+-- At 362 frames (15.083 s — the contract's cap, `H3_MAX_FRAMES`) the measured peak is
+-- **15528 MiB**, and the phase that owns it CHANGES: with `H3_VAE_STREAM=1` the VAE decode
+-- peaks at just 5570 MiB and the DiT becomes the owner, at 196.70 s/step against 50.34 at
+-- 141f — quadratic attention, 3.9x the cost for 2.55x the frames. So a 362f render exceeds
+-- this budget by ~4000 MiB while the gate believes it is within it.
+--
+-- What the operator should do about it:
+--   1. Keep production renders inside the ≤209f range this seed describes. koblem packs
+--      shots into ≤15 s generations, but a single long generation is a deliberate choice.
+--   2. The shim reports its OWN observed peak (`/health`, and per-job in the poll body) —
+--      that is the instrument, not this row. If long renders become routine, raise the seed
+--      to cover 362f (15528 + headroom) and accept that H3 then excludes everything.
+--   3. Raising it is a MIGRATION, not a config change: `gpu_engine_config` is seeded from
+--      SQL and nothing in Settings edits it.
+--
+-- Deliberately NOT touched: `relocatable` (FALSE), `home_gpu`, `candidate_gpus` (5060 Ti
+-- only) and `evictable_by`. They are already right, and they are right for the same reason
+-- under WanGP as under the C++ engine — the NVFP4 AWQ text encoder's kernels are
+-- Blackwell-gated, and the 3060 fallback is a pure-Python per-linear dequant, so the service
+-- is 5060 Ti-only in practice rather than merely by preference.
+--
+-- Additive and idempotent: it updates one column of one row, only if that row exists and
+-- only if it still carries the 0035 seed. An operator who has already tuned this value by
+-- hand keeps their number.
+
+UPDATE gpu_engine_config
+    SET peak_mb = 11500
+    WHERE service = 'minimax_h3'
+      AND peak_mb = 15000;

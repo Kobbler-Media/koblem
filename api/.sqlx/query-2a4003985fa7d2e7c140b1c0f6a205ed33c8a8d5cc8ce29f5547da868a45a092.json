@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM prompt_templates WHERE media_kind = $1 AND slot = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2a4003985fa7d2e7c140b1c0f6a205ed33c8a8d5cc8ce29f5547da868a45a092"
+}

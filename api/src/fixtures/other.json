@@ -1,0 +1,21 @@
+{
+  "source_id": "019eeeee-1111-7000-9999-888877776666",
+  "wanted_title": "The Three-Body Problem",
+  "want": { "kind": "other" },
+  "candidates": [
+    {
+      "name": "The.Three-Body.Problem.Liu.Cixin.M4B.unabridged",
+      "kobload_accepted": true,
+      "kobload_score": 6.0,
+      "parsed_quality": {},
+      "publish_date": "Tue, 01 May 2026 12:00:00 +0000"
+    },
+    {
+      "name": "Three.Body.Problem.epub.zh-CN",
+      "kobload_accepted": false,
+      "kobload_score": 0.5,
+      "parsed_quality": { "language": "chinese" },
+      "publish_date": "Sun, 28 Apr 2026 01:15:00 +0000"
+    }
+  ]
+}

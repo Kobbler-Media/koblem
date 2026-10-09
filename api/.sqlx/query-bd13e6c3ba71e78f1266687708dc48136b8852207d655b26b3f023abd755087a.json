@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH all_names AS (\n            SELECT name FROM prompt_variables WHERE media_kind = $1\n            UNION\n            SELECT name FROM prompt_variables WHERE media_kind = 'default'\n            UNION\n            SELECT unnest($2::TEXT[]) AS name\n        )\n        SELECT\n            n.name AS \"name!\",\n            pk.body AS per_kind_body,\n            dk.body AS default_body,\n            GREATEST(pk.updated_at, dk.updated_at) AS updated_at\n        FROM all_names n\n        LEFT JOIN prompt_variables pk ON pk.media_kind = $1 AND pk.name = n.name\n        LEFT JOIN prompt_variables dk ON dk.media_kind = 'default' AND dk.name = n.name\n        ORDER BY n.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "per_kind_body",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prompt_variables",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "default_body",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "prompt_variables",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "bd13e6c3ba71e78f1266687708dc48136b8852207d655b26b3f023abd755087a"
+}

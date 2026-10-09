@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prompt_variables (media_kind, name, body, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (media_kind, name) DO UPDATE SET body = $3, updated_at = NOW()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f297d2ccdddea673a188f9a9a34d68d5ae75d859c679dbee7c5a9e3ff749249c"
+}

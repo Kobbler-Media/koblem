@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id,\n               p.name,\n               COALESCE(p.timeline -> 'editor' ->> 'summary', '') AS \"summary!\",\n               COALESCE(\n                   (SELECT jsonb_agg(jsonb_build_object(\n                               'prompt', COALESCE(c ->> 'prompt', ''),\n                               'gist',   COALESCE(c ->> 'gist', ''),\n                               'idea',   COALESCE(c ->> 'idea', '')))\n                    FROM jsonb_array_elements(\n                             CASE WHEN jsonb_typeof(p.timeline -> 'clips') = 'array'\n                                  THEN p.timeline -> 'clips'\n                                  ELSE '[]'::jsonb END) AS c),\n                   '[]'::jsonb) AS \"clips!\"\n        FROM director_projects p\n        ORDER BY p.updated_at DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "director_projects",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "director_projects",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "summary!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "clips!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "2e3dbcd6bd9198e8b6440df15d4b2e5578ffe58947289ef799adbfcf9513aeb0"
+}

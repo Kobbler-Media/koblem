@@ -1,0 +1,69 @@
+{
+  "source_id": "019caaa1-bbcc-7000-1111-222233334444",
+  "wanted_title": "Dune: Part Three",
+  "want": {
+    "kind": "movie",
+    "year": 2026
+  },
+  "quality_profile": {
+    "max_resolution": "2160p",
+    "preferred_sources": ["web-dl", "bluray"],
+    "preferred_codecs": ["x265", "x264"],
+    "preferred_audio": ["truehd", "atmos", "ddp"],
+    "preferred_languages": ["english"],
+    "rejected_sources": ["cam", "ts", "telesync", "telecine", "hdts", "hdcam"],
+    "reject_hardcoded_subs": true,
+    "reject_remux": false
+  },
+  "candidates": [
+    {
+      "name": "Dune.Part.Three.2026.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
+      "kobload_accepted": true,
+      "kobload_score": 7.5,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "web-dl",
+        "streaming_service": "amazon",
+        "codec": "x264",
+        "audio": "ddp",
+        "is_atmos": true,
+        "release_group": "FLUX"
+      },
+      "publish_date": "Fri, 01 May 2026 22:00:00 +0000",
+      "seeders": 412
+    },
+    {
+      "name": "Dune.Part.Three.2026.HDTS.x264-FAKE",
+      "kobload_accepted": false,
+      "kobload_score": 0.0,
+      "parsed_quality": {
+        "resolution": "720p",
+        "source": "hdts",
+        "codec": "x264",
+        "release_group": "FAKE"
+      },
+      "publish_date": "Wed, 29 Apr 2026 18:11:00 +0000",
+      "seeders": 27,
+      "quality_rejected": true,
+      "quality_reject_reasons": ["rejected_source"]
+    },
+    {
+      "name": "Dune.Part.Three.2026.2160p.UHD.BluRay.REMUX.HDR.HEVC.TrueHD.7.1.Atmos-PROOF",
+      "kobload_accepted": true,
+      "kobload_score": 9.0,
+      "parsed_quality": {
+        "resolution": "2160p",
+        "source": "bluray",
+        "codec": "x265",
+        "audio": "truehd",
+        "is_remux": true,
+        "is_hdr": true,
+        "is_hdr10": true,
+        "is_atmos": true,
+        "release_group": "PROOF"
+      },
+      "publish_date": "Sun, 03 May 2026 09:30:00 +0000",
+      "seeders": 1
+    }
+  ]
+}

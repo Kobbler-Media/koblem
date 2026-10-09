@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO llm_logs (\n            id, caller, request_messages, request_tools, request_temperature,\n            request_max_tokens, request_top_p, request_top_k, request_min_p,\n            request_presence_penalty, request_repetition_penalty,\n            request_enable_thinking, sampling_preset, request_grammar,\n            streaming, tool_rewrite_applied, status\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'running')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Float8",
+        "Int4",
+        "Float8",
+        "Int4",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Bool",
+        "Text",
+        "Text",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b818e8c6d67c1a109b1d651e6b97b60ddc854ef6e0400a51ce50bf713ee6304d"
+}

@@ -1,0 +1,75 @@
+{
+  "source_id": "019dabcd-eeff-7000-3333-444455556666",
+  "wanted_title": "MotoGP 2026",
+  "want": {
+    "kind": "sport_event",
+    "league_name": "MotoGP",
+    "season": "2026",
+    "round": 4,
+    "location": "Spain",
+    "session_type": "Race",
+    "event_title": "Spanish GP",
+    "event_date": "2026-04-12"
+  },
+  "quality_profile": {
+    "max_resolution": "1080p",
+    "preferred_sources": ["web-dl", "webrip", "hdtv"],
+    "preferred_codecs": ["x264", "x265"],
+    "preferred_languages": ["english"],
+    "rejected_sources": ["cam", "ts", "telesync", "telecine"]
+  },
+  "candidates": [
+    {
+      "name": "MotoGP.2026.Round04.Spain.Jerez.Race.WEB-DL.1080p.h264-MWR",
+      "kobload_accepted": true,
+      "kobload_score": 7.0,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "web-dl",
+        "codec": "x264",
+        "release_group": "MWR"
+      },
+      "publish_date": "Sun, 12 Apr 2026 16:45:00 +0200",
+      "seeders": 87
+    },
+    {
+      "name": "08.MotoGP.2026.R04.Spain.Race.SkyF1HD.1080P",
+      "kobload_accepted": true,
+      "kobload_score": 5.5,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "hdtv"
+      },
+      "publish_date": "Sun, 12 Apr 2026 17:10:00 +0200",
+      "seeders": 12
+    },
+    {
+      "name": "MotoGP.2026.Round03.Argentina.Race.WEB-DL.1080p.h264-MWR",
+      "kobload_accepted": false,
+      "kobload_score": 1.0,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "web-dl",
+        "codec": "x264",
+        "release_group": "MWR"
+      },
+      "publish_date": "Mon, 30 Mar 2026 11:00:00 +0200",
+      "seeders": 51,
+      "structural_reject_reason": "round_mismatch"
+    },
+    {
+      "name": "MotoGP.2026.Round04.Spain.Sprint.WEB-DL.1080p.h264-MWR",
+      "kobload_accepted": false,
+      "kobload_score": 2.0,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "web-dl",
+        "codec": "x264",
+        "release_group": "MWR"
+      },
+      "publish_date": "Sat, 11 Apr 2026 17:00:00 +0200",
+      "seeders": 33,
+      "structural_reject_reason": "session_mismatch"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+-- ltx-video engine job id whose PERSIST-store dir holds this render's banked seg_<n>.bin latents.
+--
+-- Director renders are now submitted with `persist:true`, so the engine writes their per-segment
+-- diffusion latents into its non-swept persist store (keyed by this job id) instead of the FIFO
+-- hot-cache. That lets a "retake a shot" reference the banked latent by opaque job id over HTTP
+-- (no filesystem path on the wire, no koblem fs access) for the life of the project — rather than
+-- depending on the source render still sitting within the FIFO store's last-N window.
+--
+-- Same value across a tier's rows (one render/chain per tier). NULL for a legacy row or a render
+-- with no persisted latents. On project-delete / tier-wipe koblem SELECTs the distinct ids here and
+-- calls the engine's `DELETE /ltx/v1/job?id=<id>` so the persist store (never auto-swept) is cleaned.
+ALTER TABLE director_shot_renders ADD COLUMN latent_job_id TEXT;

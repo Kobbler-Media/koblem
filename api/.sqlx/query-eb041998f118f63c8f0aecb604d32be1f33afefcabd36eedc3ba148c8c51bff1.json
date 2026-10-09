@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE llm_logs\n        SET status = 'error',\n            error_message = $2,\n            duration_ms = $3,\n            updated_at = NOW()\n        WHERE id = $1 AND status != 'complete'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb041998f118f63c8f0aecb604d32be1f33afefcabd36eedc3ba148c8c51bff1"
+}

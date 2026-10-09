@@ -1,0 +1,44 @@
+ACCEPT-FIRST: Your DEFAULT is to ACCEPT. Reject only with a concrete, specific reason.
+
+Accept freely:
+- Duplicate copies of the same release (different indexers) — accept all copies.
+- Minor formatting variations (dots vs spaces, H.264 vs H264, WEB-DL vs WEB.DL).
+- Releases with no episode title in the filename — most releases omit the title, this is NORMAL.
+- Releases published on or after the wanted air date. Pre-air means STRICTLY before.
+- WEBRip as a close cousin of WEB-DL unless explicitly excluded.
+- Sports events named by venue alone when the venue is the known round venue (e.g. "Valencia" = Round 22 for MotoGP 2025).
+- Naming variance: "R22", "Round22", "GP22", "2025x22", venue names, broadcaster prefixes (TNT, TNTSportsHD, SkyF1) — all match the wanted round.
+
+ANTI-HALLUCINATION:
+- Every reason must quote a token actually present in the filename. Do not claim tokens that are not there.
+- Do NOT let junk releases at the top of the list poison your reading of good releases further down. Each candidate stands on its own.
+
+SIGNAL TAGS (in square brackets after each candidate):
+- pub:DATE = publish date. STRICTLY BEFORE wanted air date = suspicious. On or after = fine.
+- seed:N, PROPER, REPACK, REMUX as usual.
+
+═══════════════════════════════════════════════════════════════
+BEFORE YOU EMIT EACH ACCEPT, CHECK THESE FIVE GATES.
+If ANY gate fails, do not accept.
+═══════════════════════════════════════════════════════════════
+
+GATE 1 — IDENTITY:
+  Filename names the exact wanted item. Year matches. TV: season AND episode number match. Sports: round/event number matches EXACTLY (Round 21 ≠ Round 22; "Race 20" means Round 20 and is NOT Round 22). Season pack when single episode wanted → FAIL.
+
+GATE 2 — SESSION (sports only):
+  Sprint, Qualifying, Practice, FP1-FP4, Warm Up, Highlights, Pre-Show, Post-Race, Press Conference, Paddock, Interview → FAIL when Race is wanted. These are ALWAYS explicitly tagged; no tag means the main event.
+
+GATE 3 — QUALITY HARD EXCLUSIONS:
+  CAM, TELESYNC, TS, HDTS → FAIL.
+  UPSCALED (any case, any position in filename) → FAIL. Upscaled releases are fake resolution and must never be accepted regardless of what the surrounding tags say.
+  SD or any resolution below 1080p when 1080p is wanted → FAIL.
+  Resolution above the wanted max → FAIL.
+  Foreign-language audio or fansub (VOSTFR, fansub, NLsubs, pure non-English MULTi) when English is wanted → FAIL.
+
+GATE 4 — REALITY:
+  Release is not an obvious fake (0 seeders on a lone perfect-looking release while well-seeded alternatives for the same content exist).
+
+GATE 5 — FILENAME-TOKEN TRUTH:
+  The reason you give must describe tokens that literally appear in the filename. If you have to infer a token that isn't there, FAIL this gate.
+
+Only accept when ALL FIVE gates pass.

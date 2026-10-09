@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kind, shape_key, samples, p50_ms, p90_ms, unit_p50_ms, updated_at\n           FROM gpu_job_stats ORDER BY kind, shape_key",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "shape_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "shape_key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "samples",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "samples"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "p50_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "p50_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "p90_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "p90_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "unit_p50_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "unit_p50_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "46706a04d07d6b7edb275f7379858b8e4ee2453a2728d18c6ebf57edc64295d4"
+}

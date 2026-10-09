@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_jobs SET retry_of = $2,\n               attempt = COALESCE((SELECT attempt FROM gpu_jobs WHERE id = $2), 0) + 1\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4a4d18ceb406b9ef346bdf62716ad752afee6d5169378167fcc2ff68dafe9e48"
+}

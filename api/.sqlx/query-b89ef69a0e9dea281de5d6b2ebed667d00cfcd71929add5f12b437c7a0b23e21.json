@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_jobs SET state = 'queued', started_at = NULL, queued_ms = NULL\n           WHERE id = $1 AND state = 'running' AND server_job_id IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b89ef69a0e9dea281de5d6b2ebed667d00cfcd71929add5f12b437c7a0b23e21"
+}

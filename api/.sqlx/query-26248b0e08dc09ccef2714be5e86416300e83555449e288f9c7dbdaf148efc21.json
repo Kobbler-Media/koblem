@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE llm_logs\n        SET status = 'complete',\n            response_content = $2,\n            response_reasoning_content = $3,\n            response_tool_calls = $4,\n            finish_reason = $5,\n            prompt_tokens = $6,\n            completion_tokens = $7,\n            duration_ms = $8,\n            updated_at = NOW()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "26248b0e08dc09ccef2714be5e86416300e83555449e288f9c7dbdaf148efc21"
+}

@@ -1,0 +1,22 @@
+# GPU visibility overlay — adds `nvidia-smi` and the GPU device nodes to
+# koblem-api so the multi-GPU scheduler can read each card's real free VRAM
+# (the measured-VRAM admission clamp — stops the budget over-committing a card
+# whose peaks are under-set, or that a non-gate process is using).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu-visibility.yml up -d
+#
+# koblem-api runs no CUDA itself; this only injects the driver, and REQUIRES
+# the API to be co-located with the GPUs. If the API runs on a different host
+# from the engines, skip this overlay — the scheduler falls back to the
+# pure-peak budget (safe, just blind to real usage). Requires
+# nvidia-container-toolkit on the host.
+
+services:
+  koblem-api:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

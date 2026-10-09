@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE gpu_jobs SET state = $2 WHERE id = $1 AND state = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8edb5744ea0faec0ee57373f552e5f1d83d2ab6dabc06ef46a81f4a849ee8bb3"
+}

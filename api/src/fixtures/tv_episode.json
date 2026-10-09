@@ -1,0 +1,71 @@
+{
+  "source_id": "01938abc-d4e5-7891-a012-345678901234",
+  "wanted_title": "Severance",
+  "want": {
+    "kind": "tv_episode",
+    "season": "2",
+    "episode": "7",
+    "episode_title": "Chikhai Bardo",
+    "air_date": "2026-02-21",
+    "year": 2022
+  },
+  "quality_profile": {
+    "max_resolution": "1080p",
+    "preferred_sources": ["web-dl", "webrip"],
+    "preferred_codecs": ["x264", "x265"],
+    "preferred_audio": ["aac", "ddp"],
+    "preferred_languages": ["english"],
+    "rejected_sources": ["cam", "ts", "telesync", "telecine", "screener"],
+    "rejected_terms": ["HSBS", "Half-SBS", "3D"],
+    "reject_hardcoded_subs": true,
+    "reject_remux": true
+  },
+  "candidates": [
+    {
+      "name": "Severance.S02E07.Chikhai.Bardo.1080p.ATVP.WEB-DL.DDP5.1.H.264-NTb",
+      "kobload_accepted": true,
+      "kobload_score": 8.5,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "web-dl",
+        "streaming_service": "apple-tv+",
+        "codec": "x264",
+        "audio": "ddp",
+        "release_group": "NTb"
+      },
+      "publish_date": "Sat, 21 Feb 2026 18:14:33 +0200",
+      "seeders": 142
+    },
+    {
+      "name": "Severance.S02E07.1080p.ATVP.WEB-DL.x265-RANDOM",
+      "kobload_accepted": false,
+      "kobload_score": 1.5,
+      "parsed_quality": {
+        "resolution": "1080p",
+        "source": "web-dl",
+        "streaming_service": "apple-tv+",
+        "codec": "x265",
+        "release_group": "RANDOM"
+      },
+      "publish_date": "Sat, 21 Feb 2026 19:02:11 +0200",
+      "seeders": 8,
+      "quality_rejected": true,
+      "quality_reject_reasons": ["trash_x265_hd"]
+    },
+    {
+      "name": "Severance.S02E07.HDTV.XviD-OLD",
+      "kobload_accepted": false,
+      "kobload_score": 0.0,
+      "parsed_quality": {
+        "resolution": "480p",
+        "source": "hdtv",
+        "codec": "xvid",
+        "release_group": "OLD"
+      },
+      "publish_date": "Sat, 21 Feb 2026 22:48:01 +0200",
+      "seeders": 0,
+      "quality_rejected": true,
+      "quality_reject_reasons": ["below_min_resolution"]
+    }
+  ]
+}

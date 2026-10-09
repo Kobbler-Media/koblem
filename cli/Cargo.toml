@@ -1,0 +1,31 @@
+[package]
+name = "kob"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+description = "CLI for koblem — call image/rmbg/tts/stt/music/avatar/chat endpoints from scripts"
+license = "AGPL-3.0-only"
+
+[[bin]]
+name = "kob"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6", features = ["derive", "env", "wrap_help"] }
+clap_complete = "4.6"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "stream", "multipart", "query"] }
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "fs", "io-util", "time"] }
+# `io` only, for ReaderStream — uploads stream off disk instead of being read whole (§9.1).
+# Already in the lock as a reqwest dependency, so this pins nothing new.
+tokio-util = { version = "0.7", default-features = false, features = ["io"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+toml = "1.1"
+base64 = "0.23.1"
+anyhow = "1.0.104"
+# `kob queue add` keys an enqueue off its own payload so a re-run of a shell loop
+# cannot double-render. Already in the lock via reqwest, so this pins nothing new.
+sha2 = "0.11"
+# `kob queue watch` tails the SSE stream, which is a byte stream of frames.
+futures = { version = "0.3.33", default-features = false, features = ["std"] }
+koblem-client = { path = "../../koblibs/koblem-client" }

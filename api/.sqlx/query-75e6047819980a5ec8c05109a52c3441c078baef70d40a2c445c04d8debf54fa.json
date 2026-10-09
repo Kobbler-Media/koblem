@@ -1,0 +1,352 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO gpu_jobs\n            (id, kind, payload, state, band, queue_rank, target_gpu, force_pin,\n             depends_on, created_by, idempotency_key, units_total, shape_key)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n        ON CONFLICT DO NOTHING\n        RETURNING id, kind, state, band, queue_rank, target_gpu, force_pin, server_job_id,\n                  progress, depends_on, created_by, blocked_reason, blocked_since,\n                  blocked_history, error, warnings, queued_ms, admit_ms, render_ms,\n                  units_total, units_done, shape_key, attempt, retry_of,\n                  created_at, started_at, finished_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "state",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "band",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "band"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "queue_rank",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "queue_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "target_gpu",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "target_gpu"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "force_pin",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "force_pin"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "server_job_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "server_job_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "progress",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "progress"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "depends_on",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "depends_on"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "blocked_reason",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "blocked_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "blocked_since",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "blocked_since"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "blocked_history",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "blocked_history"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "warnings",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "warnings"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "queued_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "queued_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "admit_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "admit_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "render_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "render_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "units_total",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "units_total"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "units_done",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "units_done"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "shape_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "shape_key"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "attempt",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "attempt"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "retry_of",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "retry_of"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "finished_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Int2",
+        "Float8",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "75e6047819980a5ec8c05109a52c3441c078baef70d40a2c445c04d8debf54fa"
+}

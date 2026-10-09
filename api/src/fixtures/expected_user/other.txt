@@ -1,0 +1,7 @@
+CURRENT DATE: <today>
+WANTED: "The Three-Body Problem"
+QUALITY WANT: (no preferences)
+
+CANDIDATES:
+  1. The.Three-Body.Problem.Liu.Cixin.M4B.unabridged [pub:2026-05-01]
+  2. Three.Body.Problem.epub.zh-CN [pub:2026-04-28]

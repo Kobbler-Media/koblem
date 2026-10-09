@@ -1,0 +1,114 @@
+# koblem — core stack: API + web UI + PostgreSQL.
+#
+# This file on its own gives you the API, the web UI and the database. It does
+# NOT start any GPU engine. Add the engines you want as overlays:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.llm.yml up -d
+#
+# See README.md for the full overlay list. Copy .env.example to .env first.
+#
+# koblem is optional: kobbler runs fine without it. The core stack here needs
+# no GPU at all — add docker-compose.gpu-visibility.yml if koblem-api is
+# co-located with the GPUs and should see real per-card VRAM use.
+
+services:
+  koblem-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: koblem
+      POSTGRES_USER: koblem
+      POSTGRES_PASSWORD: ${KOBLEM_DB_PASSWORD:-koblem}
+    volumes:
+      # The postgres:18 image moved its default PGDATA to a versioned
+      # subdirectory under /var/lib/postgresql rather than .../data — mounting
+      # at .../data on PG18+ can leave Postgres writing to an anonymous,
+      # non-persisted layer instead of this named volume. If you are upgrading
+      # an existing deployment, check `docker inspect` on the running
+      # container for where its data actually lives before you change this.
+      - koblem-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koblem"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  koblem-api:
+    # Local tag name. `build:` below means `docker compose up` builds it from
+    # this checkout — no registry access needed. Publishing is opt-in via the
+    # Makefile's docker-push targets.
+    image: ghcr.io/kobbler-media/koblem:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        # Sibling checkout of the koblibs crates — see README.md.
+        koblibs: ${KOBLIBS_DIR:-../koblibs}
+    restart: unless-stopped
+    # Most engine URLs and knobs in .env.example are read straight from the
+    # environment and have no line under `environment:` below.
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${KOBLEM_PORT:-8090}:8090"
+    environment:
+      BIND_ADDRESS: 0.0.0.0:8090
+      DATABASE_URL: postgres://koblem:${KOBLEM_DB_PASSWORD:-koblem}@koblem-db:5432/koblem
+      KOBLEM_API_KEY: ${KOBLEM_API_KEY:-}
+      KOBLEM_ADMIN_EMAIL: ${KOBLEM_ADMIN_EMAIL:-}
+      KOBLEM_ADMIN_PASSWORD: ${KOBLEM_ADMIN_PASSWORD:-}
+      RUST_LOG: ${RUST_LOG:-info}
+      TZ: ${TZ:-UTC}
+      # Tier-2 saved audio/image samples, rendered music tracks. Named volumes.
+      SAMPLES_DIR: /var/lib/koblem/gpu_samples
+      SONGS_DIR: /var/lib/koblem/songs
+    depends_on:
+      koblem-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - koblem-samples:/var/lib/koblem/gpu_samples
+      - koblem-songs:/var/lib/koblem/songs
+      # The job stores, and they have to outlive the container. LTX-2.5 and
+      # Music 3 each persist an in-flight render as an atomic per-job sidecar so
+      # a restart RE-ADOPTS it rather than orphaning it. An orphan keeps burning
+      # the card, its output is never collected, and the TTL sweeper eventually
+      # deletes it. A named volume is what makes that survive `docker compose
+      # up` — precisely the restart most likely to land mid-render.
+      - koblem-ltx-jobs:/var/lib/koblem/ltx-jobs
+      # The queue's on-disk working files. Without this an upscale RE-RENDERS
+      # finished GPU work after every restart: resume reads its delivered
+      # segments off this disk.
+      - koblem-queue-files:/var/lib/koblem/queue-files
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  web:
+    image: ghcr.io/kobbler-media/koblem-web:latest
+    build:
+      context: ./web
+      additional_contexts:
+        # Sibling checkout of the koblibs workspace — see README.md.
+        koblibs: ${KOBLIBS_DIR:-../koblibs}
+      target: prod
+    restart: unless-stopped
+    ports:
+      - "${KOBLEM_WEB_PORT:-8091}:80"
+    depends_on:
+      - koblem-api
+
+volumes:
+  koblem-db-data:
+  koblem-samples:
+  koblem-songs:
+  koblem-ltx-jobs:
+  koblem-queue-files:

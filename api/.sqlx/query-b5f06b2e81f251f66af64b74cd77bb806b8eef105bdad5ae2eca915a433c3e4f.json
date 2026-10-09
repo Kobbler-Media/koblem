@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM gpu_logs",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b5f06b2e81f251f66af64b74cd77bb806b8eef105bdad5ae2eca915a433c3e4f"
+}

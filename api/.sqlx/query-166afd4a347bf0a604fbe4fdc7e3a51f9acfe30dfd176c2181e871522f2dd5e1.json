@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE agent_messages SET status = 'cancelled', updated_at = NOW() WHERE status = 'running'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "166afd4a347bf0a604fbe4fdc7e3a51f9acfe30dfd176c2181e871522f2dd5e1"
+}

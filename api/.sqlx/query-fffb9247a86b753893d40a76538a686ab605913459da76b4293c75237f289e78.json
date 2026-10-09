@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE gpu_jobs SET\n            state = $2, error = $3, warnings = $4, finished_at = NOW(),\n            blocked_history =\n                gpu_jobs_close_episode(blocked_history, blocked_reason, blocked_since),\n            blocked_reason = NULL, blocked_since = NULL\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fffb9247a86b753893d40a76538a686ab605913459da76b4293c75237f289e78"
+}

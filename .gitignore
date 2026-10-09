@@ -1,0 +1,35 @@
+# Rust
+target/
+api/target/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Models (downloaded into Docker volume, not committed)
+models/
+*.gguf
+
+# Docker
+docker-compose.override.yml
+
+# Web (SvelteKit) build artifacts & deps
+web/node_modules/
+web/.svelte-kit/
+web/build/
+
+# Local agent context — machine/deploy specific, never public
+CLAUDE.local.md
+AGENTS.local.md
+.claude/
+.agents/
+
+# Local compose overrides
+docker-compose.local.yml
+!.env.example
+
+# Stray root-level npm install
+node_modules/

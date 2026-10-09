@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM gpu_logs\n        WHERE id = $1\n        RETURNING sample_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sample_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "sample_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e00155f99e50bf6b3e9ff555aebf48289d8505d15b47be94166b8ff0de9484f4"
+}

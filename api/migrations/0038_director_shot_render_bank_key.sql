@@ -1,0 +1,58 @@
+-- MiniMax-H3 latent-bank key for one take — the pin a RETAKE of the next generation continues from.
+--
+-- # Why this is not `latent_job_id` (0027), and why conflating them is the failure mode
+--
+-- They point at different things owned by different engines, and the only property they share is
+-- being an opaque string a later render sends back:
+--
+--   * `latent_job_id` (0027) is an **ltx-video job id**. LTX retakes by RESUMING a chain: it reloads
+--     the banked prefix `[0, k)` out of that job's persist-store dir, re-renders shot `k`, and
+--     splices the banked tail back end-pinned. The id names a whole JOB, every row of a tier's chain
+--     carries the SAME value, and the thing it addresses is a directory of `seg_<n>.bin` latents.
+--
+--   * `bank_key` (here) is an **h3-wangp latent-bank key**, `"<engine job id>:<generation index>"`
+--     (`docker/h3-wangp/app/bank.py`). H3 has no resume and no splice — `retake_segment_h3` says so
+--     in as many words. What it has is a content-addressed, disk-backed entry per FINISHED
+--     GENERATION, holding that generation's tail latents, its last decoded frame and a pixel tail.
+--     A continuing generation points `continuation.from` at one of these, and the pin is a
+--     conditioning block, not a resumed prefix. So the value is PER ROW, not per chain: generation 3
+--     and generation 4 of one job have different keys, and that difference is the whole point.
+--
+-- Reusing the 0027 column would therefore mean one column whose meaning depends on the project's
+-- engine, read by code that cannot see which engine wrote it. The concrete damage is not
+-- theoretical: `latent_job_ids_by_project_tier` feeds BOTH the tier wipe (which hands every id it
+-- returns to `DELETE /…/job?id=`) and `resolve_resume_job_id_for_tier` (which takes the FIRST as the
+-- chain to resume). An H3 bank key in that list would be sent to an engine as a job id — deleting
+-- nothing, resuming nothing, and reporting neither — and an LTX job id resolved as a bank key would
+-- pin a retake to a generation that does not exist. A retake pinned to the wrong thing is exactly
+-- the class of bug `0029` was written to end.
+--
+-- # What writes it, and what reads it
+--
+-- WRITTEN by `harvest_director_renders`: the poll body reports `generations[].bank_key` per finished
+-- generation (API.md §3), koblem parses them into `LtxJob::bank_keys` as `(generation index, key)`,
+-- and the harvest files each against the take it produced. NULL wherever there is none — a
+-- pre-`0038` row, an LTX project (which has no bank at all), the stitched-cut row (`shot_index=-1`,
+-- which is a concatenation and never a generation), or an H3 generation whose key the shim did not
+-- report.
+--
+-- READ by `h3_single_generation_chain` when a retake's generation carries
+-- `continuation.from = "prev"`. "prev" is resolved by the shim against the previous generation OF
+-- THE SAME JOB, and a retake's job has exactly one generation — so before this column existed the
+-- continuation was dropped outright and the retake rendered as a fresh start, joining nothing. The
+-- lookup takes the preceding generation's SELECTED take, never its newest row: a take the user did
+-- not pick is not what the cut plays, and pinning to it would make the retake continue from a
+-- version of the shot that appears nowhere in the timeline.
+--
+-- 🔴 A bank key can be EVICTED. The engine's bank is size-capped and reclaims oldest-first
+-- (`bank.py::evict`), so a stored key is a claim about the past, not a guarantee about now. A key
+-- that has gone fails the render with the shim's own message ("bank key … is gone — it was evicted
+-- or never written. Re-render the generation it came from."), and that is deliberate: a silent
+-- fallback to a hard cut would deliver a seam the editor never asked for and could not see coming.
+-- Nothing here may treat a missing entry as "no continuation wanted".
+--
+-- Additive and idempotent: one nullable column, no backfill (there is nothing to backfill from —
+-- the keys were never recorded), no index (every read is already narrowed by the
+-- `(project_id, tier, shot_index)` primary-key prefix).
+
+ALTER TABLE director_shot_renders ADD COLUMN IF NOT EXISTS bank_key TEXT;

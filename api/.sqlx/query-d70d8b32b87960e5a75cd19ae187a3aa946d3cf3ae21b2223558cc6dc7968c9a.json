@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT service AS \"service!\" FROM generations",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "generations",
+            "name": "service"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d70d8b32b87960e5a75cd19ae187a3aa946d3cf3ae21b2223558cc6dc7968c9a"
+}

@@ -1,0 +1,23 @@
+# koblem — media overlay: image, music and avatar engines.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.media.yml up -d
+#
+# koblem does NOT run any of these — each is a separate GPU service and each is
+# independently optional. Every URL defaults to EMPTY, which hides that
+# engine's tab; set only the ones you actually run. A URL that is set but
+# unanswered shows as "unreachable" rather than disabled.
+#
+# Where to get each engine: docs/engines.md.
+
+services:
+  koblem-api:
+    environment:
+      # FLUX.2-Klein — text-to-image and edit.
+      FLUX2_SERVICE_URL: ${FLUX2_SERVICE_URL:-}
+      # Krea-2-Turbo — TEXT-TO-IMAGE ONLY. Krea 2 has no edit model, so FLUX.2
+      # stays the edit engine. Second tab on the Images page.
+      KREA2_SERVICE_URL: ${KREA2_SERVICE_URL:-}
+      # ACE-Step music engine (acestep.cpp ace-server).
+      ACE_SERVER_URL: ${ACE_SERVER_URL:-}
+      # LongCat-Video-Avatar talking-head engine (longcat-avatar.cpp).
+      AVATAR_SERVER_URL: ${AVATAR_SERVER_URL:-}

@@ -1,0 +1,15 @@
+CURRENT DATE: <today>
+WANTED: "Dune: Part Three" (2026)
+QUALITY WANT:
+  MAXIMUM RESOLUTION: 2160p
+  PREFERRED SOURCES: web-dl, bluray
+  PREFERRED CODECS: x265, x264
+  PREFERRED AUDIO: truehd, atmos, ddp
+  PREFERRED LANGUAGES: english
+  REJECT SOURCES: cam, ts, telesync, telecine, hdts, hdcam
+  REJECT HARDCODED SUBS
+
+CANDIDATES:
+  1. Dune.Part.Three.2026.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX [pub:2026-05-01 seed:412]
+  2. Dune.Part.Three.2026.HDTS.x264-FAKE [pub:2026-04-29 seed:27]
+  3. Dune.Part.Three.2026.2160p.UHD.BluRay.REMUX.HDR.HEVC.TrueHD.7.1.Atmos-PROOF [REMUX HDR10 pub:2026-05-03 seed:1]

@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT recent_ms, recent_unit_ms, samples FROM gpu_job_stats WHERE kind = $1 AND shape_key = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "recent_ms",
+        "type_info": "Int8Array",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "recent_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "recent_unit_ms",
+        "type_info": "Int8Array",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "recent_unit_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "samples",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "gpu_job_stats",
+            "name": "samples"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "044872761f02d0dd261d959b9276856d30a32aa9646a4231e66f0e1be4e084a3"
+}

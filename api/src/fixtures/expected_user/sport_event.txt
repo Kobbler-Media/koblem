@@ -1,0 +1,21 @@
+CURRENT DATE: <today>
+WANTED: "MotoGP 2026"
+LEAGUE: MotoGP
+SEASON: 2026
+ROUND: 4
+LOCATION: Spain
+SESSION: Race
+EVENT: "Spanish GP"
+EVENT DATE: 2026-04-12
+QUALITY WANT:
+  MAXIMUM RESOLUTION: 1080p
+  PREFERRED SOURCES: web-dl, webrip, hdtv
+  PREFERRED CODECS: x264, x265
+  PREFERRED LANGUAGES: english
+  REJECT SOURCES: cam, ts, telesync, telecine
+
+CANDIDATES:
+  1. MotoGP.2026.Round04.Spain.Jerez.Race.WEB-DL.1080p.h264-MWR [pub:2026-04-12 seed:87]
+  2. 08.MotoGP.2026.R04.Spain.Race.SkyF1HD.1080P [pub:2026-04-12 seed:12]
+  3. MotoGP.2026.Round03.Argentina.Race.WEB-DL.1080p.h264-MWR [pub:2026-03-30 seed:51]
+  4. MotoGP.2026.Round04.Spain.Sprint.WEB-DL.1080p.h264-MWR [pub:2026-04-11 seed:33]

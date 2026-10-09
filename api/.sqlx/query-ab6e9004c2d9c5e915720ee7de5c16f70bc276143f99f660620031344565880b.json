@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            (SELECT COUNT(*) FROM gpu_logs) AS \"total_entries!: i64\",\n            (SELECT COUNT(*) FROM gpu_samples) AS \"total_samples!: i64\",\n            (SELECT COALESCE(SUM(size_bytes), 0) FROM gpu_samples) AS \"total_sample_bytes!: i64\",\n            (SELECT MIN(created_at) FROM gpu_logs) AS oldest_created_at,\n            (SELECT MAX(created_at) FROM gpu_logs) AS newest_created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_entries!: i64",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_samples!: i64",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_sample_bytes!: i64",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "oldest_created_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "newest_created_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "ab6e9004c2d9c5e915720ee7de5c16f70bc276143f99f660620031344565880b"
+}

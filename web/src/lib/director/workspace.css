@@ -1,0 +1,2384 @@
+/*
+ * LTX Director workspace styles — transplanted verbatim from the approved mockup
+ * (artifact 64011f16). Everything is scoped under `.dw` (the workspace root element) so it
+ * cannot leak into the rest of koblem. Local tokens (--bg-3/--ring-2/--faint/--warning/--mono) are
+ * defined on `.dw`; the rest (--bg/--card/--accent/…) come from the global theme in +layout.svelte.
+ */
+
+.dw {
+  --bg-3: #0b0d11;
+  --ring-2: #353c46;
+  --faint: #6b7580;
+  /* Deliberately off the accent hue family so a caution never reads as an ordinal: the workspace's
+   * warn is yellow-amber, where the app-wide --warning is an orange that sits on top of --accent. */
+  --warning: #f2b134;
+  /* 'Cascadia Mono' is the non-ligature cut on purpose — ligatures misread in prompt/JSON columns. */
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  /* The whole sheet is sized against a 13px base; without it unsized elements fall through to the
+   * browser's 16px and render half again larger than the controls beside them. */
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Fill the viewport height as a flex child of .content (a flex column). `height:100%` fails
+   * to constrain here because .content's own height comes from flex-grow AND it holds a <Toast>
+   * sibling — so the grid never bounded itself, the stage grew the page tall, and the timeline
+   * was pushed off-screen. flex+min-height:0 makes the minmax(0,1fr) row + inner scroll engage. */
+  flex: 1 1 0;
+  min-height: 0;
+  /* min-width:0 + an explicit 0-min column pin .dw to exactly the viewport width. Without this,
+   * the timeline's wide contentWidth-px lane (and the stage) leak through the default min-width:auto
+   * of the flex/grid ancestors and stretch the whole workspace wider than the screen — squishing the
+   * UI and preventing the timeline from ever scrolling inside a 100%-bounded container. */
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* Rows are placed explicitly (below) so the optional warn-zone row collapses to 0 when absent
+   * rather than shunting .work out of the 1fr track. */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+[data-theme='light'] .dw {
+  --bg-3: #fff9f1;
+  --ring-2: #cbb69f;
+  --faint: #8b8377;
+  --warning: #a06a09;
+}
+.dw > .appbar {
+  grid-row: 1;
+  min-width: 0;
+}
+.dw > .warn-zone {
+  grid-row: 2;
+  min-width: 0;
+}
+.dw > .work {
+  grid-row: 3;
+  min-width: 0;
+}
+.dw > .tl {
+  grid-row: 4;
+  min-width: 0;
+}
+.dw *,
+.dw *::before,
+.dw *::after {
+  box-sizing: border-box;
+}
+.dw button {
+  font-family: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* ── app bar ─────────────────────────────────────────── */
+.dw .appbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ring);
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  /* wrap rather than clip controls off the right edge on narrow monitors */
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.dw .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 12px;
+  border-right: 1px solid var(--ring);
+}
+.dw a.brand {
+  text-decoration: none;
+  color: inherit;
+}
+.dw a.brand:hover {
+  opacity: 0.85;
+}
+/* Rail-panel access from the app bar — only when the rail itself is hidden (narrow screens). */
+.dw .panels-btn {
+  display: none;
+}
+@media (max-width: 1080px) {
+  .dw .panels-btn {
+    display: inline-flex;
+  }
+}
+.dw .clap {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex: none;
+  background: repeating-linear-gradient(115deg, var(--ink) 0 7px, #0b0d11 7px 14px);
+  position: relative;
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+.dw .clap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 62%;
+  background: var(--accent);
+  border-radius: 0 0 8px 8px;
+}
+.dw .brand b {
+  font-size: 13px;
+}
+.dw .brand span {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  display: block;
+  margin-top: 1px;
+}
+.dw .proj {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dw .proj-name {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 8px;
+  max-width: 200px;
+}
+.dw .proj-name:hover {
+  border-color: var(--ring);
+}
+.dw .proj-name:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-3);
+}
+.dw .proj-caret {
+  width: 26px;
+  height: 30px;
+  font-size: 12px;
+  margin-left: -4px;
+}
+.dw .saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dw .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.dw .spacer {
+  flex: 1;
+}
+.dw .runtime {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 10px;
+  border: 1px solid var(--ring);
+  border-radius: 999px;
+}
+.dw .runtime b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ── buttons (override global .btn within the workspace) ─ */
+.dw .btn {
+  border: 1px solid var(--ring);
+  background: var(--bg-2);
+  color: var(--ink);
+  padding: 8px 13px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: 0.14s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+/* 🔴 Gated on a pointer that can actually hover. A tap leaves `:hover` STUCK on the last button
+   touched until something else is tapped, so ungated these paint a permanent red wash on Delete and
+   a permanent brightening on the primary. Nothing changes for a mouse. */
+@media (hover: hover) {
+  .dw .btn:hover {
+    border-color: var(--ring-2);
+  }
+  .dw .btn.primary:hover {
+    filter: brightness(1.06);
+  }
+  .dw .btn.danger:hover {
+    background: rgba(239, 68, 68, 0.09);
+  }
+}
+.dw .btn.ghost {
+  background: transparent;
+}
+.dw .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a120b;
+}
+.dw .btn.sm {
+  padding: 6px 10px;
+  font-size: 11.5px;
+}
+.dw .btn.danger {
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.dw .btn.icon-only {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+.dw .kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #1a120b;
+  opacity: 0.6;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.dw .engine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--ring);
+  color: var(--muted);
+  background: var(--bg-2);
+}
+.dw .engine .edot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.dw .engine.off {
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.dw .engine.off .edot {
+  background: var(--danger);
+}
+/* ── two-zone work grid ──────────────────────────────── */
+.dw .work {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  min-height: 0;
+}
+.dw .work > * {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  /* never let a wide child spill the column off-screen (details were ending up off to the right) */
+  overflow-x: hidden;
+}
+.dw .rail {
+  border-right: 1px solid var(--ring);
+  padding: 12px;
+}
+/* The open shot's take, pinned to the top of the rail while the writing panels scroll under it —
+ * the whole reason it is worth docking there. `.rail` is the scroll container (`.work > *`), so
+ * `top: 0` sticks to the rail and not the page.
+ *
+ * Bled to the rail's edges with negative margins so the picture meets the border and the divider
+ * runs the full 320px; the padding is given back inside, which leaves the dock the same 296px of
+ * content every other rail panel gets. Opaque background: sticky content scrolls THROUGH what is
+ * underneath it. */
+.dw .rail-dock {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: -12px -12px 11px;
+  padding: 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--ring);
+}
+
+.dw .eye {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.dw .grow {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--ring), transparent);
+}
+.dw .sec-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+.dw .num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  border: 1px solid var(--ring);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.dw .field {
+  display: block;
+  margin-bottom: 11px;
+}
+.dw .field > span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.dw .inp,
+.dw textarea.inp,
+.dw select.inp {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+  color: var(--ink);
+  /* Without this, form controls fall back to the UA serif default (Times New Roman) instead of
+     the app's Inter UI font. */
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 8px 10px;
+  transition: 0.14s;
+  resize: none;
+}
+.dw .inp:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.dw textarea.inp {
+  line-height: 1.5;
+}
+.dw .hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+/* A hint that is a WARNING — the identity setup will render, it just won't do what was asked. */
+.dw .hint.err {
+  color: #e2725b;
+}
+.dw .rowgrid {
+  display: grid;
+  /* minmax(0,1fr) so cells shrink to fit instead of forcing the row wider than its column */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+/* 🔴 Two-up is a question about the CONTAINER, not the window, and these two containers are narrow
+ * at every viewport: the settings sheet is a constant `min(440px, 92vw)` and the rail is 296px, so
+ * two cells are ~205px and ~144px — the label OR the control, not both. The ≤768 block below says
+ * the same thing for the phone, where every container is narrow; between them the roomy surfaces
+ * (the stage, and `AutoDirectPanel` in the expand modal at 640px) keep their two columns.
+ *
+ * Not a container query: `container-type` on a shared sheet also establishes a containing block for
+ * absolutely-positioned descendants, and these two surfaces are the whole of the narrow case. */
+.dw .sheet .rowgrid,
+.dw .rail .rowgrid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.dw .inline-row {
+  display: flex;
+  gap: 8px;
+}
+.dw .lbl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.dw .lbl-row span {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+/* A checkbox's own label is PROSE.
+ *
+ * The sheets size labels three ways — `.field > span`, `.lbl-row span` and `.group-label`, all the
+ * uppercase 10px treatment for a TITLE sitting above a control. A sentence sitting BESIDE a
+ * checkbox is neither, and such a span is still a direct child of `label.field`, so without an
+ * explicit size it takes that rule's 10px uppercase (SettingsSheet's beats/critique toggles).
+ *
+ * Keyed off the checkbox rather than a new class so it cannot catch anything else, and so the
+ * existing markup needed no churn. 12px matches `RendersDrawer`'s hand-rolled continue-from-last
+ * row, which is where the size comes from. */
+.dw label > input[type='checkbox'] + span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.4;
+  margin: 0;
+  display: inline;
+}
+.dw .miniai {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 2px 0;
+}
+.dw .miniai:hover {
+  text-decoration: underline;
+}
+
+/* rail: chat entry + collapsible folds */
+.dw .chat-entry {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--ring);
+  background: var(--bg-2);
+  border-radius: 11px;
+  padding: 11px 12px;
+  transition: 0.14s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.dw .chat-entry:hover {
+  border-color: var(--accent);
+}
+.dw .chat-entry .ic {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  font-size: 15px;
+}
+.dw .chat-entry b {
+  display: block;
+  font-size: 12.5px;
+}
+.dw .chat-entry small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.dw .fold {
+  border: 1px solid var(--ring);
+  border-radius: 11px;
+  background: var(--bg-2);
+  margin-bottom: 9px;
+  overflow: hidden;
+}
+.dw .fold > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  user-select: none;
+}
+.dw .fold > summary::-webkit-details-marker {
+  display: none;
+}
+.dw .fold > summary .chev {
+  color: var(--muted);
+  transition: 0.15s;
+  font-size: 10px;
+  width: 9px;
+}
+.dw .fold[open] > summary .chev {
+  transform: rotate(90deg);
+}
+.dw .fold > summary b {
+  font-size: 12.5px;
+  flex: 1;
+  font-weight: 600;
+}
+.dw .fold > summary .cdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.85;
+}
+.dw .fold > summary .cnt {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.dw .fold > summary .fold-expand {
+  margin-left: auto;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: 0.12s;
+}
+.dw .fold > summary b {
+  /* keep the title from pushing the expand button off; it no longer needs to fill. */
+  flex: 0 1 auto;
+}
+.dw .fold > summary .fold-expand:hover {
+  color: var(--accent);
+  border-color: var(--ring);
+  background: var(--bg-3);
+}
+.dw .fold .body {
+  padding: 0 12px 13px;
+}
+
+/* Rail-panel expand modal — reuses the .modal shell but auto-sizes and gives the
+ * writing areas real room. */
+/* Every `vh` in this file is paired with a `dvh` repeat: mobile browsers size `vh` to the viewport
+ * with the URL bar RETRACTED, so a sheet that fits on paper is cropped in the hand. `dvh` tracks
+ * the live viewport; engines that don't know the unit drop the second declaration and keep `vh`. */
+.dw .panel-modal {
+  height: auto;
+  max-height: 88vh;
+  max-height: 88dvh;
+  width: min(640px, 94vw);
+}
+.dw .panel-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ring);
+  flex: none;
+}
+.dw .panel-tabs .tab {
+  margin-right: 14px;
+}
+.dw .panel-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.dw .panel-modal-body textarea.inp {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* story reference rows */
+/* Character / feel references — a tidy card each: image (or a clear add-image tile) on top,
+ * then name + notes. Reads well in the narrow rail and the roomy expand-modal alike. */
+.dw .refrow {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  background: var(--bg-3);
+}
+.dw .refimg {
+  width: 100%;
+  height: 104px;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  object-fit: cover;
+  display: block;
+}
+.dw .refimg.empty {
+  height: 68px;
+  border-style: dashed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.14s;
+}
+.dw .refimg.empty:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.dw .refimg.empty .plus {
+  font-size: 16px;
+  line-height: 1;
+}
+.dw .refmeta input,
+.dw .refmeta textarea {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 11.5px;
+  padding: 5px 7px;
+  margin-bottom: 4px;
+  resize: none;
+}
+
+/* Character sheet thumbnail: `contain`, not `cover` — a sheet is four panels wide and cropping it
+ * hides the very views (side / back) the user needs to check before rendering. */
+.dw .refimg.sheet {
+  object-fit: contain;
+  background: #000;
+}
+
+/* cast chips — attach/detach a project character on the selected shot */
+.dw .chiprow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dw .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: 0.14s;
+}
+.dw .chip:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.dw .chip.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.dw .chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* findings */
+.dw .findings {
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.dw .finding {
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--ring);
+}
+.dw .finding:last-child {
+  border-bottom: none;
+}
+.dw .finding .where {
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+}
+.dw .sev {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.dw .sev.warn {
+  background: rgba(249, 115, 22, 0.16);
+  color: var(--warning);
+}
+.dw .sev.info {
+  background: rgba(45, 107, 103, 0.22);
+  color: #5bb0aa;
+}
+.dw .finding p {
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.dw .finding .apply {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 600;
+}
+
+/* ── center stage ────────────────────────────────────── */
+.dw .stage {
+  position: relative;
+  padding: 18px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.dw .stage-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding-bottom: 9px;
+}
+.dw .stage-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0;
+}
+/* 🔴 **No reading-width cap, and that is deliberate.** There was one — 900px, then 1180px — and it
+ * existed because the viewer shared this column: a paragraph of prose 1800px wide is unreadable, so
+ * the stage was capped and centred.
+ *
+ * The pane is not a paragraph. It is a two-column editor whose left half holds `[Shot 3] At
+ * 00:07.600, the camera cuts to <Picture 2>` — a line of code, not prose — and whose right half is a
+ * 360px lens that gets no wider whatever the window does. Capping the pair only pushed the lens
+ * inward and left margins either side. The block is where the width goes. */
+.dw .stage > * {
+  width: 100%;
+}
+
+/* 🔴 The stage no longer splits. It used to be `minmax(0,780px) | minmax(0,1fr)` above 1240px —
+ * a 16:9 frame holding a whole column, which left the shot's own editor about 380px on a 1500px
+ * window: a prompt forty characters wide with its panels folded underneath. One column now, viewer
+ * above the shot, and the editor gets the width it always needed.
+ *
+ * ⚠️ `StageViewer` itself is now mounted ONLY while `watching`. The take lives in the rail the rest
+ * of the time — as `RailDock`, a component built for 296px, and NOT as this one squeezed: its
+ * header (heading, mode, render chips, fold) is a wide-column row and collapsed into an unreadable
+ * strip the one time it was moved there unchanged.
+ *
+ * `watching` is the posture where the take IS the point, so the picture takes the whole width. */
+/* Everywhere else the picture does NOT want the editor's width — a 1900px 16:9 frame is a
+ * television. Reached only on the rail-less widths, where the viewer sits on the stage without
+ * being expanded. */
+.dw .stage:not(.watching) > .stage-top {
+  max-width: 820px;
+}
+.dw .shot-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+.dw .shot-head > div {
+  min-width: 0;
+}
+/* A shot with no summary falls back to its raw prompt, which can run to a paragraph. Cap the
+ * heading at two lines so it can never push the viewer off-screen; the full text is in the
+ * title attribute and, editably, in the Scene summary / Prompt fields below. */
+.dw .shot-head h1 {
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dw .slate {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #1a120b;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 16px;
+  flex: none;
+}
+.dw .shot-head h1 {
+  font-size: 18px;
+  font-weight: 650;
+}
+.dw .shot-head .sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.dw .rstate {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--ring);
+  color: var(--muted);
+  /* The title beside it is variable-length; without this the chip is the flex item that gives,
+   * and "Rendered · edited" wraps or crushes into the pill. */
+  flex: none;
+  white-space: nowrap;
+}
+/* Only the FIRST chip gets the auto margin — a second one (the proxy state) sits next to it
+ * rather than being pushed to its own far edge. */
+.dw .rstate ~ .rstate {
+  margin-left: 0;
+}
+.dw .rstate .rdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dw .rstate.ok {
+  color: var(--success);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+.dw .viewer {
+  position: relative;
+  border: 1px solid var(--ring);
+  border-radius: 15px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 16/9;
+  /* Small by default so the shot details stay visible without scrolling; ⤢ enlarges it.
+   * max-width keeps a 16/9 box from ballooning across wide monitors (~440px tall × 16/9). */
+  max-height: min(40vh, 440px);
+  max-height: min(40dvh, 440px);
+  max-width: 780px;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow);
+  margin: 0 auto;
+  transition: max-height 0.16s ease;
+}
+.dw .viewer.big {
+  max-height: min(80vh, 900px);
+  max-height: min(80dvh, 900px);
+  max-width: none;
+}
+/* The fold toggle lives in the shot HEAD, not on the viewer: when the picture is hidden the viewer
+ * is the thing that is not there, and a control that hides itself has no way back. Pushed to the
+ * end of the head row so it never sits between the shot title and its render status. */
+.dw .viewer-fold {
+  margin-left: auto;
+  flex: none;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--ring);
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: 0.14s;
+}
+/* The same rotating chevron the rail's folds use — the one shape in this app that already means
+ * "this opens and closes". A static glyph in a pill read as a filter chip. */
+.dw .viewer-fold .chev {
+  color: var(--muted);
+  font-size: 10px;
+  width: 9px;
+  transition: 0.15s;
+}
+.dw .viewer-fold.open .chev {
+  transform: rotate(90deg);
+}
+.dw .viewer-fold:hover,
+.dw .viewer-fold:hover .chev {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.dw .viewer-expand {
+  position: absolute;
+  right: 11px;
+  top: 11px;
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1;
+  color: rgba(243, 241, 238, 0.85);
+  background: rgba(11, 13, 17, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(4px);
+  transition: 0.14s;
+}
+.dw .viewer-expand:hover {
+  background: rgba(211, 140, 90, 0.32);
+  color: var(--ink);
+}
+.dw .viewer .frame {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 30% 20%, rgba(211, 140, 90, 0.26), transparent 55%),
+    radial-gradient(90% 120% at 80% 90%, rgba(45, 107, 103, 0.38), transparent 60%),
+    linear-gradient(160deg, #241a2e, #0c1016 70%);
+}
+.dw .play {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(15, 17, 21, 0.5);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: grid;
+  place-items: center;
+  transition: 0.16s;
+}
+.dw .play:hover {
+  transform: scale(1.06);
+  background: rgba(211, 140, 90, 0.32);
+}
+.dw .play::after {
+  content: '';
+  border-left: 15px solid var(--ink);
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  margin-left: 4px;
+}
+.dw .slug {
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: rgba(243, 241, 238, 0.72);
+  background: rgba(11, 13, 17, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 9px;
+  border-radius: 7px;
+  backdrop-filter: blur(4px);
+}
+/* Shot action toolbar — sits BELOW the viewer (not overlaid) so it never collides with the
+ * video's native control bar. Aligned to the same max width as the viewer. */
+.dw .vfoot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+}
+.dw .vfoot .est {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.dw .stage-vid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.dw .live-tag {
+  position: absolute;
+  right: 50px;
+  top: 11px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: #1a120b;
+  background: var(--accent);
+  padding: 4px 9px;
+  border-radius: 7px;
+  z-index: 2;
+}
+/* not-rendered preview label — subtle instead of the accent "live" pill */
+.dw .live-tag.muted {
+  color: rgba(243, 241, 238, 0.86);
+  background: rgba(11, 13, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+}
+.dw .kf-row.kf-float {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  margin: 0;
+  z-index: 2;
+}
+.dw .prestate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  background: linear-gradient(160deg, #171b21, #0b0d11);
+  text-align: center;
+  padding: 20px;
+}
+.dw .prestate .ps-title {
+  font-size: 14px;
+  font-weight: 650;
+}
+.dw .prestate .ps-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  max-width: 320px;
+  line-height: 1.5;
+}
+/* MiniMax-H3 render telemetry, pinned along the bottom of the stage so it survives both states:
+   over the in-flight preview frame AND over the "rendering…" gradient. It sits ABOVE .prestate
+   (which is inset:0) rather than inside it, because the preview image replaces that panel and the
+   numbers must not vanish with it. */
+.dw .h3-tel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 7px 12px 8px;
+  background: linear-gradient(to top, rgba(11, 13, 17, 0.86), rgba(11, 13, 17, 0));
+  pointer-events: none;
+}
+.dw .h3-tel .tel-track {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+/* A checkpoint reload makes no step progress, so the bar would sit frozen and read as stuck. Dimmed
+   while swapping: the moving part of the readout is the phase label, not this. */
+.dw .h3-tel .tel-track.idle {
+  opacity: 0.4;
+}
+.dw .h3-tel .tel-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.dw .h3-tel .tel-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: rgba(243, 241, 238, 0.82);
+}
+.dw .h3-tel .tel-phase {
+  color: var(--accent);
+}
+.dw .h3-tel .tel-phase.swap {
+  color: var(--warning);
+}
+.dw .kf-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.dw .kf {
+  width: 66px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--ring-2);
+  position: relative;
+}
+.dw .kf span {
+  position: absolute;
+  bottom: 2px;
+  left: 3px;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+/* prompt / details tabs */
+.dw .tabs {
+  display: flex;
+  border-bottom: 1px solid var(--ring);
+}
+.dw .tab {
+  padding: 10px 2px;
+  margin-right: 22px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  transition: 0.12s;
+}
+.dw .tab:hover {
+  color: var(--ink);
+}
+.dw .tab.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.dw .pane {
+  display: none;
+  padding-top: 15px;
+}
+.dw .pane.on {
+  display: block;
+}
+.dw .compose {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.dw .prompt-wrap {
+  position: relative;
+}
+/* The prompt is prose the user reads and edits, not a one-line field: bigger type, looser
+   leading, and a taller floor than the generic .inp. field-sizing grows it with the draft so a
+   long prompt reads in full (Chromium today); min-height + resize is the fallback elsewhere. */
+.dw textarea.inp.prompt-edit {
+  font-size: 14px;
+  line-height: 1.65;
+  min-height: 8.5rem;
+  max-height: 55vh;
+  max-height: 55dvh;
+  overflow-y: auto;
+  resize: vertical;
+  field-sizing: content;
+}
+/* Below the textarea, not overlaid on it, so they never cover the prompt text. */
+.dw .prompt-wrap .tools {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  margin-top: 7px;
+}
+.dw .gist {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.55;
+  padding: 9px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+}
+/* Per-shot audio: the player shares its row with the voice/sound-only selector. */
+.dw .shot-audio {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+}
+/* The render unit's audio references, read-only. The ORDINAL leads and is mono, because it is the
+   literal string the prompt has to write for the model to resolve the track. */
+.dw .audiorefs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dw .audiorefs .aref {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--ring);
+  background: var(--bg-3, var(--bg-2));
+  color: var(--ink);
+}
+.dw .audiorefs .aref b {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--accent);
+}
+/* Editable scene summary: reads like the prose it replaced until you focus it. */
+.dw textarea.inp.gist-edit {
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--muted);
+  min-height: 3.4rem;
+  max-height: 30vh;
+  max-height: 30dvh;
+  overflow-y: auto;
+  resize: vertical;
+  field-sizing: content;
+}
+.dw textarea.inp.gist-edit:focus {
+  font-style: normal;
+  color: var(--ink);
+}
+
+/* details pane */
+.dw .modes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 7px;
+}
+.dw .mode {
+  text-align: left;
+  border: 1px solid var(--ring);
+  background: var(--bg-3);
+  border-radius: 9px;
+  padding: 9px 11px;
+  transition: 0.12s;
+}
+.dw .mode:hover {
+  border-color: var(--ring-2);
+}
+.dw .mode.on {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.dw .mode b {
+  font-size: 12px;
+  font-weight: 600;
+  display: block;
+}
+.dw .mode small {
+  font-size: 10.5px;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+.dw .drop {
+  border: 1px dashed var(--ring-2);
+  border-radius: 9px;
+  min-height: 60px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-align: center;
+  padding: 9px;
+  cursor: pointer;
+}
+.dw .drop:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.dw .thumbs {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+.dw .refthumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  position: relative;
+}
+.dw .refthumb .x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--bg);
+}
+.dw .pinrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.dw .pinrow .pt {
+  width: 42px;
+  height: 42px;
+  border-radius: 7px;
+  flex: none;
+}
+.dw .pinrow input {
+  flex: 1;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 11.5px;
+  padding: 6px 8px;
+}
+.dw .pinrow .ptime {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  flex: none;
+}
+.dw .slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+/* Takes — several rolls of the same shot, side by side. The one in the cut is ringed in the
+   accent colour so "which of these am I actually shipping" is answerable at a glance. */
+.dw .take-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px;
+  margin-bottom: 6px;
+  border: 1px solid var(--ring);
+  border-radius: 8px;
+}
+.dw .take-row.chosen {
+  border-color: var(--accent);
+}
+.dw .take-vid {
+  width: 76px;
+  height: 44px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg-3);
+}
+.dw .take-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.dw .take-head {
+  font-size: 11.5px;
+  color: var(--ink);
+}
+.dw .take-verdict {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--accent);
+}
+.dw .take-verdict.fail {
+  color: #e2725b;
+}
+/* Per-take actions stack so "Use" and "→ reference" both fit beside the preview at panel width. */
+.dw .take-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+/* Per-shot cast: one row per project character, always all listed, on by default. A list rather
+   than chips because each row carries a STATE ("reference on" / "no reference") that a chip has
+   nowhere to put — and that state is the whole point of showing this per shot. */
+.dw .castlist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dw .castrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.dw .castrow.off .castname {
+  opacity: 0.5;
+}
+.dw .casttoggle {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  border: 1px solid var(--ring);
+  border-radius: 5px;
+  background: var(--bg-3);
+  color: var(--bg-1);
+  cursor: pointer;
+}
+.dw .casttoggle.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.dw .castname {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dw .caststate {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.dw .caststate.warn {
+  color: #e2725b;
+}
+/* The reason a character that IS in the shot still sends no reference — indented under its row. */
+.dw .castwhy {
+  margin: 0 0 4px 26px;
+}
+.dw .detail-block {
+  margin-bottom: 15px;
+}
+.dw .divider {
+  height: 1px;
+  background: var(--ring);
+  margin: 16px 0;
+}
+.dw .callout {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-left: 2px solid var(--accent-2);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.dw .callout b {
+  color: var(--ink);
+}
+
+/* finding banner on the shot stage */
+.dw .finding-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.07);
+  border-radius: 11px;
+  padding: 10px 12px;
+}
+.dw .finding-banner p {
+  font-size: 12px;
+  line-height: 1.45;
+  flex: 1 1 200px;
+}
+.dw .finding-banner .fnotes {
+  flex: 1 1 170px;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 11.5px;
+  padding: 6px 9px;
+}
+
+/* ── timeline ────────────────────────────────────────── */
+.dw .tl {
+  border-top: 1px solid var(--ring);
+  background: var(--bg-3);
+}
+.dw .tl-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--ring);
+  flex-wrap: wrap;
+}
+.dw .tgroup {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+}
+.dw .tbtn {
+  border: none;
+  background: none;
+  color: var(--ink);
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  transition: 0.12s;
+}
+.dw .tbtn:hover {
+  background: var(--ring);
+}
+.dw .tbtn.icn {
+  font-family: var(--mono);
+  font-size: 14px;
+  min-width: 30px;
+  text-align: center;
+  padding: 6px 8px;
+}
+.dw .tbtn.off {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.dw .tbtn.on {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.dw .tsel {
+  border: 1px solid var(--ring);
+  background: none;
+  color: var(--ink);
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+.dw .tsel:hover {
+  border-color: var(--accent);
+}
+.dw .snap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.dw .tl-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dw .tl-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.dw .tl-meta b {
+  color: var(--ink);
+}
+.dw .batchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--ring);
+  background: var(--accent-dim);
+  flex-wrap: wrap;
+}
+.dw .batchbar b {
+  font-size: 12px;
+}
+.dw .batchbar .inp {
+  max-width: 300px;
+  flex: 1 1 180px;
+}
+.dw .legend {
+  font-size: 10.5px;
+  color: var(--muted);
+  padding: 8px 14px;
+  border-top: 1px solid var(--ring);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.dw .legend .k {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dw .legend .d {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+}
+
+/* ── overlays ────────────────────────────────────────── */
+.dw .overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 11, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 50;
+}
+/* 🔴 `:not(.refimg)` — this is a slide-over PANEL, and `sheet` is also a reference-tile MODIFIER.
+ * `<img class="refimg sheet">` (CastPanel, ReferencesPanel) is a character SHEET, and it was
+ * picking up `position:absolute; top:0; right:0` from here — `.dw .refimg.sheet` only ever set
+ * `object-fit`/`background`, so nothing overrode the positioning and the thumbnail flew out of its
+ * card to the top-right of the page. Same collision family as `.empty` below; the guard is on the
+ * page-level rule rather than a `position:static` patch on the tile, because the tile would still
+ * be inheriting this rule's width, border-left and box-shadow. */
+.dw .sheet:not(.refimg) {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 92vw);
+  background: var(--bg);
+  border-left: 1px solid var(--ring);
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+}
+.dw .sheet-h {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--ring);
+  z-index: 1;
+}
+.dw .sheet-h h3 {
+  font-size: 14px;
+  flex: 1;
+}
+.dw .sheet-body {
+  padding: 16px;
+}
+.dw .group-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin: 16px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ring);
+}
+.dw .group-label:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.dw .res-readout {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 9px;
+  padding: 9px 11px;
+  line-height: 1.6;
+}
+.dw .res-readout b {
+  color: var(--ink);
+}
+.dw .res-readout .out {
+  color: var(--accent);
+}
+.dw .stage-cfg {
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--bg-2);
+}
+.dw .drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 82vh;
+  max-height: 82dvh;
+  background: var(--bg);
+  border-top: 1px solid var(--ring);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+}
+.dw .render-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+.dw .render-grid > * {
+  min-width: 0;
+}
+@media (max-width: 860px) {
+  .dw .render-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.dw .result-video {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  border: 1px solid var(--ring);
+  background:
+    radial-gradient(120% 90% at 40% 20%, rgba(211, 140, 90, 0.24), transparent 55%),
+    linear-gradient(160deg, #241a2e, #0c1016);
+  display: grid;
+  place-items: center;
+}
+.dw .partials-strip {
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+  background: var(--bg-2);
+  padding: 10px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dw .partials-head {
+  font-size: 11px;
+  color: var(--muted);
+}
+.dw .partials-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dw .partial-shot {
+  position: relative;
+  width: 132px;
+  max-width: 45%;
+  padding: 0;
+  border-radius: 8px;
+  transition: 0.14s;
+}
+.dw .partial-shot:hover {
+  transform: translateY(-1px);
+}
+.dw .partial-vid {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--ring);
+  display: block;
+  background: #000;
+}
+.dw .partial-shot:hover .partial-vid {
+  border-color: var(--accent);
+}
+.dw .partial-label {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  border-radius: 6px;
+  background: rgba(11, 13, 17, 0.68);
+  color: var(--ink);
+}
+.dw .warns {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: 11px;
+  padding: 11px 13px;
+  margin-bottom: 12px;
+}
+.dw .warns .wrow {
+  font-size: 12px;
+  line-height: 1.5;
+  display: flex;
+  gap: 8px;
+}
+.dw .warns .wrow + .wrow {
+  margin-top: 7px;
+}
+.dw .ptrack {
+  height: 8px;
+  border-radius: 5px;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.dw .pfill {
+  height: 100%;
+  background: var(--accent);
+}
+.dw .hist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  margin-bottom: 7px;
+  background: var(--bg-2);
+}
+.dw .hist-thumb {
+  width: 56px;
+  height: 32px;
+  border-radius: 6px;
+  flex: none;
+}
+.dw .hist-item b {
+  font-size: 12px;
+}
+.dw .hist-item small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* modals (chat / review / project) */
+.dw .modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(880px, 94vw);
+  height: min(760px, 88vh);
+  height: min(760px, 88dvh);
+  background: var(--bg);
+  border: 1px solid var(--ring);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dw .modal.review-modal {
+  height: min(620px, 86vh);
+  height: min(620px, 86dvh);
+  max-width: 720px;
+}
+.dw .chat-h {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--ring);
+}
+.dw .chat-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent-dim);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+}
+.dw .chat-h b {
+  font-size: 13.5px;
+  display: block;
+}
+.dw .chat-h small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.dw .review-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.dw .rev-card {
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+  background: var(--bg-2);
+  padding: 13px 14px;
+}
+.dw .rev-card .top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+.dw .rev-card .shotlink {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.dw .rev-card .shotlink:hover {
+  text-decoration: underline;
+}
+.dw .rev-card .issue {
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin-bottom: 11px;
+}
+.dw .rev-card .fixrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dw .rev-card .fixrow input {
+  flex: 1 1 200px;
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 11.5px;
+  padding: 7px 10px;
+}
+
+/* first-run / empty state */
+/* 🔴 `:not(.refimg)` — THIS is the whole-stage first-run panel; `empty` is ALSO the "no image yet"
+ * modifier on a reference tile (`<label class="refimg empty">`, `<div class="refimg empty">`).
+ * `.dw .refimg.empty` (0,3,0) beat this for `display`/`height`/`border-style`, so the tile looked
+ * roughly right in isolation — but it sets no `position`, so every empty tile in CastPanel and
+ * ReferencesPanel inherited `position:absolute; inset:0; z-index:7` from here. No ancestor between
+ * `.refrow` and the document root is positioned (`.rail`, `.work`, `.dw` are all static), so the
+ * containing block was the INITIAL one: the tiles left their cards and stacked on top of each
+ * other as a 68px-tall opaque bar across the top of the viewport. The one the author saw was
+ * whichever came last in the DOM — with a song attached that is the auto-appended
+ * `H3_SOUNDTRACK_REF_ID` row ("♪ Project song"), which is how this got reported as "the Project
+ * song button shows at the top of the screen".
+ * Guarded here rather than reset on the tile: `padding:30px`, `background:var(--bg)`, `z-index:7`
+ * and `flex-direction:column` were leaking too, so a lone `position:static` would have papered
+ * over one symptom of four. */
+.dw .empty:not(.refimg) {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 30px;
+  z-index: 7;
+}
+.dw .empty .big {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: repeating-linear-gradient(115deg, var(--ink) 0 8px, #0b0d11 8px 16px);
+  position: relative;
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+.dw .empty .big::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58%;
+  background: var(--accent);
+  border-radius: 0 0 14px 14px;
+}
+.dw .empty h2 {
+  font-size: 19px;
+  font-weight: 650;
+}
+.dw .empty p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 430px;
+  line-height: 1.6;
+}
+.dw .empty .acts {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* revert-last-AI-change toast */
+.dw .ai-toast {
+  position: fixed;
+  left: 50%;
+  top: 60px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 9px 12px 9px 14px;
+  box-shadow: var(--shadow);
+  font-size: 12.5px;
+}
+.dw .ai-toast b {
+  font-weight: 600;
+}
+.dw .ai-toast button {
+  border: none;
+  background: none;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dw .ai-toast .undo {
+  color: var(--accent);
+}
+.dw .ai-toast .x {
+  color: var(--muted);
+}
+
+/* stage-1 plan review sheet */
+.dw .plan-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.dw .plan-card {
+  border: 1px solid var(--ring);
+  border-radius: 12px;
+  background: var(--bg-2);
+  padding: 11px 12px;
+}
+.dw .plan-card .top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dw .plan-card .pno {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.dw .plan-card textarea.inp {
+  width: 100%;
+  resize: vertical;
+}
+.dw .plan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.dw .plan-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dw .plan-row label input[type='number'] {
+  width: 68px;
+  padding: 5px 7px;
+  font-size: 11.5px;
+}
+.dw .plan-row label.chk input {
+  accent-color: var(--accent);
+}
+.dw .plan-add {
+  align-self: flex-start;
+}
+.dw .plan-foot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ring);
+  background: var(--bg);
+}
+.dw .plan-foot .hint {
+  flex: 1;
+}
+
+/* stage-2 draft-all ticker — ambient, never blocks the editor */
+.dw .ticker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: var(--bg-3);
+  border: 1px solid var(--ring);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+.dw .ticker.bad {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.dw .ticker b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.dw .ticker .spin {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  border-top-color: transparent;
+  animation: dw-spin 0.8s linear infinite;
+}
+@keyframes dw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* dropped-id + engine warnings from the LLM endpoints */
+.dw .warn-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 16px 10px;
+  padding: 9px 11px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg-3);
+  border: 1px solid var(--warning);
+  border-radius: 9px;
+}
+.dw .warn-bar ul {
+  flex: 1;
+  margin: 0;
+  padding-left: 14px;
+}
+.dw .warn-bar .msg {
+  flex: 1;
+}
+.dw .warn-bar.bad {
+  border-color: var(--danger);
+}
+.dw .sev.bad {
+  background: rgba(239, 68, 68, 0.16);
+  color: var(--danger);
+}
+
+@media (max-width: 1080px) {
+  .dw .work {
+    grid-template-columns: 1fr;
+  }
+  .dw .rail {
+    display: none;
+  }
+}
+
+/* ── narrow screens + touch ──────────────────────────────
+ * Strictly additive: every rule below is behind a breakpoint under the ones already in this file
+ * (860 / 1080 / 1240) or behind `pointer: coarse`, which a desktop mouse never matches. Nothing
+ * above this line changes.
+ */
+
+/* The ⋯ sheet shared by the app bar and the timeline bar. It lives here rather than in
+ * OverflowSheet.svelte because the sheet's BODY is a snippet its parent owns, and a
+ * component-scoped selector would never reach those buttons. */
+.dw .more-menu {
+  /* Anchored to the bottom edge rather than the button: this only ever opens on a narrow screen,
+     where a thumb reaches the bottom and not the top-right corner. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--ring);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--shadow);
+  padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dw .more-menu button {
+  justify-content: flex-start;
+  min-height: 44px;
+}
+.dw .more-menu button:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.dw .more-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--ring);
+}
+.dw .more-saved {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* The inverse of .panels-btn: hidden until the app bar has to shed buttons. */
+.dw .more-btn {
+  display: none;
+}
+@media (max-width: 860px) {
+  .dw .more-btn {
+    display: inline-flex;
+  }
+  /* Secondary bar items move into the overflow sheet. Direct-child selectors only — the sheet
+   * itself is rendered inside the header, and it re-uses these same classes. An OFFLINE engine
+   * stays on the bar: Render still enqueues, but this is what says the queue has nothing to hand
+   * the job to yet. */
+  .dw .appbar > .appbar-secondary,
+  .dw .appbar > .engine:not(.off),
+  .dw .appbar > .runtime {
+    display: none;
+  }
+}
+
+/* 🔴 THE PHONE BAND, AND IT IS 768 — NOT 600.
+ *
+ * Below --bp-tablet the Director renders `DirectorWorkspace`'s `{#if compact.current}` arm: the app
+ * bar, the work grid, the timeline, the stage viewer, the shot pane and the takes panel are all
+ * REPLACED by `director/mobile/` components, so a `.dw` rule aimed at one of them styles nothing at
+ * this width. That is what most of this block used to be — appbar, ticker, stage, viewer, panel
+ * modal, cast rows, take rows — and it is deleted rather than corrected.
+ *
+ * What survives is the handful of SHARED panels the phone shell mounts as sheets: `SettingsSheet`
+ * and `AutoDirectPanel` (.rowgrid), `PlanReviewSheet` (.plan-card) and `RendersDrawer`
+ * (.render-grid). Those really do need the narrow layout — and they need it across the WHOLE band
+ * the phone shell owns, which is why this fires at 768 and not at --bp-phone. At 600px it left
+ * 601–768 (phone landscape, small tablets) rendering the phone shell around desktop-shaped panels;
+ * mobile.css has no width queries of its own, so nothing else covered that gap. */
+@media (max-width: 768px) {
+  /* The desktop's compact two-up layout, which at this width gives each cell ~170px — enough for
+   * the label OR the control, not both. */
+  .dw .rowgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The plan sheet's per-shot header carries three 44px touch targets on a coarse pointer. */
+  .dw .plan-card .top,
+  .dw .plan-foot {
+    flex-wrap: wrap;
+  }
+  .dw .plan-foot .hint {
+    flex: 1 1 100%;
+  }
+  .dw .render-grid {
+    padding: 12px 10px;
+  }
+}
+
+@media (pointer: coarse) {
+  .dw .btn,
+  .dw .tbtn,
+  .dw .tsel,
+  .dw .snap {
+    min-height: 44px;
+  }
+  .dw .btn.sm {
+    min-height: 40px;
+    padding: 9px 12px;
+  }
+  .dw .btn.icon-only,
+  .dw .proj-caret {
+    width: 44px;
+    height: 44px;
+  }
+  .dw .tbtn.icn {
+    min-width: 44px;
+  }
+  .dw .snap input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+  }
+  .dw .tab {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .dw .fold > summary {
+    min-height: 44px;
+  }
+  .dw .viewer-expand {
+    width: 44px;
+    height: 44px;
+  }
+  /* A 44px target needs 44px of pitch to live in: at the list's 24px row height the neighbouring
+   * row's own content sits on top of the expanded area and swallows the tap. */
+  .dw .castrow {
+    min-height: 44px;
+  }
+  /* Controls that are small ON PURPOSE — a badge, a tick-box, a text link. Their footprint stays
+   * exactly as designed and only the hit area grows, via a pseudo-element behind them. */
+  .dw .fold > summary .fold-expand,
+  .dw .casttoggle,
+  .dw .miniai,
+  .dw .finding .apply,
+  .dw .rev-card .shotlink,
+  .dw .ai-toast button {
+    position: relative;
+  }
+  .dw .fold > summary .fold-expand::before,
+  .dw .casttoggle::before,
+  .dw .refthumb .x::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  /* the ✕ hangs off its thumb's corner, so its grown area lands under the NEXT thumb without this */
+  .dw .refthumb .x {
+    z-index: 1;
+  }
+  /* Sideways is kept tight on the text links: they sit in pairs, and a wide box would have each
+   * one eating its neighbour. */
+  .dw .miniai::before,
+  .dw .finding .apply::before,
+  .dw .rev-card .shotlink::before,
+  .dw .ai-toast button::before {
+    content: '';
+    position: absolute;
+    inset: -12px -6px;
+  }
+}
+
+/* iOS Safari zooms the whole page when a focused field is under 16px, which strands the user
+ * scrolled sideways inside a layout that was fitting fine. Phones only — a coarse-pointer tablet
+ * wide enough for the rail keeps the compact type it was designed with. */
+@media (pointer: coarse) and (max-width: 860px) {
+  .dw .inp,
+  .dw textarea.inp,
+  .dw select.inp,
+  .dw .proj-name,
+  .dw .pinrow input,
+  .dw .rev-card .fixrow input,
+  .dw .finding-banner .fnotes {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, service, endpoint, request_meta, response_meta,\n                   sample_id, gate_wait_ms, duration_ms, status, caller, created_at\n            FROM gpu_logs\n            WHERE service = $1\n            ORDER BY created_at DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "service",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "service"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "endpoint",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "endpoint"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "request_meta",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "request_meta"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "response_meta",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "response_meta"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "sample_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "sample_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "gate_wait_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "gate_wait_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "duration_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "caller",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "caller"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "gpu_logs",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "1827977f6bb40f2bfc6de7df34f50acdc4af86a2e3d5e0f5b93d04c2aeb1c7ad"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE gpu_jobs SET\n            blocked_history = CASE\n                WHEN blocked_reason IS DISTINCT FROM $2\n                THEN gpu_jobs_close_episode(blocked_history, blocked_reason, blocked_since)\n                ELSE blocked_history END,\n            blocked_reason = $2,\n            blocked_since = CASE\n                WHEN blocked_reason IS DISTINCT FROM $2 OR blocked_since IS NULL\n                THEN NOW() ELSE blocked_since END,\n            alerted_at = CASE\n                WHEN blocked_reason IS DISTINCT FROM $2 THEN NULL ELSE alerted_at END\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3c7bb88726d7683a1cdb5bbe09e1a9d8dbd0a39cec2ef423f83095f61a33ab6a"
+}

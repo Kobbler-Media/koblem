@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT payload, resume, result FROM gpu_jobs WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "payload",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "resume",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "resume"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "result",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "result"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "3521e17c24e1f2ee402679b6edac95002ae5b3d46588e0ad4a571846bb69f836"
+}

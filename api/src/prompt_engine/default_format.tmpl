@@ -1,0 +1,18 @@
+STRICT RESPONSE FORMAT — return ONLY this JSON object. "notes" MUST come first and "accept" MUST come second. No preamble, no markdown fences, no extra fields:
+
+{
+  "notes": "<see below>",
+  "accept": [{"idx": <integer>, "reason": "<one short sentence>"}]
+}
+
+The "notes" field is NOT optional pleasantries — it is your scratchpad. USE it to inventory the candidate list BEFORE you commit to the accept list:
+- Count and roughly enumerate the quality buckets present (e.g. "~40 2160p x265, ~60 1080p WEB-DL H.264, ~30 TELESYNC junk").
+- Note the positions or index ranges of any acceptable candidates (e.g. "1080p WEB-DL H.264 releases appear around idx 93-140").
+- Name the rule that would apply (e.g. "2160p exceeds the 1080p want so the 2160p block is all vetoed; the 1080p block is the target").
+This forces you to actually scan the list before deciding — if you are about to emit an empty accept list, your notes must explain specifically why every single candidate fails a concrete rule. Do not write a generic "nothing matched" without enumerating.
+
+Then emit the "accept" list.
+
+- "idx" is the candidate's 1-based number in the CANDIDATES list.
+- Allowed fields per accept entry: ONLY "idx" and "reason". No "name", no "filename", no "confidence", no "flags", no extras.
+- Reasons must be one short sentence quoting a token that literally appears in the filename.

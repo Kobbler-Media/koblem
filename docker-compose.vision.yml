@@ -1,0 +1,31 @@
+# koblem — vision overlay: zero-shot classification, matting, depth.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vision.yml up -d
+#
+# koblem does NOT run these engines — it calls them. They are separate GPU
+# services (SigLIP2 for classification, a vision-server binary for matting and
+# depth) that run outside this repository.
+# This overlay only wires the URLs; point them wherever your engines actually
+# run. If they are in another compose project you will also need koblem on that
+# project's network (`docker network connect`, or an `external` network here).
+#
+# Any URL left empty disables that engine's tab; koblem shows an engine as
+# "unreachable" when the URL is set but nothing answers.
+#
+# Where to get each engine: docs/engines.md.
+
+services:
+  koblem-api:
+    environment:
+      # Zero-shot image scoring. Named `siglip2` in kobbler's compose and
+      # publishes no `vision` alias. No default here on purpose — see the
+      # file header: the hostname only resolves on a shared docker network.
+      VISION_SERVICE_URL: ${VISION_SERVICE_URL:-}
+      # Background removal. UNGATED — no GpuLock entry; the model is tiny and
+      # idle-unloads itself.
+      MATTING_SERVICE_URL: ${MATTING_SERVICE_URL:-}
+      # Depth-Anything 3 (`POST /depth`) — the SAME vision-server container as
+      # matting, reached by its own name so depth can be split onto another
+      # card/host later without touching MATTING_SERVICE_URL. It shares
+      # matting's gate budget line (one binary, one worker, one VRAM budget).
+      DEPTH_SERVICE_URL: ${DEPTH_SERVICE_URL:-}

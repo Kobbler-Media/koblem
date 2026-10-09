@@ -1,0 +1,17 @@
+CURRENT DATE: <today>
+WANTED: "American Dad!" (2005) [episodes needed: S22E1, S22E2, S22E3, S22E4, S22E5, S22E6, S22E7]
+QUALITY WANT:
+  MAXIMUM RESOLUTION: 1080p
+  PREFERRED SOURCES: web-dl, webrip, hdtv
+  PREFERRED CODECS: x265, x264
+  PREFERRED AUDIO: aac, ddp
+  PREFERRED LANGUAGES: english
+  REJECT SOURCES: cam, ts, telecine, dvdscr, screener, telesync, hdcam
+  REJECT TERMS: ASL, BSL, .Signed., Sign.Zone, SignZone, 3D, HSBS, Half-SBS, HOU, Half-OU, DCP
+  REJECT HARDCODED SUBS
+  REJECT REMUX
+
+CANDIDATES:
+  1. American.Dad.2005.S12.1080p.DSNP.Webrip.AV1.10bit.EAC3.5.1.GokiTAoE [pub:2026-05-02]
+  2. American.Dad.2005.S22.1080p.DSNP.Webrip.x264.EAC3.5.1.NTb [pub:2026-05-02]
+  3. American.Dad.S22E07.Reaper.Madness.1080p.DSNP.WEB-DL.DDP5.1.H.264-NTb [pub:2026-05-03]

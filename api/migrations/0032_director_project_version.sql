@@ -1,0 +1,15 @@
+-- Optimistic concurrency for the Director timeline doc.
+--
+-- The editor autosaves, so a stale tab left open on a second device used to silently revert the
+-- whole document on its next background write — including the banked resume ids, which costs a full
+-- final-tier re-render of the prefix. Cross-device work is now normal (the /active endpoint exists
+-- so a second client converges on a render it never dispatched), so this is a routine path.
+--
+-- A counter rather than `updated_at` as the token: `updated_at` is NOW() (transaction start), so two
+-- writes inside one transaction share a value and would compare equal; it round-trips through
+-- RFC3339 where the client can lose sub-second precision; and the server's own render stamps move it
+-- (`patch_metadata`), which would fire a spurious conflict on every render. The counter is bumped
+-- only by writes that rewrite the document a client authored.
+--
+-- Existing rows start at 1 via the DEFAULT — no project is left unversioned.
+ALTER TABLE director_projects ADD COLUMN version BIGINT NOT NULL DEFAULT 1;

@@ -1,0 +1,79 @@
+# koblem — LLM overlay: llama.cpp server (the always-resident GPU occupant).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.llm.yml up -d
+#
+# YOU SUPPLY THE MODEL WEIGHTS. Nothing is downloaded for you: the default
+# gemma-4-12b main quant, the F16 unified vision+audio mmproj and the MTP draft
+# are pre-placed GGUFs. Put them in $KOBLEM_MODELS_DIR (default ./models) or set
+# TEXT_URL / MMPROJ_URL / DRAFT_URL to something curl can fetch. A missing file
+# with no URL is a hard error — the container will not start.
+#
+# Requires an NVIDIA GPU plus nvidia-container-toolkit on the host.
+
+services:
+  koblem-api:
+    environment:
+      LLAMA_SERVER_URL: ${LLAMA_SERVER_URL:-http://llama-server:8080}
+      CONTEXT_SIZE: ${CONTEXT_SIZE:-131072}
+      # OFF by default: attach each H3 generation's ~14 s slice of the project
+      # song to the prompt writer's turn, so it hears the tone rather than only
+      # reading about it. Set to 1 to try it.
+      #
+      # Unmeasured on purpose — nobody has counted what that audio costs in
+      # context through the mmproj, and the writer's request already carries a
+      # vendored guide, a reference roster and up to three images against the
+      # context window. An attachment that silently overflows looks like the
+      # model getting worse, not like a flag being on. Compare
+      # `llm_logs.prompt_tokens` for `h3_prompt_from_llm` with it on and off
+      # before leaving it on. Also needs an audio-capable mmproj on
+      # LLAMA_SERVER_URL.
+      #
+      # The vocal LANE — which seconds of a generation carry a voice — is
+      # separate, always on, and costs a few hundred bytes of text.
+      KOBLEM_H3_WRITER_SONG_AUDIO: ${KOBLEM_H3_WRITER_SONG_AUDIO:-}
+    depends_on:
+      llama-server:
+        condition: service_healthy
+
+  llama-server:
+    image: ghcr.io/kobbler-media/koblem-llama:latest
+    build:
+      context: ./docker/llama-server
+      args:
+        # server-cuda (NVIDIA), server-rocm (AMD), server (CPU-only)
+        LLAMA_IMAGE: ${LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+    restart: unless-stopped
+    # Server args live in docker/llama-server/entrypoint.sh as the no-arg
+    # fallback so `docker run` and compose stay in sync. Anything passed here as
+    # `command:` wins over the entrypoint defaults.
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      CONTEXT_SIZE: ${CONTEXT_SIZE:-163840}
+      TZ: ${TZ:-UTC}
+      LLAMA_MODEL: ${LLAMA_MODEL:-}
+      LLAMA_MMPROJ: ${LLAMA_MMPROJ:-}
+      LLAMA_DRAFT_MODEL: ${LLAMA_DRAFT_MODEL:-}
+      TEXT_URL: ${TEXT_URL:-}
+      MMPROJ_URL: ${MMPROJ_URL:-}
+      DRAFT_URL: ${DRAFT_URL:-}
+    volumes:
+      # Model weights live outside the repo — they are tens of GB.
+      - ${KOBLEM_MODELS_DIR:-./models}:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"

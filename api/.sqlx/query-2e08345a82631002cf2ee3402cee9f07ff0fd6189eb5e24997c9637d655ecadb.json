@@ -1,0 +1,340 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, caller, request_messages, request_tools, request_temperature,\n               request_max_tokens, request_top_p, request_top_k, request_min_p,\n               request_presence_penalty, request_repetition_penalty,\n               request_enable_thinking, sampling_preset, request_grammar,\n               streaming, response_content, response_reasoning_content,\n               response_tool_calls, finish_reason, tool_rewrite_applied,\n               duration_ms, prompt_tokens, completion_tokens,\n               status, error_message, created_at, updated_at\n        FROM llm_logs WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "caller",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "caller"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "request_messages",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_messages"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "request_tools",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_tools"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "request_temperature",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_temperature"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "request_max_tokens",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_max_tokens"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "request_top_p",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_top_p"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "request_top_k",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_top_k"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "request_min_p",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_min_p"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "request_presence_penalty",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_presence_penalty"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "request_repetition_penalty",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_repetition_penalty"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "request_enable_thinking",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_enable_thinking"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "sampling_preset",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "sampling_preset"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "request_grammar",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "request_grammar"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "streaming",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "streaming"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "response_content",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "response_content"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "response_reasoning_content",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "response_reasoning_content"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "response_tool_calls",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "response_tool_calls"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "finish_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "finish_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "tool_rewrite_applied",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "tool_rewrite_applied"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "duration_ms",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "duration_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "prompt_tokens",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "prompt_tokens"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "completion_tokens",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "completion_tokens"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "error_message",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "error_message"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "llm_logs",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "2e08345a82631002cf2ee3402cee9f07ff0fd6189eb5e24997c9637d655ecadb"
+}

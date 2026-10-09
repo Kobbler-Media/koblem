@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT r.project_id,\n               r.tier,\n               r.shot_index,\n               r.prompt,\n               r.content_type,\n               (SELECT COUNT(*) FROM director_shot_renders t\n                 WHERE t.project_id = r.project_id\n                   AND t.tier = r.tier\n                   AND t.shot_index = r.shot_index) AS \"takes!\"\n        FROM director_shot_renders r\n        WHERE r.selected AND r.shot_index >= 0\n        ORDER BY r.project_id, r.shot_index, r.tier\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "director_shot_renders",
+            "name": "project_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "tier",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "director_shot_renders",
+            "name": "tier"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "shot_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "director_shot_renders",
+            "name": "shot_index"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "director_shot_renders",
+            "name": "prompt"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "content_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "director_shot_renders",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "takes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "f0dfea7f6ad1d39e7901959687de19e561d2b440a5734106656faaf1a639eadb"
+}

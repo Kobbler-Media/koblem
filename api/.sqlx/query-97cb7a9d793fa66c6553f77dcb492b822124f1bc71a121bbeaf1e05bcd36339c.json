@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH claimed AS (\n            SELECT id FROM gpu_jobs\n            WHERE id = $1 AND state = 'queued'\n            FOR UPDATE SKIP LOCKED\n        )\n        UPDATE gpu_jobs SET\n            state = 'running',\n            started_at = NOW(),\n            queued_ms = $2,\n            blocked_history =\n                gpu_jobs_close_episode(blocked_history, blocked_reason, blocked_since),\n            blocked_reason = NULL,\n            blocked_since = NULL,\n            alerted_at = NULL\n        WHERE id IN (SELECT id FROM claimed)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97cb7a9d793fa66c6553f77dcb492b822124f1bc71a121bbeaf1e05bcd36339c"
+}

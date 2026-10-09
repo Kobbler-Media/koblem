@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT o->>'filename' AS \"filename!\"\n        FROM generations, LATERAL jsonb_array_elements(outputs) AS o\n        WHERE o->>'filename' = ANY($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "filename!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0a94817f212520c4f089070f8e30a93ae3f7ed78cd50cd9d84d10deade0ab6d5"
+}

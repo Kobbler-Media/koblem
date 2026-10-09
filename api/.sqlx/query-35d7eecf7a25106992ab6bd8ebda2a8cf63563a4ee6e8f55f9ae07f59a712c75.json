@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT queue_rank FROM gpu_jobs WHERE id = $1 AND band = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "queue_rank",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "gpu_jobs",
+            "name": "queue_rank"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int2"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "35d7eecf7a25106992ab6bd8ebda2a8cf63563a4ee6e8f55f9ae07f59a712c75"
+}

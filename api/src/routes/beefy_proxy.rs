@@ -2,6 +2,7 @@
 //!
 //! `POST /api/v1/beefy/chat/completions` and `GET /api/v1/beefy/models`. pi's
 //! `baseUrl` is `http://<host>:8090/api/v1/beefy`; it appends the rest itself.
+//! `POST /api/v1/beefy/systemone` shares the gate below; see `beefy_systemone.rs`.
 //!
 //! Why neither existing path will do:
 //! - **`:8103` directly bypasses the gate.** With Beefy off, the first POST makes the
@@ -36,6 +37,7 @@ use axum::{
 use futures::StreamExt;
 use kob_gpu_gate::{Acquisition, ServiceKind};
 use serde_json::{Value, json};
+use sqlx::PgPool;
 use tracing::{info, warn};
 
 use crate::AppState;
@@ -53,10 +55,14 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/v1/beefy/chat/completions", post(chat_completions))
         .route("/api/v1/beefy/models", get(models))
+        .route(
+            "/api/v1/beefy/systemone",
+            post(super::beefy_systemone::systemone),
+        )
         .layer(DefaultBodyLimit::max(MAX_BODY))
 }
 
-fn upstream() -> &'static reqwest::Client {
+pub(super) fn upstream() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         // 🔴 No overall timeout — see the module doc. Connect is bounded so a dead
@@ -69,7 +75,7 @@ fn upstream() -> &'static reqwest::Client {
 }
 
 /// An error in the OpenAI shape, so the agent surfaces the message verbatim.
-fn oai_error(status: StatusCode, kind: &str, message: &str) -> Response {
+pub(super) fn oai_error(status: StatusCode, kind: &str, message: &str) -> Response {
     (
         status,
         Json(json!({ "error": { "message": message, "type": kind } })),
@@ -80,16 +86,28 @@ fn oai_error(status: StatusCode, kind: &str, message: &str) -> Response {
 /// Auth, then "is the box held for the 27B", then the LLM gate guard. `Err` is the
 /// response to send as-is.
 async fn admit(state: &AppState, headers: &HeaderMap) -> Result<(String, Acquisition), Response> {
-    if require_auth(&state.db, state.api_key.as_deref(), headers)
-        .await
-        .is_err()
-    {
-        return Err(oai_error(
+    authenticate(&state.db, state.api_key.as_deref(), headers).await?;
+    hold(state).await
+}
+
+pub(super) async fn authenticate(
+    db: &PgPool,
+    api_key: Option<&str>,
+    headers: &HeaderMap,
+) -> Result<(), Response> {
+    match require_auth(db, api_key, headers).await {
+        Ok(_) => Ok(()),
+        Err(_) => Err(oai_error(
             StatusCode::UNAUTHORIZED,
             "unauthorized",
             "missing or invalid bearer token",
-        ));
+        )),
     }
+}
+
+/// [`admit`] past auth: the beefy URL plus the LLM gate guard, held for as long as
+/// the caller keeps it.
+pub(super) async fn hold(state: &AppState) -> Result<(String, Acquisition), Response> {
     let Some(base) = crate::beefy::serving_url(state).await else {
         let mut resp = oai_error(
             StatusCode::SERVICE_UNAVAILABLE,

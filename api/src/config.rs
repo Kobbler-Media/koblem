@@ -24,6 +24,10 @@ pub struct Config {
     /// (`<uuid>=<MiB>,<uuid>=<MiB>`). 🔴 A card left out is reserved WHOLE, so a
     /// typo'd UUID locks that card rather than opening it.
     pub beefy_reserve_mb: HashMap<String, u32>,
+    /// Softmax temperature over the label logprobs of `/api/v1/beefy/systemone`'s
+    /// emulation, from `SYSTEMONE_TEMPERATURE`. Must match the engine's native
+    /// route, or the two paths answer the same request differently.
+    pub systemone_temperature: f64,
     /// Address to bind the HTTP server (default: 0.0.0.0:8090)
     pub bind_address: String,
     /// Context size configured on llama-server (informational, for /v1/models)
@@ -308,6 +312,11 @@ impl Config {
             beefy_reserve_mb: parse_beefy_reserve(
                 &std::env::var("BEEFY_RESERVE_MB").unwrap_or_default(),
             ),
+            systemone_temperature: std::env::var("SYSTEMONE_TEMPERATURE")
+                .ok()
+                .and_then(|v| v.trim().parse::<f64>().ok())
+                .filter(|t| t.is_finite() && *t > 0.0)
+                .unwrap_or(1.0),
             director_llm_url: std::env::var("DIRECTOR_LLM_SERVICE_URL")
                 .ok()
                 .filter(|s| !s.is_empty()),

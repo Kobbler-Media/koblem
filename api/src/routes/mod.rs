@@ -2,6 +2,7 @@ pub mod agent_chat;
 pub mod auth;
 pub mod avatar;
 pub mod beefy_proxy;
+pub mod beefy_systemone;
 pub mod byte_serve;
 pub mod character_sheet;
 pub mod chat;

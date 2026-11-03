@@ -1,4 +1,4 @@
-From 7600def079489999add5f5022d4d76eea12e52a0 Mon Sep 17 00:00:00 2001
+From 038151cd13059b4cb6978603b074ce24b8341fde Mon Sep 17 00:00:00 2001
 From: kobbler-dev <kobbler-dev@oldug.com>
 Date: Tue, 3 Nov 2026 23:20:46 +1100
 Subject: [PATCH] server: LLAMA_WORKER_ISOLATION parent/child split + lifecycle
@@ -22,7 +22,8 @@ the process exits), which kob-gpu-gate needs to lend the card to other jobs.
                          (the always-resident LLM is booked by a standing
                          reservation; answering here would change that)
 
-WORKER_DEFAULT_GPU picks the child's card, the X-Worker-Gpu header relocates
+WORKER_LOAD_ON_START=1 spawns the child at boot (always-on services; after an
+/unload it returns lazily on the next model request). WORKER_DEFAULT_GPU picks the child's card, the X-Worker-Gpu header relocates
 it per request, and WORKER_IDLE_UNLOAD_SECONDS unloads it after that long
 idle. A request counts as in flight from arrival, so the idle reaper cannot
 take the child down between spawn and forward.
@@ -32,10 +33,10 @@ a metadata poll does not spawn, /unload returns the card to baseline, reload
 1.0 s, drain 503s, idle reaper fires, /v1/gpu/status reports the UUID.
 ---
  tools/server/CMakeLists.txt       |   2 +
- tools/server/server.cpp           | 223 ++++++++++++++
+ tools/server/server.cpp           | 237 ++++++++++++++
  tools/server/worker_isolation.cpp | 497 ++++++++++++++++++++++++++++++
  tools/server/worker_isolation.h   | 186 +++++++++++
- 4 files changed, 908 insertions(+)
+ 4 files changed, 922 insertions(+)
  create mode 100644 tools/server/worker_isolation.cpp
  create mode 100644 tools/server/worker_isolation.h
 
@@ -53,7 +54,7 @@ index 4f3fa2458..9734fa2df 100644
  set_target_properties(${TARGET} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
  
 diff --git a/tools/server/server.cpp b/tools/server/server.cpp
-index 8b1d42650..3db4f30af 100644
+index 8b1d42650..04724d0e0 100644
 --- a/tools/server/server.cpp
 +++ b/tools/server/server.cpp
 @@ -5,6 +5,7 @@
@@ -74,7 +75,7 @@ index 8b1d42650..3db4f30af 100644
  #include <signal.h>
  #include <thread> // for std::thread::hardware_concurrency
  
-@@ -728,6 +731,215 @@ static int server_run_instance(common_params & params, server_role & role, commo
+@@ -728,6 +731,229 @@ static int server_run_instance(common_params & params, server_role & role, commo
      return 0;
  }
  
@@ -280,8 +281,22 @@ index 8b1d42650..3db4f30af 100644
 +        return 1;
 +    }
 +
-+    SRV_INF("%s", "worker-isolation: the child is spawned on the first model request\n");
++    // an always-on service starts its child now rather than on the first request;
++    // after an /unload it still comes back lazily, on the next model request
++    std::thread warm_thread;
++    if (env_truthy("WORKER_LOAD_ON_START")) {
++        warm_thread = std::thread([wi]() {
++            if (!wi->ensure_loaded()) {
++                SRV_ERR("%s", "worker-isolation: WORKER_LOAD_ON_START: the child failed to start\n");
++            }
++        });
++    } else {
++        SRV_INF("%s", "worker-isolation: the child is spawned on the first model request\n");
++    }
 +    ctx_http.join(); // keep the main thread alive
++    if (warm_thread.joinable()) {
++        warm_thread.join();
++    }
 +
 +    clean_up();
 +    return 0;
@@ -290,7 +305,7 @@ index 8b1d42650..3db4f30af 100644
  //
  // entry points
  //
-@@ -751,6 +963,17 @@ static int server_run(common_params & params, int argc, char ** argv, server_rol
+@@ -751,6 +977,17 @@ static int server_run(common_params & params, int argc, char ** argv, server_rol
  
      const server_role_type role_type = server_role_detect(params, role);
  

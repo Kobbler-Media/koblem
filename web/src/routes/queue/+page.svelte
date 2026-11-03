@@ -15,6 +15,7 @@
     holdQueueJob,
     preemptQueueJob,
     reorderQueueJob,
+    retryQueueJob,
     setQueuePaused,
     type Job,
     type JobStat
@@ -196,6 +197,11 @@
   const hold = (job: Job) => run(job.id, () => holdQueueJob(job.id, job.state !== 'held'));
   const cancel = (job: Job) => run(job.id, () => cancelQueueJob(job.id));
   const preempt = (job: Job) => run(job.id, () => preemptQueueJob(job.id));
+  const retry = (job: Job) =>
+    run(job.id, async () => {
+      await retryQueueJob(job.id);
+      if (showHistory) await loadHistory();
+    });
   const togglePause = () => run('queue', () => setQueuePaused(!snapshot.paused));
 
   async function toggleHistory() {
@@ -395,6 +401,10 @@
       {:else if !isTerminal(job.state)}
         <button class="btn-sec sm danger" disabled={busyId === job.id} onclick={() => cancel(job)}>
           Cancel
+        </button>
+      {:else if job.state === 'failed' || job.state === 'cancelled'}
+        <button class="btn-sec sm" disabled={busyId === job.id} onclick={() => retry(job)}>
+          Retry
         </button>
       {/if}
     </div>

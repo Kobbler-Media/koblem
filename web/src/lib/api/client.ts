@@ -7616,6 +7616,12 @@ export async function preemptQueueJob(id: string): Promise<void> {
   await authedFetch(`/api/v1/queue/jobs/${encodeURIComponent(id)}/preempt`, { method: 'POST' });
 }
 
+/// Re-enqueue a finished job's stored payload as a new job (same kind, band and
+/// card pin). 409 while the job is still live; 404 once its payload is pruned.
+export function retryQueueJob(id: string): Promise<EnqueueResponse> {
+  return request(`/api/v1/queue/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST' });
+}
+
 export function setQueuePaused(paused: boolean): Promise<{ paused: boolean }> {
   return request('/api/v1/queue/pause', {
     method: 'POST',

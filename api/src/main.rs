@@ -389,11 +389,14 @@ async fn main() {
     let tts_breeze_url =
         resolve_gpu_url(&db, "tts_breeze_service_url", &config.tts_breeze_url).await;
     let vision_url = resolve_gpu_url(&db, "vision_service_url", &config.vision_url).await;
+    let text_embed_url =
+        resolve_gpu_url(&db, "text_embed_service_url", &config.text_embed_url).await;
     // STT + Vision keep their single-URL setter; TTS goes through the engine
     // registry so the gate can unload its worker during eviction. The tag MUST
     // appear in `ServiceKind::Tts.light_tags()` or eviction silently no-ops.
     gpu.set_service_urls(stt_url.clone(), None, vision_url.clone());
     gpu.set_tts_services(build_tts_services(&tts_breeze_url));
+    gpu.set_text_embed_url(text_embed_url.clone());
 
     // gpu_lock_enabled defaults to true; setting stored as JSON bool.
     let enabled = repositories::settings::get_setting(&db, "gpu_lock_enabled")
@@ -506,7 +509,12 @@ async fn main() {
     let matting_url = resolve_gpu_url(&db, "matting_service_url", &config.matting_url).await;
 
     // GPU-service clients. They all share the same GpuLock.
-    let vision = vision::VisionClient::new(vision_url, gpu.clone());
+    let vision = vision::VisionClient::new(
+        vision_url,
+        text_embed_url,
+        config.text_embed_max_tokens,
+        gpu.clone(),
+    );
     let tts = tts_breeze::BreezeTtsClient::new(tts_breeze_url, gpu.clone());
     let stt = stt::SttClient::new(stt_url, gpu.clone());
     let music = music::MusicClient::new(ace_server_url, gpu.clone());

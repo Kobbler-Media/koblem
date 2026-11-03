@@ -204,6 +204,7 @@
   let gpuTtsHoldSeconds = $state(30);
   let llamaServerUrl = $state('');
   let visionServiceUrl = $state('');
+  let textEmbedServiceUrl = $state('');
   let ttsBreezeServiceUrl = $state('');
   let sttServiceUrl = $state('');
   let aceServerUrl = $state('');
@@ -227,6 +228,7 @@
     ApiGpuServiceKind,
     | 'llm'
     | 'vision'
+    | 'text_embed'
     | 'tts'
     | 'stt'
     | 'music'
@@ -251,6 +253,7 @@
   let serviceTests = $state<Record<GpuServiceKind, ServiceTest>>({
     llm: initialTest(),
     vision: initialTest(),
+    text_embed: initialTest(),
     tts: initialTest(),
     stt: initialTest(),
     music: initialTest(),
@@ -271,6 +274,7 @@
   let serviceModels = $state<Record<GpuServiceKind, string>>({
     llm: '',
     vision: '',
+    text_embed: '',
     tts: '',
     stt: '',
     music: '',
@@ -342,6 +346,7 @@
       gpuTtsHoldSeconds = Number(settings.gpu_tts_hold_seconds) || 30;
       llamaServerUrl = (settings.llama_server_url as string) || '';
       visionServiceUrl = (settings.vision_service_url as string) || '';
+      textEmbedServiceUrl = (settings.text_embed_service_url as string) || '';
       ttsBreezeServiceUrl = (settings.tts_breeze_service_url as string) || '';
       sttServiceUrl = (settings.stt_service_url as string) || '';
       aceServerUrl = (settings.ace_server_url as string) || '';
@@ -498,6 +503,7 @@
         gpu_tts_hold_seconds: gpuTtsHoldSeconds,
         llama_server_url: llamaServerUrl,
         vision_service_url: visionServiceUrl,
+        text_embed_service_url: textEmbedServiceUrl,
         tts_breeze_service_url: ttsBreezeServiceUrl,
         stt_service_url: sttServiceUrl,
         ace_server_url: aceServerUrl,
@@ -638,7 +644,18 @@
       label: 'LLM (llama-server)',
       placeholder: 'http://llama-server:8080'
     },
-    { key: 'vision', label: 'Vision', placeholder: 'http://vision:8890' },
+    {
+      key: 'vision',
+      label: 'Embeddings: images (EmbeddingGemma-2)',
+      placeholder: 'http://embed-vision:8080'
+    },
+    {
+      key: 'text_embed',
+      // The always-on CPU/GPU text instance. Text requests never wait on the GPU gate; when it is
+      // down they fall back to the image server above.
+      label: 'Embeddings: text (EmbeddingGemma-2)',
+      placeholder: 'http://embed-text:8080'
+    },
     { key: 'tts', label: 'TTS (BreezeTTS 2)', placeholder: 'http://tts-breeze:8203' },
     {
       key: 'stt',
@@ -717,6 +734,8 @@
         return llamaServerUrl;
       case 'vision':
         return visionServiceUrl;
+      case 'text_embed':
+        return textEmbedServiceUrl;
       case 'tts':
         return ttsBreezeServiceUrl;
       case 'stt':
@@ -754,6 +773,9 @@
         break;
       case 'vision':
         visionServiceUrl = v;
+        break;
+      case 'text_embed':
+        textEmbedServiceUrl = v;
         break;
       case 'tts':
         ttsBreezeServiceUrl = v;

@@ -55,7 +55,7 @@ make sqlx-prepare    # brings up the throwaway test DB, migrates, regenerates ap
 check`, so a stale cache fails the build rather than silently drifting. Commit
 the regenerated `api/.sqlx/` files with your change.
 
-`api/migrations/` holds 48 sequential migrations and is the complete schema —
+`api/migrations/` holds 49 sequential migrations and is the complete schema —
 `make sqlx-migrate` applies them to the test database from scratch.
 
 ## Build and test

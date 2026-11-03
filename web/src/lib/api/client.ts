@@ -249,6 +249,7 @@ export function testReleaseProvider(
 export type GpuServiceKind =
   | 'llm'
   | 'vision'
+  | 'text_embed'
   | 'tts'
   | 'stt'
   | 'music'
@@ -1085,18 +1086,15 @@ export function sttTranscribeFromLibrary(req: SttLibraryRequest): Promise<SttRes
   });
 }
 
-// ── Vision playground ──────────────────────────────────────────────────
+// ── Embeddings playground (EmbeddingGemma-2) ───────────────────────────
 
 export interface VisionEmbedParams {
-  max_num_patches?: number;
-  pooling?: 'pooler' | 'cls' | 'mean';
-  return_last_hidden?: boolean;
   save_sample?: boolean;
 }
 
 export interface VisionEmbedResponse {
   embeddings: number[][];
-  last_hidden_state?: number[][][];
+  model?: string;
   duration_ms?: number;
   gate_wait_ms?: number;
 }
@@ -1107,10 +1105,6 @@ export async function visionEmbed(
 ): Promise<VisionEmbedResponse> {
   const form = new FormData();
   for (const f of files) form.append('images', f);
-  if (params.max_num_patches != null)
-    form.append('max_num_patches', String(params.max_num_patches));
-  if (params.pooling) form.append('pooling', params.pooling);
-  if (params.return_last_hidden) form.append('return_last_hidden', 'true');
   if (params.save_sample) form.append('save_sample', 'true');
   const response = await authedFetch('/api/v1/vision/embed', {
     method: 'POST',
@@ -1121,14 +1115,15 @@ export async function visionEmbed(
 
 export interface VisionClassifyParams {
   prompts: string[];
-  max_num_patches?: number;
-  return_logits?: boolean;
   save_sample?: boolean;
 }
 
+/** `scores[image][prompt]` is cosine similarity: compare scores to each other, never read one as
+ *  a probability. Differences between labels are typically a few hundredths. */
 export interface VisionClassifyResponse {
   scores: number[][];
   logits?: number[][];
+  model?: string;
   duration_ms?: number;
   gate_wait_ms?: number;
 }
@@ -1140,9 +1135,6 @@ export async function visionClassify(
   const form = new FormData();
   for (const f of files) form.append('images', f);
   for (const p of params.prompts) form.append('prompts', p);
-  if (params.max_num_patches != null)
-    form.append('max_num_patches', String(params.max_num_patches));
-  if (params.return_logits) form.append('return_logits', 'true');
   if (params.save_sample) form.append('save_sample', 'true');
   const response = await authedFetch('/api/v1/vision/classify', {
     method: 'POST',
@@ -1153,17 +1145,32 @@ export async function visionClassify(
 
 export interface VisionTextEmbedResponse {
   embeddings: number[][];
+  model?: string;
   duration_ms?: number;
   gate_wait_ms?: number;
 }
 
-/** Encode text prompts into the SigLIP shared embedding space. Useful for
- * probing cached image embeddings against new prompts without re-running vision. */
-export async function visionTextEmbed(prompts: string[]): Promise<VisionTextEmbedResponse> {
+/** EmbeddingGemma-2 task prefixes koblem applies. `raw` embeds the text as typed. */
+export type EmbedTask =
+  | 'raw'
+  | 'query'
+  | 'document'
+  | 'question_answering'
+  | 'fact_checking'
+  | 'classification'
+  | 'clustering'
+  | 'similarity'
+  | 'code_retrieval';
+
+/** Embed text on the always-on text instance (no GPU gate). Same space as the image vectors. */
+export async function visionTextEmbed(
+  prompts: string[],
+  task: EmbedTask = 'raw'
+): Promise<VisionTextEmbedResponse> {
   const response = await authedFetch('/api/v1/vision/text-embed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompts })
+    body: JSON.stringify({ prompts, task })
   });
   return response.json();
 }
@@ -1171,12 +1178,10 @@ export async function visionTextEmbed(prompts: string[]): Promise<VisionTextEmbe
 export interface VisionClassifyFromEmbeddingsParams {
   image_embeddings: number[][];
   prompts: string[];
-  return_logits?: boolean;
 }
 
-/** Classify pre-computed image embeddings (e.g. cached from a prior
- * /vision/embed call) against text prompts. No image upload, no image
- * encoder pass — just the text tower + the final similarity. */
+/** Score pre-computed image embeddings (e.g. from a prior /vision/embed call) against text
+ * prompts. No image upload and no GPU: cosine against cached prompt vectors. */
 export async function visionClassifyFromEmbeddings(
   params: VisionClassifyFromEmbeddingsParams
 ): Promise<VisionClassifyResponse> {

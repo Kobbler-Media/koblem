@@ -17,12 +17,14 @@ pub struct Config {
     /// is not deployed here and the routes answer 501. See `beefy.rs`.
     pub beefy_llm_url: Option<String>,
     /// Gate kinds Beefy still admits beside the 27B, from `BEEFY_ALLOW`
-    /// (comma-separated wire names, e.g. `stt,vision,tts`). Empty → the whole-box
-    /// lock, which is what an unset variable gives you.
+    /// (comma-separated wire names, e.g. `stt,vision,tts,text_embed`). Unset →
+    /// `text_embed` alone; set empty → the whole-box lock.
     pub beefy_allow: Vec<ServiceKind>,
     /// The 27B's measured footprint per card UUID, from `BEEFY_RESERVE_MB`
     /// (`<uuid>=<MiB>,<uuid>=<MiB>`). 🔴 A card left out is reserved WHOLE, so a
-    /// typo'd UUID locks that card rather than opening it.
+    /// typo'd UUID locks that card rather than opening it. Give the text embedder's
+    /// card an entry (measured: ~15,250 on a 16 GiB 5060 Ti after a cold 195k-token
+    /// request, leaving room for its 600 MiB line), or Beefy unloads it on entry.
     pub beefy_reserve_mb: HashMap<String, u32>,
     /// Softmax temperature over the label logprobs of `/api/v1/beefy/systemone`'s
     /// emulation, from `SYSTEMONE_TEMPERATURE`. Must match the engine's native
@@ -42,8 +44,15 @@ pub struct Config {
     pub api_key: Option<String>,
     /// NATS server URL for async review job consumption (optional).
     pub nats_url: Option<String>,
-    /// SigLIP2 vision service base URL. DB settings override this.
+    /// `embed-vision`: the GPU EmbeddingGemma-2 llama-server (images, and text
+    /// when `embed-text` is down). DB settings override this.
     pub vision_url: Option<String>,
+    /// `embed-text`: the always-on EmbeddingGemma-2 text instance. DB settings
+    /// override this.
+    pub text_embed_url: Option<String>,
+    /// `embed-text`'s `-ub`, from `TEXT_EMBED_MAX_TOKENS`: the longest input
+    /// (prefix included) `/v1/text_embeddings` accepts unchunked.
+    pub text_embed_max_tokens: usize,
     /// `tts-breeze` service base URL — the only TTS engine. DB settings
     /// override this.
     pub tts_breeze_url: Option<String>,
@@ -259,6 +268,17 @@ const DEFAULT_PIXAL3D_SERVICE_URL: &str = "http://longcat-rig:8102";
 /// string koblem sends, verbatim.
 const DEFAULT_PIXAL3D_STAGING_DIR: &str = "/var/lib/koblem/pixal3d-staging";
 
+const DEFAULT_VISION_SERVICE_URL: &str = "http://embed-vision:8080";
+const DEFAULT_TEXT_EMBED_SERVICE_URL: &str = "http://embed-text:8080";
+/// `embed-text`'s `-ub` beside Beefy on the 5060 Ti: 2048 OOMs on its first full
+/// request there, so 1024 is the largest that fits. The count includes the
+/// BOS/EOS `/tokenize` reports with `add_special`.
+const DEFAULT_TEXT_EMBED_MAX_TOKENS: usize = 1024;
+
+/// The always-on text embedder rides out Beefy unless the operator says
+/// otherwise: every local service's search depends on it.
+const DEFAULT_BEEFY_ALLOW: &str = "text_embed";
+
 /// `BEEFY_ALLOW`. An unknown name is dropped with a warning — the fail-safe
 /// direction, since a kind off the list is simply refused during Beefy.
 fn parse_beefy_allow(raw: &str) -> Vec<ServiceKind> {
@@ -308,7 +328,9 @@ impl Config {
             beefy_llm_url: std::env::var("BEEFY_LLM_SERVICE_URL")
                 .ok()
                 .filter(|s| !s.trim().is_empty()),
-            beefy_allow: parse_beefy_allow(&std::env::var("BEEFY_ALLOW").unwrap_or_default()),
+            beefy_allow: parse_beefy_allow(
+                &std::env::var("BEEFY_ALLOW").unwrap_or_else(|_| DEFAULT_BEEFY_ALLOW.to_string()),
+            ),
             beefy_reserve_mb: parse_beefy_reserve(
                 &std::env::var("BEEFY_RESERVE_MB").unwrap_or_default(),
             ),
@@ -337,9 +359,21 @@ impl Config {
             ),
             api_key: secret_env_value(std::env::var("KOBLEM_API_KEY").ok(), "KOBLEM_API_KEY"),
             nats_url: std::env::var("NATS_URL").ok(),
-            vision_url: std::env::var("VISION_SERVICE_URL")
+            vision_url: Some(
+                std::env::var("VISION_SERVICE_URL")
+                    .unwrap_or_else(|_| DEFAULT_VISION_SERVICE_URL.to_string()),
+            )
+            .filter(|s| !s.trim().is_empty()),
+            text_embed_url: Some(
+                std::env::var("TEXT_EMBED_SERVICE_URL")
+                    .unwrap_or_else(|_| DEFAULT_TEXT_EMBED_SERVICE_URL.to_string()),
+            )
+            .filter(|s| !s.trim().is_empty()),
+            text_embed_max_tokens: std::env::var("TEXT_EMBED_MAX_TOKENS")
                 .ok()
-                .filter(|s| !s.is_empty()),
+                .and_then(|v| v.trim().parse::<usize>().ok())
+                .filter(|n| *n > 0)
+                .unwrap_or(DEFAULT_TEXT_EMBED_MAX_TOKENS),
             tts_breeze_url: std::env::var("TTS_BREEZE_SERVICE_URL")
                 .ok()
                 .filter(|s| !s.is_empty()),

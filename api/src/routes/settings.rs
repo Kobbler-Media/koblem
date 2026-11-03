@@ -144,7 +144,10 @@ async fn update_settings(
                 let secs = value.as_u64().unwrap_or(30);
                 state.gpu.set_tts_hold_seconds(secs);
             }
-            "vision_service_url" | "tts_breeze_service_url" | "stt_service_url" => {
+            "vision_service_url"
+            | "text_embed_service_url"
+            | "tts_breeze_service_url"
+            | "stt_service_url" => {
                 gpu_urls_changed = true;
             }
             // Music + Avatar URLs: propagate to the running clients so a
@@ -317,6 +320,7 @@ async fn update_settings(
         let stt = resolve_service_url(&state, "stt_service_url").await;
         let tts_breeze = resolve_service_url(&state, "tts_breeze_service_url").await;
         let vision = resolve_service_url(&state, "vision_service_url").await;
+        let text_embed = resolve_service_url(&state, "text_embed_service_url").await;
         // STT + Vision via the legacy single-URL setter; TTS via the engine
         // registry so the gate can unload its worker on eviction.
         state
@@ -325,11 +329,13 @@ async fn update_settings(
         state
             .gpu
             .set_tts_services(crate::build_tts_services(&tts_breeze));
+        state.gpu.set_text_embed_url(text_embed.clone());
         // Also propagate into the live HTTP clients; otherwise they'd keep
         // the base_url they captured at startup and return NotConfigured.
         state.stt.set_base_url(stt);
         state.tts.set_base_url(tts_breeze);
         state.vision.set_base_url(vision);
+        state.vision.set_text_url(text_embed);
     }
 
     StatusCode::NO_CONTENT.into_response()
@@ -350,6 +356,7 @@ async fn resolve_service_url(state: &AppState, key: &str) -> Option<String> {
         "stt_service_url" => state.config.stt_url.clone(),
         "tts_breeze_service_url" => state.config.tts_breeze_url.clone(),
         "vision_service_url" => state.config.vision_url.clone(),
+        "text_embed_service_url" => state.config.text_embed_url.clone(),
         "ace_server_url" => state.config.ace_server_url.clone(),
         "avatar_server_url" => state.config.avatar_server_url.clone(),
         "songgen_server_url" => state.config.songgen_server_url.clone(),
@@ -420,7 +427,7 @@ async fn test_library_provider(
 
 #[derive(Deserialize)]
 struct TestGpuServiceRequest {
-    /// "llm" | "vision" | "tts" | "stt" | "music" | "sa3"
+    /// "llm" | "vision" | "text_embed" | "tts" | "stt" | "music" | "sa3"
     /// | "music3" | "upscale" | "songgen" | "avatar" | "flux2" | "krea2" | "ltx"
     /// | "ltx_2b" | "wan_vace" | "minimax_h3" | "matting" | "spar3d" | "depth"
     ///
@@ -454,6 +461,7 @@ async fn test_gpu_service(
 
     let setting_key = match req.service.as_str() {
         "vision" => "vision_service_url",
+        "text_embed" => "text_embed_service_url",
         "tts" => "tts_breeze_service_url",
         "stt" => "stt_service_url",
         "music" => "ace_server_url",
@@ -479,7 +487,7 @@ async fn test_gpu_service(
             return Json(TestGpuServiceResponse {
                 success: false,
                 message:
-                    "unknown service (expected llm/vision/tts/stt/music/sa3/music3/upscale/songgen/avatar/flux2/krea2/ltx/ltx_2b/minimax_h3/wan_vace/matting/spar3d/pixal3d/depth)"
+                    "unknown service (expected llm/vision/text_embed/tts/stt/music/sa3/music3/upscale/songgen/avatar/flux2/krea2/ltx/ltx_2b/minimax_h3/wan_vace/matting/spar3d/pixal3d/depth)"
                         .to_string(),
                 model: None,
             })

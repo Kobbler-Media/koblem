@@ -211,9 +211,12 @@ pub async fn load_into_gate(pool: &PgPool, gpu: &kob_gpu_gate::GpuLock) -> Resul
             gpu.set_engine_config(kind, desc);
         }
     }
-    // The LLM is always-resident: seed a standing placement so its peak counts
-    // against its home card's budget (else a spilling heavy would admit on top of
-    // it and OOM). Relocatable services that aren't actually up don't need this.
-    gpu.seed_resident(ServiceKind::Llm);
+    // The LLM and the text embedder are always-resident: seed a standing placement
+    // so each peak counts against its home card's budget (else a spilling heavy
+    // would admit on top of it and OOM). Relocatable services that aren't actually
+    // up don't need this.
+    for kind in ServiceKind::ALL.into_iter().filter(|k| k.is_standing()) {
+        gpu.seed_resident(kind);
+    }
     Ok(())
 }

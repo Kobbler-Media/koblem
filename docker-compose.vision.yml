@@ -3,7 +3,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.vision.yml up -d
 #
 # koblem does NOT run these engines — it calls them. They are separate GPU
-# services (SigLIP2 for classification, a vision-server binary for matting and
+# services (EmbeddingGemma-2 embeddings, a vision-server binary for matting and
 # depth) that run outside this repository.
 # This overlay only wires the URLs; point them wherever your engines actually
 # run. If they are in another compose project you will also need koblem on that
@@ -17,10 +17,13 @@
 services:
   koblem-api:
     environment:
-      # Zero-shot image scoring. Named `siglip2` in kobbler's compose and
-      # publishes no `vision` alias. No default here on purpose — see the
-      # file header: the hostname only resolves on a shared docker network.
-      VISION_SERVICE_URL: ${VISION_SERVICE_URL:-}
+      # EmbeddingGemma-2 llama-servers: `embed-vision` (images, GPU-gated) and
+      # `embed-text` (always-on text). Unset here = koblem's defaults
+      # (http://embed-vision:8080, http://embed-text:8080), which only resolve
+      # on a shared docker network — see the file header.
+      VISION_SERVICE_URL: ${VISION_SERVICE_URL:-http://embed-vision:8080}
+      TEXT_EMBED_SERVICE_URL: ${TEXT_EMBED_SERVICE_URL:-http://embed-text:8080}
+      TEXT_EMBED_MAX_TOKENS: ${TEXT_EMBED_MAX_TOKENS:-1024}
       # Background removal. UNGATED — no GpuLock entry; the model is tiny and
       # idle-unloads itself.
       MATTING_SERVICE_URL: ${MATTING_SERVICE_URL:-}

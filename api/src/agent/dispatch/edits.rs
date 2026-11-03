@@ -387,8 +387,8 @@ fn transform_outcome(
 
 // ── zero-shot classification ─────────────────────────────────────────────────
 
-/// SigLIP-2 scores every label against the image in one pass, so the cap is
-/// about the observation staying small, not about cost.
+/// The label vectors are cached text embeddings and the image is one pass, so
+/// the cap is about the observation staying small, not about cost.
 const MAX_LABELS: usize = 20;
 
 pub(super) async fn describe_image(ctx: &Ctx, args: &Value) -> ToolOutcome {
@@ -423,15 +423,19 @@ pub(super) async fn describe_image(ctx: &Ctx, args: &Value) -> ToolOutcome {
     if ranked.is_empty() {
         return ToolOutcome::failed("the classifier returned no scores");
     }
-    let detail = format!("{} ({:.0}%)", ranked[0].0, ranked[0].1 * 100.0);
+    // Cosine similarity, not a probability: labels typically sit within a few
+    // hundredths of each other, so a percentage would read as near-certainty or
+    // near-zero for what is only an ordering.
+    let detail = format!("{} (cosine {:.3})", ranked[0].0, ranked[0].1);
     ToolOutcome {
         ok: true,
         // The ranking IS the result; there is no media to hand back.
         observation: json!({
             "ok": true,
+            "scoring": "cosine similarity; only the order and the gaps between labels mean anything",
             "ranked": ranked
                 .iter()
-                .map(|(label, score)| json!({"label": label, "score": (score * 1000.0).round() / 1000.0}))
+                .map(|(label, score)| json!({"label": label, "score": (score * 10000.0).round() / 10000.0}))
                 .collect::<Vec<_>>(),
         }),
         detail,

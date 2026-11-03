@@ -8,26 +8,34 @@
     getSettings
   } from '#lib/api/client.ts';
   import type {
+    EmbedTask,
     VisionEmbedResponse,
     VisionClassifyResponse,
     VisionTextEmbedResponse
   } from '#lib/api/client.ts';
   import FileDropzone from '#lib/components/FileDropzone.svelte';
-  import JsonBlock from '#lib/components/JsonBlock.svelte';
   import { onMount } from 'svelte';
 
   /// 'embed' / 'classify' take image uploads; 'text-embed' takes prompts;
   /// 'classify-from-embeddings' takes pasted embedding JSON + prompts — useful
-  /// for probing the SigLIP cache without re-running the image encoder.
+  /// for probing stored image vectors without re-running the image encoder.
   type Mode = 'embed' | 'classify' | 'text-embed' | 'classify-from-embeddings';
   let mode = $state<Mode>('embed');
   let files = $state<FileList | null>(null);
 
   // Knobs
-  let maxNumPatches = $state(729);
-  let pooling = $state<'pooler' | 'cls' | 'mean'>('pooler');
-  let returnLastHidden = $state(false);
-  let returnLogits = $state(false);
+  let task = $state<EmbedTask>('raw');
+  const tasks: EmbedTask[] = [
+    'raw',
+    'query',
+    'document',
+    'question_answering',
+    'fact_checking',
+    'classification',
+    'clustering',
+    'similarity',
+    'code_retrieval'
+  ];
   let promptsText = $state('credits\ntitle card\ndialogue scene');
   let saveSample = $state(true);
   /// Pasted JSON — either a full embed response `{embeddings: [...]}` or a
@@ -94,35 +102,21 @@
         }
         const fileArr = Array.from(files);
         if (mode === 'embed') {
-          embedResult = await visionEmbed(fileArr, {
-            max_num_patches: maxNumPatches,
-            pooling,
-            return_last_hidden: returnLastHidden,
-            save_sample: saveSample
-          });
+          embedResult = await visionEmbed(fileArr, { save_sample: saveSample });
         } else {
           const prompts = parsePrompts();
           if (!prompts.length) throw new Error('need at least one prompt');
-          classifyResult = await visionClassify(fileArr, {
-            prompts,
-            max_num_patches: maxNumPatches,
-            return_logits: returnLogits,
-            save_sample: saveSample
-          });
+          classifyResult = await visionClassify(fileArr, { prompts, save_sample: saveSample });
         }
       } else if (mode === 'text-embed') {
         const prompts = parsePrompts();
         if (!prompts.length) throw new Error('need at least one prompt');
-        textEmbedResult = await visionTextEmbed(prompts);
+        textEmbedResult = await visionTextEmbed(prompts, task);
       } else {
         const prompts = parsePrompts();
         if (!prompts.length) throw new Error('need at least one prompt');
         const image_embeddings = parseEmbeddingsJson();
-        classifyResult = await visionClassifyFromEmbeddings({
-          image_embeddings,
-          prompts,
-          return_logits: returnLogits
-        });
+        classifyResult = await visionClassifyFromEmbeddings({ image_embeddings, prompts });
       }
     } catch (e) {
       error = e instanceof Error ? e.message : 'Run failed';
@@ -152,7 +146,7 @@
 
 <div class="page-container">
   <div class="section-header">
-    <h2>Vision Playground</h2>
+    <h2>Embeddings Playground (EmbeddingGemma-2)</h2>
     {#if model}
       <p class="muted">Model: <code>{model}</code></p>
     {/if}
@@ -211,40 +205,23 @@
     <h3>Knobs</h3>
     <div class="knobs">
       {#if mode === 'embed' || mode === 'classify'}
-        <label>
-          max_num_patches
-          <input type="range" min="64" max="2048" step="32" bind:value={maxNumPatches} />
-          <span class="muted">{maxNumPatches} patches</span>
-        </label>
-      {/if}
-      {#if mode === 'embed'}
-        <label>
-          pooling
-          <select bind:value={pooling}>
-            <option value="pooler">pooler (default)</option>
-            <option value="cls">cls token</option>
-            <option value="mean">mean (attention-weighted)</option>
-          </select>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" bind:checked={returnLastHidden} />
-          return last_hidden_state (large)
-        </label>
-      {/if}
-      {#if mode === 'classify' || mode === 'classify-from-embeddings'}
-        <label class="toggle">
-          <input type="checkbox" bind:checked={returnLogits} />
-          return raw logits
-        </label>
-      {/if}
-      {#if mode === 'embed' || mode === 'classify'}
         <label class="toggle">
           <input type="checkbox" bind:checked={saveSample} />
           save sample for replay
         </label>
       {/if}
       {#if mode === 'text-embed'}
-        <span class="muted small">No knobs — text encoder has no patch/pooling config.</span>
+        <label>
+          task prefix
+          <select bind:value={task}>
+            {#each tasks as t (t)}
+              <option value={t}>{t}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+      {#if mode === 'classify-from-embeddings'}
+        <span class="muted small">No knobs — prompts are embedded as typed.</span>
       {/if}
     </div>
   </div>
@@ -327,7 +304,11 @@
 
   {#if classifyResult}
     <div class="card">
-      <h3>Classification scores</h3>
+      <h3>Cosine similarity</h3>
+      <p class="muted small">
+        Compare scores across prompts; the gaps are typically a few hundredths and none is a
+        probability.
+      </p>
       <div class="meta">
         {#if classifyResult.duration_ms != null}<span>{classifyResult.duration_ms} ms</span>{/if}
         {#if classifyResult.gate_wait_ms != null}<span
@@ -354,12 +335,6 @@
           {/each}
         </tbody>
       </table>
-      {#if classifyResult.logits}
-        <details>
-          <summary>Raw logits</summary>
-          <JsonBlock content={classifyResult.logits} label="Logits" />
-        </details>
-      {/if}
       <button class="btn-sec" onclick={() => downloadJson(classifyResult, 'classify.json')}>
         Download JSON
       </button>

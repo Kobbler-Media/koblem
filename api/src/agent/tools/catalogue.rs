@@ -334,7 +334,7 @@ pub fn catalogue() -> &'static [ToolDef] {
                           see images yourself, so use this only when the user wants each candidate \
                           scored — never to find out what an image shows.",
             engines: &[EngineOption {
-                id: "siglip2",
+                id: "embeddinggemma-2",
                 service: Some(ServiceKind::Vision),
                 blurb: "",
             }],

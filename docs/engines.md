@@ -15,17 +15,23 @@ in `docker-compose.gpu.yml`, pinned to the commits below:
 
 ```sh
 cd ../kobbler
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d siglip2 stt-parakeet-cpp tts-breeze
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d embed-vision embed-text stt-parakeet-cpp tts-breeze
 ```
 
 | koblem URL | Engine | Source | Weights |
 |---|---|---|---|
-| `VISION_SERVICE_URL=http://siglip2:8890` | SigLIP 2 zero-shot scoring | [hbd-siglip2.cpp](https://github.com/dbrain/hbd-siglip2.cpp) @ `6bd2ceb` | fetched on first start from [dbrains/SigLIP2-So400m-Patch16-NaFlex-GGUF](https://huggingface.co/dbrains/SigLIP2-So400m-Patch16-NaFlex-GGUF) |
+| `VISION_SERVICE_URL=http://embed-vision:8080` | EmbeddingGemma-2 image (and fallback text) embeddings, GPU-gated as `vision` | llama-server, stock `ghcr.io/ggml-org/llama.cpp:server-cuda`, or koblem's `koblem-llama-tip` (`make docker-push-llama-tip`: upstream `8fc0376` + `docker/llama-server/patches-tip/`, which adds worker isolation: `X-Worker-Gpu`, `POST /unload`, `/v1/gpu/status`, idle unload) | `google/embeddinggemma-2` Q8_0 GGUF + mmproj Q8_0. Run with `--embeddings --mmproj … --image-max-tokens 70 -b 1024 -ub 1024 -c 8192 --parallel 4` |
+| `TEXT_EMBED_SERVICE_URL=http://embed-text:8080` | EmbeddingGemma-2 text embeddings, always on (gate line `text_embed`, a standing reservation; requests never wait on the gate) | same image, no mmproj; `WORKER_LOAD_ON_START=1` so it loads at boot | the same Q8_0 GGUF. `--embeddings --parallel 1 -c 1024 -b 1024 -ub 1024`; set `TEXT_EMBED_MAX_TOKENS` to the `-ub`. Measured 411 MiB loaded / 513 MiB peak on a 5060 Ti (gate row 600); runs on CPU too (`--device none`, ~20 ms a query) |
 | `STT_SERVICE_URL=http://stt-parakeet-cpp:8023` | Parakeet-TDT speech-to-text | [hbd-CrispASR](https://github.com/dbrain/hbd-CrispASR) @ `457252dd` (fork of [CrispASR](https://github.com/CrispStrobe/CrispASR)) | fetched on first request from [cstr/parakeet-tdt-0.6b-v3-GGUF](https://huggingface.co/cstr/parakeet-tdt-0.6b-v3-GGUF) |
 | `TTS_BREEZE_SERVICE_URL=http://tts-breeze:8203` | BreezeTTS 2 | [hbd-qwen3-tts.cpp](https://github.com/dbrain/hbd-qwen3-tts.cpp) @ `d022511` | convert [BreezeBlue/Breeze-TTS-2](https://huggingface.co/BreezeBlue/Breeze-TTS-2) yourself, see kobbler's `docker/tts-breeze/README.md`. Non-commercial licence. |
 
+Both embedding servers share one vector space (768-d, L2-normalised); scores koblem returns are
+cosine similarity. koblem applies EmbeddingGemma-2's task prefixes itself
+(`/v1/text_embeddings` `task`), so callers send plain text. Text over `TEXT_EMBED_MAX_TOKENS` is a
+413 unless the request sets `chunk`.
+
 Those hostnames only resolve if koblem-api shares a docker network with kobbler's stack.
-Otherwise use the published host ports (`18890`, `8023`, `8803`).
+Otherwise use the published host ports.
 
 ## Public source and weights, no Dockerfile here
 

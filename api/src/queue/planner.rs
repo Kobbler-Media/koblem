@@ -63,10 +63,11 @@ impl Planner {
         let mut out = Vec::new();
         for card in self.gate.occupancy() {
             for (kind, _peak) in card.residents {
-                // 🔴 Never the LLM. It is the always-resident service; unloading it
-                // here would fight `rehome_standing` every tick, and the queue's
-                // lever on it is `set_pending_demand`, not an unload.
-                if matches!(kind, ServiceKind::Llm) {
+                // 🔴 Never a standing service (the LLM, the text embedder). They are
+                // always-resident; unloading one here would fight `rehome_standing`
+                // every tick, and the queue's lever on them is `set_pending_demand`
+                // (or a heavy job's eviction), not an unload.
+                if kind.is_standing() {
                     continue;
                 }
                 // 🔴 Never pixal3d. The gate deliberately excludes it from unloads:
@@ -188,12 +189,16 @@ mod tests {
         assert!(p.reclaimable(&[], &live).is_empty());
     }
 
-    /// 🔴 Never the LLM and never pixal3d. The LLM's lever is `set_pending_demand`,
+    /// 🔴 Never a standing service and never pixal3d. The LLM's lever is `set_pending_demand`,
     /// and pixal3d admits work koblem cannot see — an unload racing a job it has
     /// already accepted kills that render.
     #[test]
     fn the_llm_and_the_rig_are_never_reclaimed() {
-        let g = gate_with(&[(ServiceKind::Llm, 10000), (ServiceKind::Pixal3d, 11000)]);
+        let g = gate_with(&[
+            (ServiceKind::Llm, 10000),
+            (ServiceKind::Pixal3d, 11000),
+            (ServiceKind::TextEmbed, 1600),
+        ]);
         let p = Planner::new(g);
         assert!(p.reclaimable(&[], &[]).is_empty());
     }

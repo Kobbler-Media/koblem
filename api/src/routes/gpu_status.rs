@@ -269,10 +269,11 @@ async fn upsert_engine(
     // edit takes effect immediately.
     if let Some((gk, desc)) = gpu_scheduler::engine_to_gate(&row) {
         state.gpu.set_engine_config(gk, desc);
-        // The LLM is always-resident: reseed so a home/candidate change re-homes
-        // its standing reservation instead of stranding it on the old card.
-        if matches!(gk, ServiceKind::Llm) {
-            state.gpu.seed_resident(ServiceKind::Llm);
+        // Always-resident (the LLM, the text embedder): reseed so a home/candidate
+        // change re-homes its standing reservation instead of stranding it on the
+        // old card.
+        if gk.is_standing() {
+            state.gpu.seed_resident(gk);
         }
     }
     Json(json!({ "engine": row })).into_response()

@@ -1,9 +1,8 @@
-//! Tier-1 OpenAI-compatible GPU endpoints (mirrors of the Python services).
+//! Tier-1 OpenAI-compatible GPU endpoints.
 //!
-//! Drop-in replacements for callers that today point at kokoro / openai-tts /
-//! whisper / siglip — request/response shapes match the Python services
-//! byte-for-byte, with the GPU gate applied so multiple clients can share one
-//! GPU safely.
+//! Drop-in replacements for callers that point at OpenAI-style TTS / STT /
+//! embedding servers, with the GPU gate applied so multiple clients can share
+//! the cards safely.
 //!
 //! There is exactly one TTS engine (`tts-breeze`), so the historical
 //! `x-koblem-tts-engine` header is ignored rather than validated — an older
@@ -15,20 +14,25 @@
 //! matching the chat-completions pattern):
 //!   POST /v1/audio/speech          (TTS)
 //!   POST /v1/audio/transcriptions  (STT)
-//!   POST /v1/embeddings            (Vision)
-//!   POST /v1/classify              (Vision)
+//!   POST /v1/embeddings            (EmbeddingGemma-2: images gated, text not)
+//!   POST /v1/classify              (images vs prompts, cosine)
+//!   POST /v1/text_embeddings       (task-prefixed text, chunking)
+//!   POST /v1/classify_from_embeddings (stored image vectors vs prompts, no GPU)
+
+use std::time::Instant;
 
 use axum::{
     Router,
-    extract::{DefaultBodyLimit, Json, Multipart, State},
-    http::{HeaderMap, StatusCode},
+    extract::{DefaultBodyLimit, FromRequest, Json, Multipart, Request, State},
+    http::{HeaderMap, StatusCode, header::CONTENT_TYPE},
     response::{IntoResponse, Response},
     routing::post,
 };
 use bytes::Bytes;
+use koblem_client::embed::{EG2_MODEL, EmbedTask, EmbeddingsRequest};
 use koblem_client::types::{
-    VisionClassifyFromEmbedRequest, VisionClassifyFromEmbedResponse, VisionTextEmbedRequest,
-    VisionTextEmbedResponse,
+    TextEmbeddingsRequest, TextEmbeddingsResponse, TextTooLongError,
+    VisionClassifyFromEmbedRequest, VisionClassifyFromEmbedResponse, VisionClassifyResponse,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -38,6 +42,7 @@ use crate::AppState;
 use crate::auth::require_auth;
 use crate::stt::SttParams;
 use crate::tts_breeze::SpeechRequest;
+use crate::vision::{ImagePart, cosine_matrix};
 
 // There is one TTS engine. The historical `x-koblem-tts-engine` header is
 // therefore vestigial and deliberately NOT read: an older caller still sending
@@ -418,97 +423,93 @@ fn bad_req<E: std::fmt::Display>(e: E) -> Response {
         .into_response()
 }
 
-// ── Vision embeddings: POST /v1/embeddings ────────────────────────────
+// ── Embeddings: POST /v1/embeddings ───────────────────────────────────
 
-async fn tier1_embed(State(state): State<AppState>, multipart: Multipart) -> Response {
-    match do_embed(state, multipart).await {
-        Ok(resp) => resp,
-        Err(e) => e,
-    }
+/// OpenAI JSON (`koblem_client::embed::EmbeddingsRequest`), or the legacy
+/// multipart `images` upload, which becomes data-URL image inputs. The two
+/// shapes are told apart by `Content-Type`, so callers can move to JSON on their
+/// own schedule.
+async fn tier1_embed(State(state): State<AppState>, req: Request) -> Response {
+    do_embed(state, req).await
 }
 
 async fn tier1_embed_authed(
     State(state): State<AppState>,
     headers: HeaderMap,
-    multipart: Multipart,
+    req: Request,
 ) -> Response {
     if let Err(code) = require_auth(&state.db, state.api_key.as_deref(), &headers).await {
         return code.into_response();
     }
-    tier1_embed(State(state), multipart).await
+    do_embed(state, req).await
 }
 
-async fn do_embed(state: AppState, mut multipart: Multipart) -> Result<Response, Response> {
-    let mut images: Vec<(String, Bytes)> = Vec::new();
-    let mut max_num_patches: Option<u32> = None;
-    let mut pooling: Option<String> = None;
-    let mut return_last_hidden = false;
+async fn do_embed(state: AppState, req: Request) -> Response {
+    let multipart = req
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|ct| ct.starts_with("multipart/"));
+    let body = if multipart {
+        let form = match Multipart::from_request(req, &state).await {
+            Ok(f) => f,
+            Err(e) => return e.into_response(),
+        };
+        let (images, _) = match read_images_and_prompts(form).await {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if images.is_empty() {
+            return bad_req("no images provided");
+        }
+        EmbeddingsRequest {
+            input: images.iter().map(ImagePart::to_input).collect(),
+            model: None,
+        }
+    } else {
+        match Json::<EmbeddingsRequest>::from_request(req, &state).await {
+            Ok(Json(b)) => b,
+            Err(e) => return e.into_response(),
+        }
+    };
 
-    while let Some(field) = multipart.next_field().await.map_err(bad_req)? {
-        let name = field.name().unwrap_or("").to_string();
-        match name.as_str() {
+    match state.vision.embeddings(&body).await {
+        Ok((resp, _served)) => axum::Json(resp).into_response(),
+        Err(e) => embed_err(e),
+    }
+}
+
+/// Every `images` part (with its declared type) and every `prompts` field.
+async fn read_images_and_prompts(
+    mut form: Multipart,
+) -> Result<(Vec<ImagePart>, Vec<String>), Response> {
+    let mut images = Vec::new();
+    let mut prompts = Vec::new();
+    while let Some(field) = form.next_field().await.map_err(bad_req)? {
+        match field.name().unwrap_or("") {
             "images" => {
                 let filename = field.file_name().unwrap_or("image.png").to_string();
+                let mime = field.content_type().map(str::to_string);
                 let bytes = field.bytes().await.map_err(bad_req)?;
-                images.push((filename, bytes));
+                images.push(ImagePart {
+                    filename,
+                    mime,
+                    bytes,
+                });
             }
-            "max_num_patches" => {
-                max_num_patches = field.text().await.map_err(bad_req)?.parse().ok();
-            }
-            "pooling" => pooling = Some(field.text().await.map_err(bad_req)?),
-            "return_last_hidden" => {
-                let v = field.text().await.map_err(bad_req)?;
-                return_last_hidden = matches!(v.as_str(), "true" | "1" | "yes");
-            }
+            "prompts" => prompts.push(field.text().await.map_err(bad_req)?),
             _ => {
                 let _ = field.text().await;
             }
         }
     }
-
-    if images.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            axum::Json(json!({"error": "no images provided"})),
-        )
-            .into_response());
-    }
-
-    match state
-        .vision
-        .embed(
-            &images,
-            max_num_patches,
-            pooling.as_deref(),
-            return_last_hidden,
-        )
-        .await
-    {
-        Ok((_permit, resp, _gate_wait)) => {
-            // OpenAI-compatible wrap: {data: [{embedding: [...]}, ...]}
-            let data: Vec<_> = resp
-                .embeddings
-                .iter()
-                .enumerate()
-                .map(|(i, emb)| json!({"object": "embedding", "embedding": emb, "index": i}))
-                .collect();
-            let mut body = json!({"object": "list", "data": data, "model": "siglip2-naflex"});
-            if let Some(lhs) = resp.last_hidden_state {
-                body["last_hidden_state"] = json!(lhs);
-            }
-            Ok(axum::Json(body).into_response())
-        }
-        Err(e) => Ok(upstream_err("vision", e.to_string())),
-    }
+    Ok((images, prompts))
 }
 
-// ── Vision classify: POST /v1/classify ────────────────────────────────
+// ── Classify: POST /v1/classify ───────────────────────────────────────
 
 async fn tier1_classify(State(state): State<AppState>, multipart: Multipart) -> Response {
-    match do_classify(state, multipart).await {
-        Ok(resp) => resp,
-        Err(e) => e,
-    }
+    do_classify(state, multipart).await
 }
 
 async fn tier1_classify_authed(
@@ -519,66 +520,52 @@ async fn tier1_classify_authed(
     if let Err(code) = require_auth(&state.db, state.api_key.as_deref(), &headers).await {
         return code.into_response();
     }
-    tier1_classify(State(state), multipart).await
+    do_classify(state, multipart).await
 }
 
-async fn do_classify(state: AppState, mut multipart: Multipart) -> Result<Response, Response> {
-    let mut images: Vec<(String, Bytes)> = Vec::new();
-    let mut prompts: Vec<String> = Vec::new();
-    let mut max_num_patches: Option<u32> = None;
-    let mut return_logits = false;
-
-    while let Some(field) = multipart.next_field().await.map_err(bad_req)? {
-        let name = field.name().unwrap_or("").to_string();
-        match name.as_str() {
-            "images" => {
-                let filename = field.file_name().unwrap_or("image.png").to_string();
-                let bytes = field.bytes().await.map_err(bad_req)?;
-                images.push((filename, bytes));
-            }
-            "prompts" => prompts.push(field.text().await.map_err(bad_req)?),
-            "max_num_patches" => {
-                max_num_patches = field.text().await.map_err(bad_req)?.parse().ok();
-            }
-            "return_logits" => {
-                let v = field.text().await.map_err(bad_req)?;
-                return_logits = matches!(v.as_str(), "true" | "1" | "yes");
-            }
-            _ => {
-                let _ = field.text().await;
-            }
-        }
-    }
-
+/// Multipart `images` + `prompts` → cosine `scores[image][prompt]`. One gated
+/// request carries every image; the prompts come from the text path's cache.
+async fn do_classify(state: AppState, form: Multipart) -> Response {
+    let start = Instant::now();
+    let (images, prompts) = match read_images_and_prompts(form).await {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
     if images.is_empty() || prompts.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            axum::Json(json!({"error": "need images and prompts"})),
-        )
-            .into_response());
+        return bad_req("need images and prompts");
     }
-
-    match state
-        .vision
-        .classify(&images, &prompts, max_num_patches, return_logits)
-        .await
-    {
-        Ok((_permit, resp, _gate_wait)) => {
-            let mut body = json!({"scores": resp.scores});
-            if let Some(logits) = resp.logits {
-                body["logits"] = json!(logits);
-            }
-            Ok(axum::Json(body).into_response())
-        }
-        Err(e) => Ok(upstream_err("vision", e.to_string())),
+    match classify_images(&state, &images, &prompts).await {
+        Ok((scores, gate_wait)) => axum::Json(VisionClassifyResponse {
+            scores,
+            logits: None,
+            model: Some(EG2_MODEL.to_string()),
+            duration_ms: Some(start.elapsed().as_millis() as u64),
+            gate_wait_ms: Some(gate_wait.as_millis() as u64),
+            gpu_log_id: None,
+        })
+        .into_response(),
+        Err(e) => embed_err(e),
     }
 }
 
-// ── Vision text embeddings: POST /v1/text_embeddings ───────────────────
+/// Shared by `/v1/classify` and the playground: prompt vectors first (CPU, no
+/// gate), then the images under the vision guard, then cosine.
+pub(crate) async fn classify_images(
+    state: &AppState,
+    images: &[ImagePart],
+    prompts: &[String],
+) -> Result<(Vec<Vec<f32>>, std::time::Duration), crate::vision::Error> {
+    let prompt_vecs = state.vision.prompt_vectors(prompts).await?;
+    let (guard, image_vecs, gate_wait) = state.vision.embed_images(images).await?;
+    drop(guard);
+    Ok((cosine_matrix(&image_vecs, &prompt_vecs)?, gate_wait))
+}
+
+// ── Text embeddings: POST /v1/text_embeddings ─────────────────────────
 
 async fn tier1_text_embeddings(
     State(state): State<AppState>,
-    Json(req): Json<VisionTextEmbedRequest>,
+    Json(req): Json<TextEmbeddingsRequest>,
 ) -> Response {
     do_text_embeddings(state, req).await
 }
@@ -586,7 +573,7 @@ async fn tier1_text_embeddings(
 async fn tier1_text_embeddings_authed(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(req): Json<VisionTextEmbedRequest>,
+    Json(req): Json<TextEmbeddingsRequest>,
 ) -> Response {
     if let Err(code) = require_auth(&state.db, state.api_key.as_deref(), &headers).await {
         return code.into_response();
@@ -594,29 +581,33 @@ async fn tier1_text_embeddings_authed(
     do_text_embeddings(state, req).await
 }
 
-async fn do_text_embeddings(state: AppState, req: VisionTextEmbedRequest) -> Response {
-    if req.prompts.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            axum::Json(json!({"error": "prompts must be non-empty"})),
-        )
-            .into_response();
+async fn do_text_embeddings(state: AppState, req: TextEmbeddingsRequest) -> Response {
+    let start = Instant::now();
+    let texts: Vec<String> = req.input.into_iter().chain(req.prompts).collect();
+    if texts.is_empty() {
+        return bad_req("input must be non-empty");
     }
-    match state.vision.text_embeddings(&req.prompts).await {
-        Ok((_permit, resp, gate_wait)) => {
-            let body = VisionTextEmbedResponse {
-                embeddings: resp.embeddings,
-                duration_ms: None,
-                gate_wait_ms: Some(gate_wait.as_millis() as u64),
-                gpu_log_id: None,
-            };
-            axum::Json(body).into_response()
-        }
-        Err(e) => upstream_err("vision", e.to_string()),
+    let task = req.task.unwrap_or(EmbedTask::Raw);
+    match state
+        .vision
+        .embed_text_inputs(&texts, task, &req.titles, req.chunk.as_ref())
+        .await
+    {
+        Ok(out) => axum::Json(TextEmbeddingsResponse {
+            dim: out.embeddings.first().map(Vec::len).unwrap_or(0),
+            embeddings: out.embeddings,
+            model: EG2_MODEL.to_string(),
+            chunks: out.chunks,
+            duration_ms: Some(start.elapsed().as_millis() as u64),
+            gate_wait_ms: out.served.gate_wait_ms(),
+            gpu_log_id: None,
+        })
+        .into_response(),
+        Err(e) => embed_err(e),
     }
 }
 
-// ── Vision classify-from-embeddings: POST /v1/classify_from_embeddings ──
+// ── Classify-from-embeddings: POST /v1/classify_from_embeddings ───────
 
 async fn tier1_classify_from_embeddings(
     State(state): State<AppState>,
@@ -636,34 +627,62 @@ async fn tier1_classify_from_embeddings_authed(
     do_classify_from_embeddings(state, req).await
 }
 
+/// Cosine of each stored image vector with each prompt — no GPU: the prompt
+/// vectors come from the text path's cache.
 async fn do_classify_from_embeddings(
     state: AppState,
     req: VisionClassifyFromEmbedRequest,
 ) -> Response {
+    let start = Instant::now();
     if req.image_embeddings.is_empty() || req.prompts.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            axum::Json(json!({"error": "image_embeddings and prompts must both be non-empty"})),
-        )
-            .into_response();
+        return bad_req("image_embeddings and prompts must both be non-empty");
     }
-    let return_logits = req.return_logits.unwrap_or(false);
-    match state
-        .vision
-        .classify_from_embeddings(&req.image_embeddings, &req.prompts, return_logits)
-        .await
-    {
-        Ok((_permit, resp, gate_wait)) => {
-            let body = VisionClassifyFromEmbedResponse {
-                scores: resp.scores,
-                logits: resp.logits,
-                duration_ms: None,
-                gate_wait_ms: Some(gate_wait.as_millis() as u64),
-                gpu_log_id: None,
-            };
-            axum::Json(body).into_response()
-        }
-        Err(e) => upstream_err("vision", e.to_string()),
+    let scored = match state.vision.prompt_vectors(&req.prompts).await {
+        Ok(prompt_vecs) => cosine_matrix(&req.image_embeddings, &prompt_vecs),
+        Err(e) => Err(e),
+    };
+    match scored {
+        Ok(scores) => axum::Json(VisionClassifyFromEmbedResponse {
+            logits: req.return_logits.unwrap_or(false).then(|| scores.clone()),
+            scores,
+            model: Some(EG2_MODEL.to_string()),
+            duration_ms: Some(start.elapsed().as_millis() as u64),
+            gate_wait_ms: None,
+            gpu_log_id: None,
+        })
+        .into_response(),
+        Err(e) => embed_err(e),
+    }
+}
+
+/// One mapping from the embedding client's errors to HTTP, for every route
+/// that serves embeddings.
+pub(crate) fn embed_err(e: crate::vision::Error) -> Response {
+    use crate::vision::Error as E;
+    match e {
+        E::TooLong {
+            input_index,
+            tokens,
+            max_tokens,
+        } => (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            axum::Json(TextTooLongError {
+                error: format!(
+                    "input is {tokens} tokens; the limit is {max_tokens} — shorten it or set `chunk`"
+                ),
+                tokens,
+                max_tokens,
+                input_index,
+            }),
+        )
+            .into_response(),
+        E::BadRequest(msg) => bad_req(msg),
+        e @ (E::GateRefused | E::NotConfigured) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(json!({"error": e.to_string()})),
+        )
+            .into_response(),
+        e => upstream_err("embeddings", e.to_string()),
     }
 }
 

@@ -1,5 +1,6 @@
-//! Tier-2 Vision playground — expose max_num_patches / pooling / return_logits /
-//! return_last_hidden. Auth-gated, logs to gpu_logs.
+//! Tier-2 embeddings playground (EmbeddingGemma-2). Auth-gated, logs to
+//! gpu_logs. Image work goes through the `vision` gate line; text through the
+//! always-on text instance.
 
 use std::time::Instant;
 
@@ -10,15 +11,17 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use bytes::Bytes;
+use koblem_client::embed::{EG2_MODEL, EmbedTask};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{Value, json};
 use tracing::warn;
 
 use crate::AppState;
 use crate::auth::require_auth;
 use crate::repositories::gpu_logs::CreateLog;
+use crate::routes::tier1_gpu::{classify_images, embed_err};
 use crate::routes::tier2_helpers::{extract_caller, log_async, save_sample};
+use crate::vision::{Error, ImagePart, cosine_matrix};
 
 const VISION_BODY_LIMIT: usize = 100 * 1024 * 1024;
 
@@ -34,217 +37,33 @@ pub fn routes() -> Router<AppState> {
         .layer(DefaultBodyLimit::max(VISION_BODY_LIMIT))
 }
 
-async fn embed(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    mut multipart: Multipart,
-) -> Response {
-    if require_auth(&state.db, state.api_key.as_deref(), &headers)
-        .await
-        .is_err()
-    {
-        return StatusCode::UNAUTHORIZED.into_response();
-    }
-
-    let caller = extract_caller(&headers);
-    let start = Instant::now();
-    let mut images: Vec<(String, Bytes)> = Vec::new();
-    let mut max_num_patches: Option<u32> = None;
-    let mut pooling: Option<String> = None;
-    let mut return_last_hidden = false;
-    let mut save = false;
-
-    loop {
-        let field = match multipart.next_field().await {
-            Ok(Some(f)) => f,
-            Ok(None) => break,
-            Err(e) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({"error": e.to_string()})),
-                )
-                    .into_response();
-            }
-        };
-        match field.name().unwrap_or("") {
-            "images" => {
-                let filename = field.file_name().unwrap_or("image.png").to_string();
-                let mime = field.content_type().unwrap_or("image/png").to_string();
-                let bytes = match field.bytes().await {
-                    Ok(b) => b,
-                    Err(e) => {
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            Json(json!({"error": e.to_string()})),
-                        )
-                            .into_response();
-                    }
-                };
-                // Save as-is for replay if requested (we hold the first image only — keep it simple).
-                if save && images.is_empty() {
-                    let ext = mime.split('/').nth(1).unwrap_or("png").to_string();
-                    let _ = save_sample(
-                        &state.db,
-                        &state.samples_dir,
-                        "image_in",
-                        &mime,
-                        &ext,
-                        &bytes,
-                    )
-                    .await;
-                }
-                images.push((filename, bytes));
-            }
-            "max_num_patches" => {
-                max_num_patches = field.text().await.ok().and_then(|v| v.parse().ok());
-            }
-            "pooling" => pooling = field.text().await.ok(),
-            "return_last_hidden" => {
-                return_last_hidden = matches!(
-                    field.text().await.unwrap_or_default().as_str(),
-                    "true" | "1"
-                );
-            }
-            "save_sample" => {
-                save = matches!(
-                    field.text().await.unwrap_or_default().as_str(),
-                    "true" | "1"
-                );
-            }
-            _ => {
-                let _ = field.text().await;
-            }
-        }
-    }
-
-    if images.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "need images"})),
-        )
-            .into_response();
-    }
-
-    let result = state
-        .vision
-        .embed(
-            &images,
-            max_num_patches,
-            pooling.as_deref(),
-            return_last_hidden,
-        )
-        .await;
-
-    let request_meta = json!({
-        "image_count": images.len(),
-        "max_num_patches": max_num_patches,
-        "pooling": pooling,
-        "return_last_hidden": return_last_hidden,
-    });
-
-    match result {
-        Ok((_permit, resp, gate_wait)) => {
-            let gate_wait_ms = gate_wait.as_millis() as i64;
-            let duration_ms = start.elapsed().as_millis() as i64;
-            log_async(
-                state.db.clone(),
-                CreateLog {
-                    service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/embed".to_string(),
-                    request_meta,
-                    response_meta: json!({
-                        "embeddings_shape": [resp.embeddings.len(), resp.embeddings.first().map(|e| e.len()).unwrap_or(0)],
-                    }),
-                    sample_id: None,
-                    gate_wait_ms,
-                    duration_ms,
-                    status: 200,
-                    caller,
-                },
-            );
-            let mut body = json!({
-                "embeddings": resp.embeddings,
-                "duration_ms": duration_ms,
-                "gate_wait_ms": gate_wait_ms,
-            });
-            if let Some(lhs) = resp.last_hidden_state {
-                body["last_hidden_state"] = json!(lhs);
-            }
-            Json(body).into_response()
-        }
-        Err(e) => {
-            let duration_ms = start.elapsed().as_millis() as i64;
-            log_async(
-                state.db.clone(),
-                CreateLog {
-                    service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/embed".to_string(),
-                    request_meta,
-                    response_meta: json!({"error": e.to_string()}),
-                    sample_id: None,
-                    gate_wait_ms: 0,
-                    duration_ms,
-                    status: 502,
-                    caller,
-                },
-            );
-            warn!(error = %e, "vision embed failed");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({"error": format!("vision: {e}")})),
-            )
-                .into_response()
-        }
-    }
+/// `images` parts, `prompts` fields and the `save_sample` switch. The first
+/// image is kept as a replay sample when asked.
+struct Upload {
+    images: Vec<ImagePart>,
+    prompts: Vec<String>,
 }
 
-async fn classify(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    mut multipart: Multipart,
-) -> Response {
-    if require_auth(&state.db, state.api_key.as_deref(), &headers)
-        .await
-        .is_err()
-    {
-        return StatusCode::UNAUTHORIZED.into_response();
-    }
-
-    let caller = extract_caller(&headers);
-    let start = Instant::now();
-    let mut images: Vec<(String, Bytes)> = Vec::new();
-    let mut prompts: Vec<String> = Vec::new();
-    let mut max_num_patches: Option<u32> = None;
-    let mut return_logits = false;
+async fn read_upload(state: &AppState, mut multipart: Multipart) -> Result<Upload, Response> {
+    let mut images: Vec<ImagePart> = Vec::new();
+    let mut prompts = Vec::new();
     let mut save = false;
-
     loop {
         let field = match multipart.next_field().await {
             Ok(Some(f)) => f,
             Ok(None) => break,
-            Err(e) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({"error": e.to_string()})),
-                )
-                    .into_response();
-            }
+            Err(e) => return Err(bad_request(e.to_string())),
         };
         match field.name().unwrap_or("") {
             "images" => {
                 let filename = field.file_name().unwrap_or("image.png").to_string();
-                let mime = field.content_type().unwrap_or("image/png").to_string();
-                let bytes = match field.bytes().await {
-                    Ok(b) => b,
-                    Err(e) => {
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            Json(json!({"error": e.to_string()})),
-                        )
-                            .into_response();
-                    }
-                };
+                let mime = field.content_type().map(str::to_string);
+                let bytes = field
+                    .bytes()
+                    .await
+                    .map_err(|e| bad_request(e.to_string()))?;
                 if save && images.is_empty() {
+                    let mime = mime.clone().unwrap_or_else(|| "image/png".to_string());
                     let ext = mime.split('/').nth(1).unwrap_or("png").to_string();
                     let _ = save_sample(
                         &state.db,
@@ -256,22 +75,17 @@ async fn classify(
                     )
                     .await;
                 }
-                images.push((filename, bytes));
+                images.push(ImagePart {
+                    filename,
+                    mime,
+                    bytes,
+                });
             }
             "prompts" => {
                 if let Ok(t) = field.text().await {
                     prompts.push(t);
                 }
             }
-            "max_num_patches" => {
-                max_num_patches = field.text().await.ok().and_then(|v| v.parse().ok());
-            }
-            "return_logits" => {
-                return_logits = matches!(
-                    field.text().await.unwrap_or_default().as_str(),
-                    "true" | "1"
-                );
-            }
             "save_sample" => {
                 save = matches!(
                     field.text().await.unwrap_or_default().as_str(),
@@ -283,40 +97,39 @@ async fn classify(
             }
         }
     }
+    Ok(Upload { images, prompts })
+}
 
-    if images.is_empty() || prompts.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "need images and prompts"})),
-        )
-            .into_response();
-    }
+async fn authed(state: &AppState, headers: &HeaderMap) -> bool {
+    require_auth(&state.db, state.api_key.as_deref(), headers)
+        .await
+        .is_ok()
+}
 
-    let result = state
-        .vision
-        .classify(&images, &prompts, max_num_patches, return_logits)
-        .await;
+fn bad_request(msg: impl Into<String>) -> Response {
+    (StatusCode::BAD_REQUEST, Json(json!({"error": msg.into()}))).into_response()
+}
 
-    let request_meta = json!({
-        "image_count": images.len(),
-        "prompts": prompts,
-        "max_num_patches": max_num_patches,
-        "return_logits": return_logits,
-    });
-
-    match result {
-        Ok((_permit, resp, gate_wait)) => {
-            let gate_wait_ms = gate_wait.as_millis() as i64;
-            let duration_ms = start.elapsed().as_millis() as i64;
+/// Log the call either way and turn the outcome into the response.
+fn finish(
+    state: &AppState,
+    caller: Option<String>,
+    endpoint: &str,
+    request_meta: Value,
+    start: Instant,
+    gate_wait_ms: i64,
+    outcome: Result<(Value, Value), Error>,
+) -> Response {
+    let duration_ms = start.elapsed().as_millis() as i64;
+    match outcome {
+        Ok((mut body, response_meta)) => {
             log_async(
                 state.db.clone(),
                 CreateLog {
                     service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/classify".to_string(),
+                    endpoint: endpoint.to_string(),
                     request_meta,
-                    response_meta: json!({
-                        "scores_shape": [resp.scores.len(), resp.scores.first().map(|r| r.len()).unwrap_or(0)],
-                    }),
+                    response_meta,
                     sample_id: None,
                     gate_wait_ms,
                     duration_ms,
@@ -324,45 +137,123 @@ async fn classify(
                     caller,
                 },
             );
-            let mut body = json!({
-                "scores": resp.scores,
-                "duration_ms": duration_ms,
-                "gate_wait_ms": gate_wait_ms,
-            });
-            if let Some(logits) = resp.logits {
-                body["logits"] = json!(logits);
-            }
+            body["duration_ms"] = json!(duration_ms);
+            body["gate_wait_ms"] = json!(gate_wait_ms);
+            body["model"] = json!(EG2_MODEL);
             Json(body).into_response()
         }
         Err(e) => {
-            let duration_ms = start.elapsed().as_millis() as i64;
+            let error = e.to_string();
+            let response = embed_err(e);
             log_async(
                 state.db.clone(),
                 CreateLog {
                     service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/classify".to_string(),
+                    endpoint: endpoint.to_string(),
                     request_meta,
-                    response_meta: json!({"error": e.to_string()}),
+                    response_meta: json!({"error": error}),
                     sample_id: None,
                     gate_wait_ms: 0,
                     duration_ms,
-                    status: 502,
+                    status: response.status().as_u16() as i32,
                     caller,
                 },
             );
-            warn!(error = %e, "vision classify failed");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({"error": format!("vision: {e}")})),
-            )
-                .into_response()
+            warn!(endpoint, status = %response.status(), "embeddings playground call failed");
+            response
         }
     }
+}
+
+fn shape(rows: &[Vec<f32>]) -> Value {
+    json!([rows.len(), rows.first().map(Vec::len).unwrap_or(0)])
+}
+
+async fn embed(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    multipart: Multipart,
+) -> Response {
+    if !authed(&state, &headers).await {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let caller = extract_caller(&headers);
+    let start = Instant::now();
+    let upload = match read_upload(&state, multipart).await {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    if upload.images.is_empty() {
+        return bad_request("need images");
+    }
+    let request_meta = json!({"image_count": upload.images.len()});
+    let mut gate_wait_ms = 0;
+    let outcome = state
+        .vision
+        .embed_images(&upload.images)
+        .await
+        .map(|(_guard, vectors, wait)| {
+            gate_wait_ms = wait.as_millis() as i64;
+            let meta = json!({"embeddings_shape": shape(&vectors)});
+            (json!({"embeddings": vectors}), meta)
+        });
+    finish(
+        &state,
+        caller,
+        "/api/v1/vision/embed",
+        request_meta,
+        start,
+        gate_wait_ms,
+        outcome,
+    )
+}
+
+async fn classify(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    multipart: Multipart,
+) -> Response {
+    if !authed(&state, &headers).await {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let caller = extract_caller(&headers);
+    let start = Instant::now();
+    let upload = match read_upload(&state, multipart).await {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    if upload.images.is_empty() || upload.prompts.is_empty() {
+        return bad_request("need images and prompts");
+    }
+    let request_meta = json!({
+        "image_count": upload.images.len(),
+        "prompts": upload.prompts,
+    });
+    let mut gate_wait_ms = 0;
+    let outcome = classify_images(&state, &upload.images, &upload.prompts)
+        .await
+        .map(|(scores, wait)| {
+            gate_wait_ms = wait.as_millis() as i64;
+            let meta = json!({"scores_shape": shape(&scores)});
+            (json!({"scores": scores}), meta)
+        });
+    finish(
+        &state,
+        caller,
+        "/api/v1/vision/classify",
+        request_meta,
+        start,
+        gate_wait_ms,
+        outcome,
+    )
 }
 
 #[derive(Deserialize)]
 struct TextEmbedReq {
     prompts: Vec<String>,
+    /// Default `raw`: embed each prompt exactly as typed.
+    #[serde(default)]
+    task: Option<EmbedTask>,
 }
 
 async fn text_embed(
@@ -370,84 +261,42 @@ async fn text_embed(
     headers: HeaderMap,
     Json(req): Json<TextEmbedReq>,
 ) -> Response {
-    if require_auth(&state.db, state.api_key.as_deref(), &headers)
-        .await
-        .is_err()
-    {
+    if !authed(&state, &headers).await {
         return StatusCode::UNAUTHORIZED.into_response();
     }
-
     if req.prompts.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "prompts must be non-empty"})),
-        )
-            .into_response();
+        return bad_request("prompts must be non-empty");
     }
-
     let caller = extract_caller(&headers);
     let start = Instant::now();
-    let request_meta = json!({"prompt_count": req.prompts.len(), "prompts": req.prompts});
-
-    match state.vision.text_embeddings(&req.prompts).await {
-        Ok((_permit, resp, gate_wait)) => {
-            let gate_wait_ms = gate_wait.as_millis() as i64;
-            let duration_ms = start.elapsed().as_millis() as i64;
-            log_async(
-                state.db.clone(),
-                CreateLog {
-                    service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/text-embed".to_string(),
-                    request_meta,
-                    response_meta: json!({
-                        "embeddings_shape": [resp.embeddings.len(), resp.embeddings.first().map(|e| e.len()).unwrap_or(0)],
-                    }),
-                    sample_id: None,
-                    gate_wait_ms,
-                    duration_ms,
-                    status: 200,
-                    caller,
-                },
-            );
-            Json(json!({
-                "embeddings": resp.embeddings,
-                "duration_ms": duration_ms,
-                "gate_wait_ms": gate_wait_ms,
-            }))
-            .into_response()
-        }
-        Err(e) => {
-            let duration_ms = start.elapsed().as_millis() as i64;
-            log_async(
-                state.db.clone(),
-                CreateLog {
-                    service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/text-embed".to_string(),
-                    request_meta,
-                    response_meta: json!({"error": e.to_string()}),
-                    sample_id: None,
-                    gate_wait_ms: 0,
-                    duration_ms,
-                    status: 502,
-                    caller,
-                },
-            );
-            warn!(error = %e, "vision text-embed failed");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({"error": format!("vision: {e}")})),
-            )
-                .into_response()
-        }
-    }
+    let task = req.task.unwrap_or(EmbedTask::Raw);
+    let request_meta =
+        json!({"prompt_count": req.prompts.len(), "prompts": req.prompts, "task": task});
+    let mut gate_wait_ms = 0;
+    let outcome = state
+        .vision
+        .embed_text_inputs(&req.prompts, task, &[], None)
+        .await
+        .map(|out| {
+            gate_wait_ms = out.served.gate_wait_ms().unwrap_or(0) as i64;
+            let meta = json!({"embeddings_shape": shape(&out.embeddings)});
+            (json!({"embeddings": out.embeddings}), meta)
+        });
+    finish(
+        &state,
+        caller,
+        "/api/v1/vision/text-embed",
+        request_meta,
+        start,
+        gate_wait_ms,
+        outcome,
+    )
 }
 
 #[derive(Deserialize)]
 struct ClassifyFromEmbedReq {
     image_embeddings: Vec<Vec<f32>>,
     prompts: Vec<String>,
-    #[serde(default)]
-    return_logits: bool,
 }
 
 async fn classify_from_embeddings(
@@ -455,86 +304,33 @@ async fn classify_from_embeddings(
     headers: HeaderMap,
     Json(req): Json<ClassifyFromEmbedReq>,
 ) -> Response {
-    if require_auth(&state.db, state.api_key.as_deref(), &headers)
-        .await
-        .is_err()
-    {
+    if !authed(&state, &headers).await {
         return StatusCode::UNAUTHORIZED.into_response();
     }
-
     if req.image_embeddings.is_empty() || req.prompts.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": "image_embeddings and prompts must both be non-empty"})),
-        )
-            .into_response();
+        return bad_request("image_embeddings and prompts must both be non-empty");
     }
-
     let caller = extract_caller(&headers);
     let start = Instant::now();
-    let embed_dim = req.image_embeddings.first().map(|e| e.len()).unwrap_or(0);
     let request_meta = json!({
-        "embeddings_shape": [req.image_embeddings.len(), embed_dim],
+        "embeddings_shape": shape(&req.image_embeddings),
         "prompts": req.prompts,
-        "return_logits": req.return_logits,
     });
-
-    match state
-        .vision
-        .classify_from_embeddings(&req.image_embeddings, &req.prompts, req.return_logits)
-        .await
-    {
-        Ok((_permit, resp, gate_wait)) => {
-            let gate_wait_ms = gate_wait.as_millis() as i64;
-            let duration_ms = start.elapsed().as_millis() as i64;
-            log_async(
-                state.db.clone(),
-                CreateLog {
-                    service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/classify-from-embeddings".to_string(),
-                    request_meta,
-                    response_meta: json!({
-                        "scores_shape": [resp.scores.len(), resp.scores.first().map(|r| r.len()).unwrap_or(0)],
-                    }),
-                    sample_id: None,
-                    gate_wait_ms,
-                    duration_ms,
-                    status: 200,
-                    caller,
-                },
-            );
-            let mut body = json!({
-                "scores": resp.scores,
-                "duration_ms": duration_ms,
-                "gate_wait_ms": gate_wait_ms,
-            });
-            if let Some(logits) = resp.logits {
-                body["logits"] = json!(logits);
-            }
-            Json(body).into_response()
-        }
-        Err(e) => {
-            let duration_ms = start.elapsed().as_millis() as i64;
-            log_async(
-                state.db.clone(),
-                CreateLog {
-                    service: "vision".to_string(),
-                    endpoint: "/api/v1/vision/classify-from-embeddings".to_string(),
-                    request_meta,
-                    response_meta: json!({"error": e.to_string()}),
-                    sample_id: None,
-                    gate_wait_ms: 0,
-                    duration_ms,
-                    status: 502,
-                    caller,
-                },
-            );
-            warn!(error = %e, "vision classify-from-embeddings failed");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({"error": format!("vision: {e}")})),
-            )
-                .into_response()
-        }
+    let outcome = match state.vision.prompt_vectors(&req.prompts).await {
+        Ok(prompt_vecs) => cosine_matrix(&req.image_embeddings, &prompt_vecs),
+        Err(e) => Err(e),
     }
+    .map(|scores| {
+        let meta = json!({"scores_shape": shape(&scores)});
+        (json!({"scores": scores}), meta)
+    });
+    finish(
+        &state,
+        caller,
+        "/api/v1/vision/classify-from-embeddings",
+        request_meta,
+        start,
+        0,
+        outcome,
+    )
 }

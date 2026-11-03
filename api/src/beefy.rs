@@ -449,7 +449,10 @@ pub async fn enter(state: &AppState, force: bool) -> Result<BeefyStatus, BeefyEr
 
     // 3. Hold the door BEFORE evicting, or a queued job admits onto the card the
     //    eviction just freed. The allow-list's co-tenants are evicted below like
-    //    everything else and re-admit against the reservation afterwards.
+    //    everything else and re-admit against the reservation afterwards — except
+    //    a standing one (the text embedder), which stays put when the reservation
+    //    leaves its card room: it would only reload beside the 27B, and reloading
+    //    after the 27B has claimed the card is the order that can OOM.
     hold_box(&state.gpu, &state.config);
 
     // 4. Record what to restore, before anything is flipped.
@@ -460,7 +463,17 @@ pub async fn enter(state: &AppState, force: bool) -> Result<BeefyStatus, BeefyEr
     }
 
     // 5. Evict every other resident, concurrently.
-    let failed = state.gpu.evict_all_except(ServiceKind::Llm).await;
+    let spare: Vec<ServiceKind> = state
+        .config
+        .beefy_allow
+        .iter()
+        .copied()
+        .filter(|k| k.is_standing())
+        .collect();
+    let failed = state
+        .gpu
+        .evict_all_except_sparing(ServiceKind::Llm, &spare)
+        .await;
     if !failed.is_empty() && !force {
         state.gpu.set_exclusive(None);
         return Err(BeefyError::EvictFailed(

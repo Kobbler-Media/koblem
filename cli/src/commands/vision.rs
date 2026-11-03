@@ -11,7 +11,8 @@ use crate::{Ctx, output};
 #[derive(Subcommand, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum VisionCmd {
-    /// Score image(s) against text phrases (SigLIP zero-shot).
+    /// Score image(s) against text phrases (EmbeddingGemma-2 cosine similarity:
+    /// compare the scores to each other, not to 1.0).
     Classify(ClassifyArgs),
 }
 
@@ -23,9 +24,7 @@ pub struct ClassifyArgs {
     /// Phrase to score the image against. Repeatable.
     #[arg(long = "prompt", required = true)]
     pub prompts: Vec<String>,
-    #[arg(long)]
-    pub max_num_patches: Option<u32>,
-    /// Also return raw logits alongside scores (implies --json to see them).
+    /// Also return `logits` (the same cosine values) alongside scores.
     #[arg(long)]
     pub return_logits: bool,
     /// Keep the uploaded images as testbed samples on the server.
@@ -36,7 +35,6 @@ pub struct ClassifyArgs {
 pub fn build_request(args: &ClassifyArgs) -> VisionClassifyRequest {
     VisionClassifyRequest {
         prompts: args.prompts.clone(),
-        max_num_patches: args.max_num_patches,
         return_logits: args.return_logits,
         save_sample: args.save_sample,
     }
@@ -56,9 +54,6 @@ async fn classify(ctx: &Ctx, args: ClassifyArgs) -> Result<()> {
     }
     for prompt in &req.prompts {
         form = form.text("prompts", prompt.clone());
-    }
-    if let Some(n) = req.max_num_patches {
-        form = form.text("max_num_patches", n.to_string());
     }
     if req.return_logits {
         form = form.text("return_logits", "true");
@@ -82,7 +77,7 @@ async fn classify(ctx: &Ctx, args: ClassifyArgs) -> Result<()> {
             println!("image {}:", i + 1);
         }
         for (prompt, v) in req.prompts.iter().zip(row) {
-            println!("  {v:>6.3}  {prompt}");
+            println!("  {v:>7.4}  {prompt}");
         }
     }
     if let Some(ms) = body.duration_ms {
@@ -100,13 +95,11 @@ mod tests {
         let args = ClassifyArgs {
             images: vec![PathBuf::from("a.png")],
             prompts: vec!["a cat".into(), "a dog".into()],
-            max_num_patches: Some(256),
             return_logits: true,
             save_sample: true,
         };
         let req = build_request(&args);
         assert_eq!(req.prompts.len(), 2);
-        assert_eq!(req.max_num_patches, Some(256));
         assert!(req.return_logits);
         assert!(req.save_sample, "save_sample must be reachable from a flag");
     }

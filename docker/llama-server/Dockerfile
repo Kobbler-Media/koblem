@@ -30,7 +30,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
-COPY patches/ /patches/
+# Which patch series goes on top of LLAMA_REF. `patches/` is gemma4's (the
+# Aug-17 base); `patches-tip/` is the same worker isolation re-grafted onto a
+# current upstream (EmbeddingGemma-2 needs #30054 + #29556), built as
+# koblem-llama-tip by `make docker-push-llama-tip`.
+ARG PATCH_SET=patches
+COPY ${PATCH_SET}/ /patches/
 
 # CACHEBUST: pass --build-arg CACHEBUST=<unique> (the Makefile uses $(date +%s))
 # to force a fresh clone + re-apply when the SHA or patches change.

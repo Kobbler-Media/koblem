@@ -28,7 +28,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d embed-visio
 Both embedding servers share one vector space (768-d, L2-normalised); scores koblem returns are
 cosine similarity. koblem applies EmbeddingGemma-2's task prefixes itself
 (`/v1/text_embeddings` `task`), so callers send plain text. Text over `TEXT_EMBED_MAX_TOKENS` is a
-413 unless the request sets `chunk`.
+413 unless the request sets `chunk`. For calling these from other services, see [embeddings.md](embeddings.md).
 
 Those hostnames only resolve if koblem-api shares a docker network with kobbler's stack.
 Otherwise use the published host ports.

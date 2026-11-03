@@ -738,7 +738,9 @@ mod tests {
     /// the input's index + `tag`, and the `X-Worker-Gpu` it was sent recorded.
     /// `/tokenize` counts whitespace-separated words, one token each, pieces
     /// included.
-    async fn fake_llama(tag: f32, seen: Arc<Mutex<Vec<(Option<String>, Value)>>>) -> String {
+    type Seen = Arc<Mutex<Vec<(Option<String>, Value)>>>;
+
+    async fn fake_llama(tag: f32, seen: Seen) -> String {
         let app = Router::new()
             .route(
                 "/v1/embeddings",
@@ -989,7 +991,7 @@ mod tests {
             [0, 1, 2, 3]
         );
         assert_eq!(out.embeddings[0], chunks[0].embedding);
-        let sent = &text_seen.lock().unwrap()[0].1["input"];
+        let sent = text_seen.lock().unwrap()[0].1["input"].clone();
         assert_eq!(sent[1], "title: T | text: bb cc ");
 
         // An overlap that eats the whole budget is refused, not looped on.

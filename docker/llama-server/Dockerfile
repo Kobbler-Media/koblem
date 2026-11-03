@@ -48,10 +48,13 @@ RUN echo "cachebust=${CACHEBUST}" \
     && git -C llama.cpp am /patches/*.patch
 
 WORKDIR /src/llama.cpp
+# GGML_NATIVE would target the build machine's CPU: a build on an AVX-512 box
+# then dies with SIGILL on the Zen 3 server. Pin the server's ISA instead.
 RUN cmake -B build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DGGML_CUDA=ON \
     -DCMAKE_CUDA_ARCHITECTURES="86;120" \
+    -DGGML_NATIVE=OFF -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON \
     -DLLAMA_CURL=ON \
     -DCMAKE_C_FLAGS="-Wno-error" \
     -DCMAKE_CXX_FLAGS="-Wno-error" \

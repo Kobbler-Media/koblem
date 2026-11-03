@@ -21,8 +21,8 @@ WHERE service = 'vision' AND peak_mb = 2000;
 --
 -- 600: measured on the 5060 Ti for the text-only Q8_0 at `--parallel 1 -c 1024
 -- -b 1024 -ub 1024`: +411 MiB loaded, +513 MiB peak. Beside Beefy that card holds
--- 15,370 / 16,311 MiB after a cold 195k-token request (the 27B ~15,240, kobbler's
--- NVDEC 128) and exl3 never gives it back, so ~430 MiB stays free with the embedder
+-- 15,370 / 16,311 MiB after a cold 195k-token request (the 27B ~15,240, an idle
+-- ComfyUI 128; kobbler's NVDEC is pinned to the 3060) and exl3 never gives it back, so ~430 MiB stays free with the embedder
 -- loaded. `-ub 2048` OOMs there on its first full request; keep TEXT_EMBED_MAX_TOKENS
 -- at the deployed `-ub` (1024). Beefy must reserve ~15,250 on this card
 -- (`BEEFY_RESERVE_MB`) rather than all of it, or the embedder is unloaded on entry.

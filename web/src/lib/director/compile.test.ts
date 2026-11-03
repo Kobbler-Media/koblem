@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorClip, H3GenerateRequest, LtxVideoGenerateRequest } from '$lib/api/client';
-import { isH3Request, ltxRequestOf } from '$lib/api/client';
+import type { DirectorClip, H3GenerateRequest, LtxVideoGenerateRequest } from '#lib/api/client.ts';
+import { isH3Request, ltxRequestOf } from '#lib/api/client.ts';
 import { audioSource, compileForDelivery, compileTimeline, type CompileInput } from './compile';
 import { V2V_STRENGTH_STEP, v2vSourceOf, v2vStrengthDefault } from './continuity';
 import { DEFAULT_BASE_SAMPLER, DEFAULT_BASE_SIGMAS, newStage } from './resolution';

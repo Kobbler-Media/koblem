@@ -6,9 +6,9 @@
     deleteGpuLog,
     clearGpuLogs,
     gpuLogSampleUrl
-  } from '$lib/api/client';
-  import type { GpuLogEntry, GpuLogsStats } from '$lib/api/client';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  } from '#lib/api/client.ts';
+  import type { GpuLogEntry, GpuLogsStats } from '#lib/api/client.ts';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
 
   let entries = $state<GpuLogEntry[]>([]);
   let total = $state(0);

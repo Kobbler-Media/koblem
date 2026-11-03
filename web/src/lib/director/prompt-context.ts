@@ -21,8 +21,8 @@ import type {
   LtxPromptImage,
   LyricWord,
   StoryContext
-} from '$lib/api/client';
-import { h3RefBriefs, h3RefsForShot, type H3SoundtrackFacts } from '$lib/api/client';
+} from '#lib/api/client.ts';
+import { h3RefBriefs, h3RefsForShot, type H3SoundtrackFacts } from '#lib/api/client.ts';
 import { castForClip } from './characters';
 import { closesScene, startsFresh } from './continuity';
 import { H3_FPS, pinBlocksReferences } from './engine';

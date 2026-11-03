@@ -1,6 +1,6 @@
 <script lang="ts">
   import StepRow from './StepRow.svelte';
-  import type { AgentMessage } from '$lib/api/client';
+  import type { AgentMessage } from '#lib/api/client.ts';
 
   let {
     message,

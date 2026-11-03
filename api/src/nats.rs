@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
 use koblem_client::types::{ReviewCompletedEvent, ReviewJob};
-use nats_jobs::{Event, Job, NatsClient, NatsConfig};
+use nats_jobs::{Job, NatsClient, NatsConfig, Publisher};
 use tracing::{debug, error, info, warn};
 
 use crate::AppState;
@@ -207,10 +207,10 @@ async fn process_jobs(mut rx: tokio::sync::mpsc::UnboundedReceiver<ReviewJob>, s
     let mut heap: BinaryHeap<PrioritizedJob> = BinaryHeap::new();
 
     // Connect to NATS for publishing results (separate from the receiver's connection)
-    let jetstream = loop {
+    let publisher = loop {
         let config = NatsConfig::from_env("koblem-review-publisher");
         match NatsClient::connect(&config).await {
-            Ok(nats) => break nats.jetstream().clone(),
+            Ok(nats) => break Publisher::new(nats, "koblem"),
             Err(e) => {
                 error!("Processor failed to connect to NATS: {e}, retrying");
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -292,7 +292,7 @@ async fn process_jobs(mut rx: tokio::sync::mpsc::UnboundedReceiver<ReviewJob>, s
                     queue_wait_ms: Some(queue_wait_ms),
                 };
 
-                publish_review_completed(&jetstream, &event).await;
+                publish_review_completed(&publisher, &event).await;
             }
             Err(e) => {
                 error!(
@@ -305,44 +305,73 @@ async fn process_jobs(mut rx: tokio::sync::mpsc::UnboundedReceiver<ReviewJob>, s
     }
 }
 
-/// Publish a review-completed event to `events.review.completed`.
-async fn publish_review_completed(
-    jetstream: &async_nats::jetstream::Context,
-    event: &ReviewCompletedEvent,
-) {
-    let payload = match serde_json::to_value(event) {
-        Ok(v) => v,
-        Err(e) => {
-            error!("Failed to serialize ReviewCompletedEvent: {e}");
-            return;
-        }
-    };
-    let envelope = Event::new("review.completed", payload, "koblem");
-
-    let bytes = match serde_json::to_vec(&envelope) {
-        Ok(b) => b,
-        Err(e) => {
-            error!("Failed to serialize event envelope: {e}");
-            return;
-        }
-    };
-
-    match jetstream
-        .publish("events.review.completed", bytes.into())
+async fn publish_review_completed(publisher: &Publisher, event: &ReviewCompletedEvent) {
+    match publisher
+        .publish_event_typed("review.completed", event)
         .await
     {
-        Ok(ack) => {
-            if let Err(e) = ack.await {
-                warn!("NATS ack failed for review.completed event: {e}");
-            } else {
-                debug!(
-                    correlation_id = %event.correlation_id,
-                    "Published review.completed event"
-                );
-            }
-        }
-        Err(e) => {
-            warn!("Failed to publish review.completed event: {e}");
-        }
+        Ok(_) => debug!(
+            correlation_id = %event.correlation_id,
+            "Published review.completed event"
+        ),
+        Err(e) => warn!("Failed to publish review.completed event: {e}"),
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    use nats_jobs::{NatsClient, NatsConfig};
+
+    pub async fn connect() -> NatsClient {
+        let url =
+            std::env::var("NATS_TEST_URL").unwrap_or_else(|_| "nats://localhost:4229".to_string());
+        tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            NatsClient::connect(&NatsConfig::new(url, "koblem-test")),
+        )
+        .await
+        .expect("test NATS reachable — `make test-db-up`")
+        .expect("test NATS connects")
+    }
+
+    pub async fn next_on(sub: &mut async_nats::Subscriber) -> (String, nats_jobs::Event) {
+        use futures::StreamExt;
+        let msg = tokio::time::timeout(std::time::Duration::from_secs(5), sub.next())
+            .await
+            .expect("event published")
+            .expect("subscription open");
+        let envelope = serde_json::from_slice(&msg.payload).expect("Event envelope");
+        (msg.subject.to_string(), envelope)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn review_completed_reaches_nats_in_the_shared_envelope() {
+        let nats = test_support::connect().await;
+        let mut sub = nats.client().subscribe("events.review.>").await.unwrap();
+        let correlation_id = uuid::Uuid::new_v4();
+        let event: ReviewCompletedEvent = serde_json::from_value(serde_json::json!({
+            "correlation_id": correlation_id,
+            "response": {
+                "agreed": [], "vetoed": [], "promoted": [], "notes": null,
+                "debug_prompt": null, "context_assembly_ms": null, "llm_inference_ms": 12
+            },
+            "queue_wait_ms": 7
+        }))
+        .unwrap();
+
+        publish_review_completed(&Publisher::new(nats.clone(), "koblem"), &event).await;
+
+        let (subject, envelope) = test_support::next_on(&mut sub).await;
+        assert_eq!(subject, "events.review.completed");
+        assert_eq!(envelope.event_type, "review.completed");
+        assert_eq!(envelope.source, "koblem");
+        let back: ReviewCompletedEvent = serde_json::from_value(envelope.payload).unwrap();
+        assert_eq!(back.correlation_id, correlation_id);
+        assert_eq!(back.queue_wait_ms, Some(7));
     }
 }

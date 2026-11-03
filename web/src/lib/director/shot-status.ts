@@ -12,7 +12,7 @@
  * two silently attributes footage to the wrong shot.
  */
 
-import type { DirectorClip } from '$lib/api/client';
+import type { DirectorClip } from '#lib/api/client.ts';
 import type { ShotRenderStatus } from './shot-list';
 
 interface WithPrompt {

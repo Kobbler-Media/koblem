@@ -1,19 +1,19 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { assetSrc } from '$lib/director/assets.svelte';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
   import {
     H3_SOUNDTRACK_REF_ID,
     H3_TRIM_JOIN,
     markIsTrimmed,
     runUpSecondsFor
-  } from '$lib/director/h3-soundtrack';
-  import { roleLabel } from '$lib/director/h3-roles';
+  } from '#lib/director/h3-soundtrack.ts';
+  import { roleLabel } from '#lib/director/h3-roles.ts';
   import {
     h3KeyframesFor,
     h3ReferenceIssues,
     h3UndeclaredKeyframes,
     type H3ReferenceCaps
-  } from '$lib/director/h3-keyframes';
+  } from '#lib/director/h3-keyframes.ts';
   import {
     H3_AUDIO_MARKERS,
     H3_CAMERA_AMPLITUDE,
@@ -30,7 +30,7 @@
     type H3ComposeInput,
     type H3Ordinal,
     type H3PromptIssue
-  } from '$lib/director/h3-prompt';
+  } from '#lib/director/h3-prompt.ts';
   import {
     H3_CHECKPOINT_FLIP_SECONDS,
     H3_DOCUMENTED_MIN_SECONDS,
@@ -41,10 +41,10 @@
     h3ScopeAfterToggle,
     mergeBlockedReason,
     type PackedGeneration
-  } from '$lib/director/h3-generations';
+  } from '#lib/director/h3-generations.ts';
   // `checkCanvas` moved with the canvas control into `H3RenderKnobs`.
-  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '$lib/director/engine';
-  import { parseH3Block, replaceH3Section, type H3SectionName } from '$lib/director/h3-block';
+  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '#lib/director/engine.ts';
+  import { parseH3Block, replaceH3Section, type H3SectionName } from '#lib/director/h3-block.ts';
   import {
     h3DefinitionsBody,
     h3RetentionBody,
@@ -56,15 +56,15 @@
     seedH3Prompt,
     writeH3MainSection,
     type H3ShotPlacement
-  } from '$lib/director/h3-document';
+  } from '#lib/director/h3-document.ts';
   import {
     h3SectionBadges,
     h3SectionSpans,
     type H3Token,
     type H3TokenCard
-  } from '$lib/director/h3-highlight';
-  import { h3OrdinalRenames, h3Renumber, h3SubjectRenames } from '$lib/director/h3-renumber';
-  import { cachedFrame, grabFrames } from '$lib/director/frame-grab';
+  } from '#lib/director/h3-highlight.ts';
+  import { h3OrdinalRenames, h3Renumber, h3SubjectRenames } from '#lib/director/h3-renumber.ts';
+  import { cachedFrame, grabFrames } from '#lib/director/frame-grab.ts';
   import BeatRibbon from './BeatRibbon.svelte';
   import H3BlockEditor from './H3BlockEditor.svelte';
   import H3RenderKnobs from './H3RenderKnobs.svelte';
@@ -79,7 +79,7 @@
     H3RetentionEntry,
     H3SubjectDefinition,
     H3TaskType
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   /**
    * The MiniMax-H3 prompt composer — **a lens over one generation's stored block.**

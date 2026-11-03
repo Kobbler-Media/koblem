@@ -11,8 +11,8 @@
  */
 
 import { uid } from '@koblibs/ui';
-import { DIRECTOR_ADD_AT_START, type DirectorChatAction } from '$lib/api/client';
-import type { DirectorClip, DirectorH3Generation, StoryContext } from '$lib/api/client';
+import { DIRECTOR_ADD_AT_START, type DirectorChatAction } from '#lib/api/client.ts';
+import type { DirectorClip, DirectorH3Generation, StoryContext } from '#lib/api/client.ts';
 import { parseH3Block } from './h3-block';
 import type { PackedGeneration } from './h3-generations';
 

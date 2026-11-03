@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LtxJobStatus } from '$lib/api/client';
+import type { LtxJobStatus } from '#lib/api/client.ts';
 import type { H3Plan } from './h3-plan';
 import {
   H3_CHECKPOINT_FLIP_SECONDS,

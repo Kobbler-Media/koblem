@@ -11,8 +11,8 @@
   } from '@codemirror/view';
   import type { DecorationSet, ViewUpdate } from '@codemirror/view';
   import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-  import { parseH3Block, sectionLabel, type H3SectionName } from '$lib/director/h3-block';
-  import { docMatches, type TextWindow } from '$lib/director/prompt-search';
+  import { parseH3Block, sectionLabel, type H3SectionName } from '#lib/director/h3-block.ts';
+  import { docMatches, type TextWindow } from '#lib/director/prompt-search.ts';
   import {
     h3Decorations,
     h3SectionAt,
@@ -22,7 +22,7 @@
     type H3SectionSpan,
     type H3Token,
     type H3TokenCard
-  } from '$lib/director/h3-highlight';
+  } from '#lib/director/h3-highlight.ts';
 
   /**
    * The prompt block, as an editor for the schema it holds.

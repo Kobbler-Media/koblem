@@ -13,8 +13,8 @@ import {
   type LtxCharacterRef,
   type LtxIdentityRegime,
   type LtxRuntimeLora
-} from '$lib/api/client';
-import { effectiveClipLoras, hasLora, shortLoraName } from '$lib/director/loras';
+} from '#lib/api/client.ts';
+import { effectiveClipLoras, hasLora, shortLoraName } from '#lib/director/loras.ts';
 
 /**
  * The project cast and the identity tags they own — the piece that makes character references work

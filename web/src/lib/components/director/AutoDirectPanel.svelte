@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
+  import { DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
   // Stage 1 of auto-direct: a brief (and optionally a song) in, a proposed shot list out. Nothing
   // reaches the timeline until the owner reviews the beats — the plan sheet does that.
   let {

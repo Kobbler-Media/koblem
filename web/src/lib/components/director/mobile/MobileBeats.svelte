@@ -1,8 +1,12 @@
 <script lang="ts">
-  import { parseH3Block, sectionLabel } from '$lib/director/h3-block';
-  import { h3MainSectionFor, h3StripCutVerb, writeH3MainSection } from '$lib/director/h3-document';
-  import { H3_CUT_VERBS, formatCutTime, h3ShotIsCut } from '$lib/director/h3-prompt';
-  import { MOBILE_BEAT_GAP, nextBeatSeconds } from '$lib/director/mobile';
+  import { parseH3Block, sectionLabel } from '#lib/director/h3-block.ts';
+  import {
+    h3MainSectionFor,
+    h3StripCutVerb,
+    writeH3MainSection
+  } from '#lib/director/h3-document.ts';
+  import { H3_CUT_VERBS, formatCutTime, h3ShotIsCut } from '#lib/director/h3-prompt.ts';
+  import { MOBILE_BEAT_GAP, nextBeatSeconds } from '#lib/director/mobile.ts';
 
   /**
    * The beats of one render unit, as a list — because without a time axis to drag on, that is what

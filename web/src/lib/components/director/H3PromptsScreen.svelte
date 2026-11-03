@@ -1,6 +1,6 @@
 <script lang="ts">
   import H3PromptsPanel from './H3PromptsPanel.svelte';
-  import { DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
+  import { DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
 
   /**
    * The desktop's **Prompts screen** — `H3PromptsPanel` in a full-sheet modal.

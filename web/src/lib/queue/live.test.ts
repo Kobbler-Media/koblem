@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { JobEvent, JobState } from '$lib/api/client';
+import type { JobEvent, JobState } from '#lib/api/client.ts';
 
 /// The SSE is the thing under test, so it is the thing faked: the handlers the store registers are
 /// captured here and frames are pushed through them by hand.
@@ -13,7 +13,7 @@ let handlers: {
 /// later and the case never gets exercised.
 let streamUp = true;
 
-vi.mock('$lib/api/client', () => ({
+vi.mock('#lib/api/client.ts', () => ({
   getQueueSnapshot: async () => ({ jobs: [], paused: false, pending: 0, running: 0, stuck: [] }),
   subscribeQueueEvents: (h: typeof handlers) => {
     handlers = h;

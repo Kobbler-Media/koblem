@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorH3Generation } from '$lib/api/client';
+import type { DirectorH3Generation } from '#lib/api/client.ts';
 import { parseH3Block } from './h3-block';
 import { composeH3Prompt } from './h3-prompt';
 import {

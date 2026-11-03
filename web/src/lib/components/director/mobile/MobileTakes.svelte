@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DirectorTake } from '$lib/api/client';
+  import type { DirectorTake } from '#lib/api/client.ts';
 
   // 🔴 A retake ADDS; it never overwrites. So the phone needs somewhere to compare and choose, not
   // just a retake button — the selected take is what the stitched cut is built from, and without a

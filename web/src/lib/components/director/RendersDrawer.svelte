@@ -1,16 +1,16 @@
 <script lang="ts">
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
   import TierToggle from './TierToggle.svelte';
   import H3PlanEcho from './H3PlanEcho.svelte';
-  import type { HeldClip } from '$lib/director/renders';
-  import type { RenderTier, TierPreference } from '$lib/director/tier';
-  import type { DirectorClip, JobKind, LtxBankListing } from '$lib/api/client';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import { DEFAULT_VOCAB, UNAVAILABLE, type EngineVocab } from '$lib/director/engine';
-  import { formatDuration, type H3Telemetry } from '$lib/director/h3-telemetry';
-  import type { H3Plan } from '$lib/director/h3-plan';
-  import type { Generation } from '$lib/types';
+  import type { HeldClip } from '#lib/director/renders.ts';
+  import type { RenderTier, TierPreference } from '#lib/director/tier.ts';
+  import type { DirectorClip, JobKind, LtxBankListing } from '#lib/api/client.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import { DEFAULT_VOCAB, UNAVAILABLE, type EngineVocab } from '#lib/director/engine.ts';
+  import { formatDuration, type H3Telemetry } from '#lib/director/h3-telemetry.ts';
+  import type { H3Plan } from '#lib/director/h3-plan.ts';
+  import type { Generation } from '#lib/types.ts';
 
   // Everything a render produced: the stitched cut of whichever tier this client plays, the
   // per-shot clips that landed before it, the live progress of anything in flight, and the

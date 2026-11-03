@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import type { StoryContext } from '$lib/api/client';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import type { StoryContext } from '#lib/api/client.ts';
 
   // The project's story bible: canon the LLM grounds every shot in, never rendered. Bound straight
   // into the editor's own state — the callbacks are only for the reference images, which have to

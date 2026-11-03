@@ -1,14 +1,14 @@
 <script lang="ts">
   import H3BlockEditor from '../H3BlockEditor.svelte';
-  import { parseH3Block, sectionLabel } from '$lib/director/h3-block';
+  import { parseH3Block, sectionLabel } from '#lib/director/h3-block.ts';
   import {
     h3SectionSpans,
     h3Tokens,
     type H3Token,
     type H3TokenCard
-  } from '$lib/director/h3-highlight';
-  import { formatCutTime, H3_PROMPT_MAX_CHARS } from '$lib/director/h3-prompt';
-  import { deadOrdinalNote, type MobileRef } from '$lib/director/mobile';
+  } from '#lib/director/h3-highlight.ts';
+  import { formatCutTime, H3_PROMPT_MAX_CHARS } from '#lib/director/h3-prompt.ts';
+  import { deadOrdinalNote, type MobileRef } from '#lib/director/mobile.ts';
   import MobileRefCard from './MobileRefCard.svelte';
 
   /**

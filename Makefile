@@ -86,7 +86,7 @@ test-web:
 	npm --prefix web test
 
 # docker-push-llama omitted from default: building llama.cpp (vanilla upstream
-# @ pinned SHA + kobbler patch series, CUDA 13.3) takes ~15 minutes and the
+# @ pinned SHA + kobbler patch series, CUDA 13.4) takes ~15 minutes and the
 # image rarely changes. Run `make docker-push-llama` ad-hoc.
 REGISTRY ?= ghcr.io/kobbler-media
 

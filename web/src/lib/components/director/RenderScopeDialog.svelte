@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { DirectorRenderPlan, H3Staleness } from '$lib/api/client';
-  import type { EngineVocab } from '$lib/director/engine';
-  import { DEFAULT_VOCAB } from '$lib/director/engine';
+  import type { DirectorRenderPlan, H3Staleness } from '#lib/api/client.ts';
+  import type { EngineVocab } from '#lib/director/engine.ts';
+  import { DEFAULT_VOCAB } from '#lib/director/engine.ts';
 
   /**
    * The choice between continuing a project and starting its tier over.

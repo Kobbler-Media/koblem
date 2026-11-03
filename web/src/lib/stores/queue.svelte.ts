@@ -3,11 +3,11 @@ import {
   subscribeQueueEvents,
   type JobEvent,
   type QueueSnapshot
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 import { SvelteSet } from 'svelte/reactivity';
-import { isTerminal } from '$lib/queue/format';
-import { stuckMessage, terminalMessage, type NotifyMessage } from '$lib/queue/notify';
-import { postNotification } from '$lib/stores/notify.svelte';
+import { isTerminal } from '#lib/queue/format.ts';
+import { stuckMessage, terminalMessage, type NotifyMessage } from '#lib/queue/notify.ts';
+import { postNotification } from '#lib/stores/notify.svelte.ts';
 
 /// Backstop only. The SSE stream is what makes the page live; this catches the
 /// fields an event does not carry (unit counts, ranks, ETAs) and the window

@@ -199,7 +199,7 @@
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-  import { fetchMediaBlob } from '$lib/api/client';
+  import { fetchMediaBlob } from '#lib/api/client.ts';
   import { clipFrameCount, snapshotClip, type ClipSnapshot } from './motion-repair';
   import { componentAtFace, disposeBvh, raycastSurface, type ComponentLabels } from './mesh-repair';
   import {

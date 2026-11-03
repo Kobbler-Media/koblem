@@ -60,7 +60,7 @@ import type {
   H3SubjectDefinition,
   H3Task,
   H3TaskType
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 import { vocabFor } from './engine';
 
 /**

@@ -2,7 +2,7 @@
 name = "koblem"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.99"
 description = "Local LLM service for Kobbler — wraps llama-server with domain-specific endpoints"
 license = "AGPL-3.0-only"
 
@@ -15,34 +15,33 @@ axum = { version = "0.8.9", features = ["json", "multipart"] }
 # The queue's SSE stream. axum wants a `Stream`; `async-stream` is the only way to
 # write one as a loop with an await in it.
 async-stream = "0.3.6"
-reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream", "multipart"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "stream", "multipart"] }
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 # Names the fields a render submit carried that its request type does not have — see
 # src/strict_json.rs. Detection only; the rejection message is built there.
 serde_ignored = "0.1.14"
-tokio = { version = "1.53.1", features = ["full"] }
+tokio = { version = "1.54.1", features = ["full"] }
 tokio-stream = "0.1.19"
 # ReaderStream — media routes stream a seek+take over the file instead of
 # reading the whole clip into RAM to serve one range of it.
-tokio-util = { version = "0.7.19", features = ["io"] }
+tokio-util = { version = "0.7.20", features = ["io"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-futures = "0.3.33"
+futures = "0.3.34"
 bytes = "1.12.1"
-thiserror = "2.0.20"
+thiserror = "2.0.21"
 koblem-client = { path = "../../koblibs/koblem-client" }
 sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "uuid", "time", "json"] }
 # 🔴 `v4` is declared because this crate CALLS it — media_sign, ltx_jobs, wan_jobs,
 # repositories::generations, routes::ltx_director and routes::ltx_video all use `Uuid::new_v4()`.
 # It was compiling only through feature unification from another crate in the graph, so the day
 # that crate dropped `v4` the build would have broken here, in files nobody had touched.
-uuid = { version = "1.24.0", features = ["serde", "v4", "v7"] }
+uuid = { version = "1.29.0", features = ["serde", "v4", "v7"] }
 time = { version = "0.3.55", features = ["serde"] }
-argon2 = "0.5.3"
-password-hash = { version = "0.5.0", features = ["rand_core"] }
-sha2 = "0.11.0"
-rand = "0.10.2"
+argon2 = "0.6.0"
+sha2 = "0.11.1"
+rand = "0.10.3"
 base64 = "0.23.1"
 # PNG only. `/oneshot` must not hand back a cut-out that draws nothing, and the
 # only way to know is to decode the alpha channel — see routes::oneshot.
@@ -52,25 +51,25 @@ kob-audio-norm = { path = "../../koblibs/kob-audio-norm" }
 kob-gpu-gate = { path = "../../koblibs/kob-gpu-gate" }
 nats-jobs = { path = "../../koblibs/nats-jobs" }
 async-trait = "0.1.92"
-async-nats = "0.50.0"
-minijinja = { version = "2.23", default-features = false, features = ["builtins", "macros", "multi_template", "serde"] }
-minijinja-contrib = { version = "2.23", features = ["datetime"] }
-regex = "1.13"
-percent-encoding = "2.3"
+async-nats = "0.51.0"
+minijinja = { version = "3.0.5", default-features = false, features = ["builtins", "macros", "multi_template", "serde"] }
+minijinja-contrib = { version = "3.0.5", features = ["datetime"] }
+regex = "1.13.1"
+percent-encoding = "2.3.2"
 # Parses ace-server's multipart/mixed /synth result (audio + latent parts).
 # reqwest only builds multipart requests; multer reads the response body.
 multer = "3.1"
-zip = { version = "8.6", default-features = false, features = ["deflate"] }
+zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
 # RFC8291 payload encryption + RFC8292 VAPID only — the transport is left to the
 # caller, so browser pushes reuse the notifier's existing reqwest client. The
 # alternative (`web-push`) bundles isahc/hyper 0.14 and http 0.2, which would mean
 # a second HTTP stack on an unmaintained curl binding.
 web-push-native = "0.5.0"
 # `web-push-native` hands back an `http::Request` to post however you like.
-http = "1.4"
+http = "1.5.0"
 # Constant-time comparison for the oneshot doorstop and the env-key API auth —
 # a shared secret compared with `==` leaks timing per matching byte.
-subtle = "2.6"
+subtle = "2.6.1"
 
 [lints.clippy]
 # Route helpers that can fail early return the HTTP response they want sent, so the Err

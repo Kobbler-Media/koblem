@@ -598,7 +598,10 @@ mod tests {
         .expect("rebuild");
 
         let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip)).expect("zip parses");
-        let names: Vec<String> = archive.file_names().map(str::to_string).collect();
+        let names: Vec<String> = archive
+            .file_names()
+            .map(|n| n.expect("utf-8 entry name").into_owned())
+            .collect();
         assert!(names.contains(&"model.glb".to_string()), "{names:?}");
         // No cutout was made, so the processed source keeps its neutral name.
         assert!(names.contains(&"source-processed".to_string()), "{names:?}");

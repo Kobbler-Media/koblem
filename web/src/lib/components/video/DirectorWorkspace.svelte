@@ -1,40 +1,45 @@
 <script lang="ts">
-  import { assetSrc, fetchAssetBlob, putAsset, prefetchAssets } from '$lib/director/assets.svelte';
-  import { onWriteConflict, renameRoute, type StaleDoc } from '$lib/director/save';
-  import { cachedFrame, clearFrameCache } from '$lib/director/frame-grab';
+  import {
+    assetSrc,
+    fetchAssetBlob,
+    putAsset,
+    prefetchAssets
+  } from '#lib/director/assets.svelte.ts';
+  import { onWriteConflict, renameRoute, type StaleDoc } from '#lib/director/save.ts';
+  import { cachedFrame, clearFrameCache } from '#lib/director/frame-grab.ts';
   import { onMount, onDestroy } from 'svelte';
   import { blobToMonoSamples, uid } from '@koblibs/ui';
-  import { framesFromSeconds } from '$lib/ltx/frames';
-  import { adoptedElapsedSec } from '$lib/ltx/elapsed';
-  import { downscaleImageToBlob } from '$lib/ltx/downscaleImage';
-  import ChatModal from '$lib/components/director/ChatModal.svelte';
-  import PlanReviewSheet from '$lib/components/director/PlanReviewSheet.svelte';
-  import SettingsSheet from '$lib/components/director/SettingsSheet.svelte';
-  import ShotDetailsPane from '$lib/components/director/ShotDetailsPane.svelte';
-  import RendersDrawer from '$lib/components/director/RendersDrawer.svelte';
-  import RenderScopeDialog from '$lib/components/director/RenderScopeDialog.svelte';
-  import StoryPanel from '$lib/components/director/StoryPanel.svelte';
-  import CastPanel from '$lib/components/director/CastPanel.svelte';
-  import ReferencesPanel from '$lib/components/director/ReferencesPanel.svelte';
-  import AutoDirectPanel from '$lib/components/director/AutoDirectPanel.svelte';
-  import RevisePanel from '$lib/components/director/RevisePanel.svelte';
-  import ShotPromptPane from '$lib/components/director/ShotPromptPane.svelte';
-  import AppBar from '$lib/components/director/AppBar.svelte';
-  import StageViewer from '$lib/components/director/StageViewer.svelte';
-  import RailDock from '$lib/components/director/RailDock.svelte';
-  import TimelineBar from '$lib/components/director/TimelineBar.svelte';
-  import ProjectMenu from '$lib/components/director/ProjectMenu.svelte';
-  import AudioSheet from '$lib/components/director/AudioSheet.svelte';
-  import ReviewFindings from '$lib/components/director/ReviewFindings.svelte';
-  import { h3ReviewGenerations, type ReviewItem } from '$lib/director/review';
-  import { DIRECTOR_COMPACT, mediaQuery } from '$lib/director/viewport.svelte';
+  import { framesFromSeconds } from '#lib/ltx/frames.ts';
+  import { adoptedElapsedSec } from '#lib/ltx/elapsed.ts';
+  import { downscaleImageToBlob } from '#lib/ltx/downscaleImage.ts';
+  import ChatModal from '#lib/components/director/ChatModal.svelte';
+  import PlanReviewSheet from '#lib/components/director/PlanReviewSheet.svelte';
+  import SettingsSheet from '#lib/components/director/SettingsSheet.svelte';
+  import ShotDetailsPane from '#lib/components/director/ShotDetailsPane.svelte';
+  import RendersDrawer from '#lib/components/director/RendersDrawer.svelte';
+  import RenderScopeDialog from '#lib/components/director/RenderScopeDialog.svelte';
+  import StoryPanel from '#lib/components/director/StoryPanel.svelte';
+  import CastPanel from '#lib/components/director/CastPanel.svelte';
+  import ReferencesPanel from '#lib/components/director/ReferencesPanel.svelte';
+  import AutoDirectPanel from '#lib/components/director/AutoDirectPanel.svelte';
+  import RevisePanel from '#lib/components/director/RevisePanel.svelte';
+  import ShotPromptPane from '#lib/components/director/ShotPromptPane.svelte';
+  import AppBar from '#lib/components/director/AppBar.svelte';
+  import StageViewer from '#lib/components/director/StageViewer.svelte';
+  import RailDock from '#lib/components/director/RailDock.svelte';
+  import TimelineBar from '#lib/components/director/TimelineBar.svelte';
+  import ProjectMenu from '#lib/components/director/ProjectMenu.svelte';
+  import AudioSheet from '#lib/components/director/AudioSheet.svelte';
+  import ReviewFindings from '#lib/components/director/ReviewFindings.svelte';
+  import { h3ReviewGenerations, type ReviewItem } from '#lib/director/review.ts';
+  import { DIRECTOR_COMPACT, mediaQuery } from '#lib/director/viewport.svelte.ts';
   import {
     parseTierPreference,
     preferTier,
     resolveTier,
     type RenderTier,
     type TierPreference
-  } from '$lib/director/tier';
+  } from '#lib/director/tier.ts';
   import {
     adoptCompletedBank,
     bankedResumeTarget,
@@ -46,7 +51,7 @@
     planCutHydration,
     planHydration,
     type HeldClip
-  } from '$lib/director/renders';
+  } from '#lib/director/renders.ts';
   import {
     deleteClips,
     duplicateClips,
@@ -54,12 +59,12 @@
     mergeClips,
     splitClipAt,
     type ClipSelection
-  } from '$lib/director/clip-ops';
+  } from '#lib/director/clip-ops.ts';
   import {
     compileForDelivery,
     compileTimeline,
     type CompiledTimeline
-  } from '$lib/director/compile';
+  } from '#lib/director/compile.ts';
   import {
     H3_FPS,
     capabilities,
@@ -73,15 +78,15 @@
     retakeTailNote,
     unavailableFor,
     type DirectorEngine
-  } from '$lib/director/engine';
-  import { ltxReceipt } from '$lib/queue/ltx-receipt';
-  import { watchLiveJobs, type LiveWatch } from '$lib/queue/live';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import { readH3Telemetry, type H3Telemetry } from '$lib/director/h3-telemetry';
-  import { readH3Plan, type H3Plan } from '$lib/director/h3-plan';
-  import H3PromptComposer from '$lib/components/director/H3PromptComposer.svelte';
-  import H3PromptsScreen from '$lib/components/director/H3PromptsScreen.svelte';
-  import H3PromptsPanel from '$lib/components/director/H3PromptsPanel.svelte';
+  } from '#lib/director/engine.ts';
+  import { ltxReceipt } from '#lib/queue/ltx-receipt.ts';
+  import { watchLiveJobs, type LiveWatch } from '#lib/queue/live.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import { readH3Telemetry, type H3Telemetry } from '#lib/director/h3-telemetry.ts';
+  import { readH3Plan, type H3Plan } from '#lib/director/h3-plan.ts';
+  import H3PromptComposer from '#lib/components/director/H3PromptComposer.svelte';
+  import H3PromptsScreen from '#lib/components/director/H3PromptsScreen.svelte';
+  import H3PromptsPanel from '#lib/components/director/H3PromptsPanel.svelte';
   import {
     clipRenders,
     canonicalH3Store,
@@ -95,29 +100,29 @@
     pinsAFrame,
     referencesForGeneration,
     type PackedGeneration
-  } from '$lib/director/h3-generations';
-  import { looksLikeH3Block, parseH3Block, sectionLabel } from '$lib/director/h3-block';
-  import { h3Ordinals } from '$lib/director/h3-prompt';
+  } from '#lib/director/h3-generations.ts';
+  import { looksLikeH3Block, parseH3Block, sectionLabel } from '#lib/director/h3-block.ts';
+  import { h3Ordinals } from '#lib/director/h3-prompt.ts';
   // `realignH3Shots` is gone from here with `adoptTimelineCuts` — the workspace no longer pushes
   // clips into a block in any direction. The composer still uses it for its own section rewrites.
-  import { needsH3PromptSeed, seedH3Prompt } from '$lib/director/h3-document';
+  import { needsH3PromptSeed, seedH3Prompt } from '#lib/director/h3-document.ts';
   import {
     H3_SOUNDTRACK_REF_ID,
     h3Timecode,
     planSoundtrack,
     soundtrackFitNote,
     withSoundtrackReference
-  } from '$lib/director/h3-soundtrack';
-  import { applyH3Reply, h3DraftFrom } from '$lib/director/h3-llm';
-  import { defaultRoleFor } from '$lib/director/h3-roles';
-  import { isV2v, v2vSourceOf } from '$lib/director/continuity';
-  import { moveShot, shotStateLabel } from '$lib/director/shot-list';
-  import { emptyStory, readTimelineDoc } from '$lib/director/timeline-doc';
+  } from '#lib/director/h3-soundtrack.ts';
+  import { applyH3Reply, h3DraftFrom } from '#lib/director/h3-llm.ts';
+  import { defaultRoleFor } from '#lib/director/h3-roles.ts';
+  import { isV2v, v2vSourceOf } from '#lib/director/continuity.ts';
+  import { moveShot, shotStateLabel } from '#lib/director/shot-list.ts';
+  import { emptyStory, readTimelineDoc } from '#lib/director/timeline-doc.ts';
   import {
     layoutClips,
     ltxDeliveredSeconds,
     toAuthoredSeconds
-  } from '$lib/director/timeline-layout';
+  } from '#lib/director/timeline-layout.ts';
   import {
     applyChatActions,
     applyH3ChatActions,
@@ -128,7 +133,7 @@
     type ChatMsg,
     type ChatTarget,
     type H3ChatTarget
-  } from '$lib/director/chat';
+  } from '#lib/director/chat.ts';
   import {
     aspectPhrase,
     beatWordsFor,
@@ -139,29 +144,29 @@
     storyIsEmpty,
     vocalLanes,
     type PromptContext
-  } from '$lib/director/prompt-context';
+  } from '#lib/director/prompt-context.ts';
   import {
     SCRIPT_PASS_MAX_UNITS,
     scriptPassBrief,
     scriptPassOutcome,
     scriptPassSeconds,
     type ScriptPassUnit
-  } from '$lib/director/script-pass';
+  } from '#lib/director/script-pass.ts';
   import {
     clipAtPromptedIndex,
     promptedClips,
     promptedIndexOf,
     shotNumberAtPromptedIndex,
     shotStatusIn
-  } from '$lib/director/shot-status';
-  import ContinuityPanel from '$lib/components/director/ContinuityPanel.svelte';
+  } from '#lib/director/shot-status.ts';
+  import ContinuityPanel from '#lib/components/director/ContinuityPanel.svelte';
   import {
     continuityOf,
     pendingPinNote,
     type UnitContinuity,
     type UnitTakes
-  } from '$lib/director/take-continuity';
-  import { startsFresh } from '$lib/director/continuity';
+  } from '#lib/director/take-continuity.ts';
+  import { startsFresh } from '#lib/director/continuity.ts';
   import {
     DEFAULT_BASE_SAMPLER,
     DEFAULT_BASE_SIGMAS,
@@ -180,29 +185,29 @@
     snapTargetFor,
     type CustomStage,
     type ResPreset
-  } from '$lib/director/resolution';
-  import '$lib/director/workspace.css';
+  } from '#lib/director/resolution.ts';
+  import '#lib/director/workspace.css';
   // ⚠️ AFTER workspace.css, always. `.dwm` mounts inside `.dw` to inherit its token layer, so the
   // two sheets share a namespace and a dozen class names; equal specificity means source order is
   // what decides. See the header comment in mobile.css.
-  import '$lib/director/mobile.css';
-  import MobileShell from '$lib/components/director/mobile/MobileShell.svelte';
-  import MobileShots from '$lib/components/director/mobile/MobileShots.svelte';
-  import MobileRender from '$lib/components/director/mobile/MobileRender.svelte';
-  import MobileMore from '$lib/components/director/mobile/MobileMore.svelte';
-  import MobileSongSheet from '$lib/components/director/mobile/MobileSongSheet.svelte';
-  import MobileSettingsSheet from '$lib/components/director/mobile/MobileSettingsSheet.svelte';
-  import MobileReworkSheet from '$lib/components/director/mobile/MobileReworkSheet.svelte';
-  import MobilePrompt from '$lib/components/director/mobile/MobilePrompt.svelte';
-  import MobileBlockEditor from '$lib/components/director/mobile/MobileBlockEditor.svelte';
-  import MobileTakes from '$lib/components/director/mobile/MobileTakes.svelte';
+  import '#lib/director/mobile.css';
+  import MobileShell from '#lib/components/director/mobile/MobileShell.svelte';
+  import MobileShots from '#lib/components/director/mobile/MobileShots.svelte';
+  import MobileRender from '#lib/components/director/mobile/MobileRender.svelte';
+  import MobileMore from '#lib/components/director/mobile/MobileMore.svelte';
+  import MobileSongSheet from '#lib/components/director/mobile/MobileSongSheet.svelte';
+  import MobileSettingsSheet from '#lib/components/director/mobile/MobileSettingsSheet.svelte';
+  import MobileReworkSheet from '#lib/components/director/mobile/MobileReworkSheet.svelte';
+  import MobilePrompt from '#lib/components/director/mobile/MobilePrompt.svelte';
+  import MobileBlockEditor from '#lib/components/director/mobile/MobileBlockEditor.svelte';
+  import MobileTakes from '#lib/components/director/mobile/MobileTakes.svelte';
   import {
     mobileRefRows,
     type MobilePromptTab,
     type MobileRef,
     type MobileTab
-  } from '$lib/director/mobile';
-  import { tickLabel } from '$lib/director/timeline-ticks';
+  } from '#lib/director/mobile.ts';
+  import { tickLabel } from '#lib/director/timeline-ticks.ts';
   import {
     getLtxVideoProps,
     getLtxBank,
@@ -278,14 +283,14 @@
     type JobKind,
     ltxIdentityRegime,
     prepareDirectorReference
-  } from '$lib/api/client';
-  import { effectiveClipLoras, loraSummary, loraTriggers } from '$lib/director/loras';
+  } from '#lib/api/client.ts';
+  import { effectiveClipLoras, loraSummary, loraTriggers } from '#lib/director/loras.ts';
   import {
     pushSnapshot,
     restore as restoreSnapshot,
     snapshotOf,
     type Snapshot
-  } from '$lib/director/history';
+  } from '#lib/director/history.ts';
   import {
     addCharacterToAllClips,
     castForPrompting,
@@ -303,9 +308,9 @@
     roleAdvisory,
     toggleClipCharacter,
     worstClipRefCount
-  } from '$lib/director/characters';
-  import type { Generation } from '$lib/types';
-  import { str, num, bool, arr, reattachNote } from '$lib/restore';
+  } from '#lib/director/characters.ts';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, bool, arr, reattachNote } from '#lib/restore.ts';
 
   const ACTIVE_JOB_KEY = 'director-active-job';
   // Per-DEVICE, not per-project: which tier this client renders and streams is a property of the

@@ -1,14 +1,14 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { waveformPeaks } from '@koblibs/ui';
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import type { DirectorClip, LyricWord } from '$lib/api/client';
-  import { secondsToFrame, frameToSeconds } from '$lib/ltx/frames';
-  import { reorderTarget, trimmedSeconds } from '$lib/director/timeline-drag';
-  import { shotGist } from '$lib/director/shot-list';
-  import { h3GenerationGist, type PackedGeneration } from '$lib/director/h3-generations';
-  import { parseH3Block } from '$lib/director/h3-block';
-  import { formatCutTime, h3ShotIsCut } from '$lib/director/h3-prompt';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import type { DirectorClip, LyricWord } from '#lib/api/client.ts';
+  import { secondsToFrame, frameToSeconds } from '#lib/ltx/frames.ts';
+  import { reorderTarget, trimmedSeconds } from '#lib/director/timeline-drag.ts';
+  import { shotGist } from '#lib/director/shot-list.ts';
+  import { h3GenerationGist, type PackedGeneration } from '#lib/director/h3-generations.ts';
+  import { parseH3Block } from '#lib/director/h3-block.ts';
+  import { formatCutTime, h3ShotIsCut } from '#lib/director/h3-prompt.ts';
   import {
     H3_TRIM_JOIN,
     h3Timecode,
@@ -18,19 +18,19 @@
     runUpSecondsFor,
     shotClockAt,
     type ShotClock
-  } from '$lib/director/h3-soundtrack';
+  } from '#lib/director/h3-soundtrack.ts';
   import {
     layoutClips,
     ltxDeliveredSeconds,
     MIN_CLIP_SECONDS
-  } from '$lib/director/timeline-layout';
+  } from '#lib/director/timeline-layout.ts';
   import {
     fitPhraseLabel,
     lyricPhrases,
     rulerTicks,
     tickLabel
-  } from '$lib/director/timeline-ticks';
-  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '$lib/director/engine';
+  } from '#lib/director/timeline-ticks.ts';
+  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '#lib/director/engine.ts';
 
   // Multi-lane, zoomable, scrollable timeline. The page owns the clip array; this
   // component mutates it in place (reorder / trim / move-pin) and calls back for

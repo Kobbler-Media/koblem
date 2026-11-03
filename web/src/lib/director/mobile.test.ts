@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorH3Reference } from '$lib/api/client';
+import type { DirectorH3Reference } from '#lib/api/client.ts';
 import {
   deadOrdinalNote,
   formatShotRanges,

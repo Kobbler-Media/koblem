@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { ReasoningEffort, SamplingConfig, SamplingPreset } from '$lib/types';
+  import type { ReasoningEffort, SamplingConfig, SamplingPreset } from '#lib/types.ts';
 
   /**
    * Mirror of `SamplingConfig` where every knob is explicitly nullable so the
@@ -153,8 +153,8 @@
 
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listGrammars } from '$lib/api/client';
-  import type { GrammarEntry } from '$lib/types';
+  import { listGrammars } from '#lib/api/client.ts';
+  import type { GrammarEntry } from '#lib/types.ts';
 
   interface Props {
     value: SamplingState;

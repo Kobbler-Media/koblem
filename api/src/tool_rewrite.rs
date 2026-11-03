@@ -83,6 +83,10 @@ pub fn rewrite_request_tools(body: &mut Value) {
     }
 }
 
+pub fn is_rewritten_tool(name: &str) -> bool {
+    name == MEILI_TOOL_NAME
+}
+
 /// Translate semantic tool call arguments back to MeiliSearch filter syntax.
 ///
 /// Returns the rewritten arguments JSON string. Non-MeiliSearch tool calls

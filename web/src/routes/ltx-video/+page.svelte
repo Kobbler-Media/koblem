@@ -19,30 +19,30 @@
     type LtxAudioSource,
     type LtxUpscalerRatio,
     type LtxPromptImage
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import { ltxReceipt } from '$lib/queue/ltx-receipt';
-  import Ltx2bPanel from '$lib/components/video/Ltx2bPanel.svelte';
-  import WanPanel from '$lib/components/video/WanPanel.svelte';
-  import UpscalePanel from '$lib/components/video/UpscalePanel.svelte';
-  import PinTime from '$lib/components/video/PinTime.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, arr, reattachNote } from '$lib/restore';
-  import { framesFromSeconds } from '$lib/ltx/frames';
-  import { assetRefFor } from '$lib/ltx/assetRef';
-  import { planActiveJob } from '$lib/ltx/activeJob';
-  import { adoptedElapsedSec } from '$lib/ltx/elapsed';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import { ltxReceipt } from '#lib/queue/ltx-receipt.ts';
+  import Ltx2bPanel from '#lib/components/video/Ltx2bPanel.svelte';
+  import WanPanel from '#lib/components/video/WanPanel.svelte';
+  import UpscalePanel from '#lib/components/video/UpscalePanel.svelte';
+  import PinTime from '#lib/components/video/PinTime.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, arr, reattachNote } from '#lib/restore.ts';
+  import { framesFromSeconds } from '#lib/ltx/frames.ts';
+  import { assetRefFor } from '#lib/ltx/assetRef.ts';
+  import { planActiveJob } from '#lib/ltx/activeJob.ts';
+  import { adoptedElapsedSec } from '#lib/ltx/elapsed.ts';
   import {
     LTX_VIDEO_ENGINE,
     LTX_VIDEO_HISTORY_SERVICE,
     isVideoTab,
     type VideoTab
-  } from '$lib/ltx/videoTabs';
-  import { capabilities, unavailableFor } from '$lib/director/engine';
-  import { compileForDelivery } from '$lib/director/compile';
+  } from '#lib/ltx/videoTabs.ts';
+  import { capabilities, unavailableFor } from '#lib/director/engine.ts';
+  import { compileForDelivery } from '#lib/director/compile.ts';
   import { onMount, onDestroy } from 'svelte';
 
   // The engine behind both LTX tabs. Every control below is drawn off `caps`, never off this name —

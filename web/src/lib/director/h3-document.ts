@@ -25,7 +25,7 @@ import type {
   H3SubjectDefinition,
   H3Task,
   H3TaskType
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 import { parseH3Block, replaceH3Section, type H3ParsedBlock, type H3SectionName } from './h3-block';
 import {
   H3_TRANSITION_VERBS,

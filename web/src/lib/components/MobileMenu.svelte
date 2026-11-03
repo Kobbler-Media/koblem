@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { page } from '$app/stores';
-  import { registerOverlay, unregisterOverlay } from '$lib/stores/ui.svelte';
-  import { clearAuth } from '$lib/stores/auth.svelte';
-  import { navItems, isActive } from '$lib/data/nav';
+  import { page } from '$app/state';
+  import { registerOverlay, unregisterOverlay } from '#lib/stores/ui.svelte.ts';
+  import { clearAuth } from '#lib/stores/auth.svelte.ts';
+  import { navItems, isActive } from '#lib/data/nav.ts';
 
   interface Props {
     open: boolean;
@@ -47,7 +47,7 @@
       <a
         href={item.href}
         class="nav-item"
-        class:active={isActive($page.url.pathname, item.href)}
+        class:active={isActive(page.url.pathname, item.href)}
         title={item.label}
         onclick={onClose}
       >

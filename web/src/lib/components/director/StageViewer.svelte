@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import type { DirectorClip } from '$lib/api/client';
-  import type { ShotRenderStatus } from '$lib/director/shot-list';
-  import type { RenderTier } from '$lib/director/tier';
-  import { formatDuration, type H3Telemetry } from '$lib/director/h3-telemetry';
+  import { DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import type { DirectorClip } from '#lib/api/client.ts';
+  import type { ShotRenderStatus } from '#lib/director/shot-list.ts';
+  import type { RenderTier } from '#lib/director/tier.ts';
+  import { formatDuration, type H3Telemetry } from '#lib/director/h3-telemetry.ts';
 
   // The stage: which shot is open, what it looks like right now, and the two buttons that put it
   // through the engine. What plays here is picked by tier — on `proxy` a 512×288 clip wins, because

@@ -6,9 +6,9 @@
     H3LoraListing,
     LtxLoraInfo,
     LtxRuntimeLora
-  } from '$lib/api/client';
-  import type { EngineCapabilities } from '$lib/director/engine';
-  import { H3_CHECKPOINT_FLIP_SECONDS } from '$lib/director/h3-generations';
+  } from '#lib/api/client.ts';
+  import type { EngineCapabilities } from '#lib/director/engine.ts';
+  import { H3_CHECKPOINT_FLIP_SECONDS } from '#lib/director/h3-generations.ts';
   import {
     hasLora,
     loraStrength,
@@ -19,7 +19,7 @@
     normaliseLoraOverride,
     setLoraStrength,
     toggleLora
-  } from '$lib/director/loras';
+  } from '#lib/director/loras.ts';
 
   /**
    * How this render unit is CONFIGURED — length, what it opens on, how it joins the one before,

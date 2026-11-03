@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { capabilities, unavailableFor, type DirectorEngine } from '$lib/director/engine';
+  import { capabilities, unavailableFor, type DirectorEngine } from '#lib/director/engine.ts';
   import {
     H3_CHECKPOINT_FLIP_SECONDS,
     H3_DOCUMENTED_MIN_SECONDS,
     H3_MAX_SECONDS,
     h3FrameMode,
     h3HasFrameImage
-  } from '$lib/director/h3-generations';
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import PinTime from '$lib/components/video/PinTime.svelte';
+  } from '#lib/director/h3-generations.ts';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import PinTime from '#lib/components/video/PinTime.svelte';
   import TakesPanel from './TakesPanel.svelte';
   import {
     V2V_STRENGTH_MAX,
@@ -18,7 +18,7 @@
     isV2v,
     v2vPriorStranded,
     v2vStrengthDefault
-  } from '$lib/director/continuity';
+  } from '#lib/director/continuity.ts';
   import {
     LORA_STRENGTH_MAX,
     LORA_STRENGTH_MIN,
@@ -29,8 +29,8 @@
     normaliseLoraOverride,
     setLoraStrength,
     toggleLora
-  } from '$lib/director/loras';
-  import type { ResolvedClipRouting } from '$lib/director/characters';
+  } from '#lib/director/loras.ts';
+  import type { ResolvedClipRouting } from '#lib/director/characters.ts';
   import type {
     DirectorCharacter,
     DirectorClip,
@@ -40,7 +40,7 @@
     LtxFrameDrop,
     LtxRuntimeLora,
     LtxVideoProps
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   // Everything about the inspected shot that is not its prompt: how it renders, what it renders
   // from, and which take of it ends up in the cut. The fields write straight onto the clip object,

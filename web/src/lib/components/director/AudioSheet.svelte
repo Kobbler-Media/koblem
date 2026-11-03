@@ -1,6 +1,6 @@
 <script lang="ts">
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import type { LyricWord } from '$lib/api/client';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import type { LyricWord } from '#lib/api/client.ts';
 
   // The project's audio bed and its word-level transcript. The waveform and lyric chips it produces
   // are what the timeline's audio lane draws, and what a beat snaps to.

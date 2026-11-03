@@ -1,7 +1,7 @@
 <script lang="ts">
   import { SearchSelect } from '@koblibs/ui';
   import type { SearchSelectItem } from '@koblibs/ui';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
   import {
     searchShows,
     getShowDetail,
@@ -11,7 +11,7 @@
     listTestScenarios,
     runTestScenario,
     getPromptTemplate
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
   import type {
     ShowDetail,
     SeasonDetail,
@@ -21,12 +21,12 @@
     CompareResponse,
     TestScenario,
     TestResult
-  } from '$lib/types';
+  } from '#lib/types.ts';
   import SamplingControls, {
     emptySampling,
     toSamplingConfig,
     type SamplingState
-  } from '$lib/components/SamplingControls.svelte';
+  } from '#lib/components/SamplingControls.svelte';
 
   // Per-run sampling override shared by Search & Compare tabs. Not
   // persisted — purely per-session tuning on top of the persisted
@@ -91,7 +91,7 @@
       return;
     }
     try {
-      const { submitReview } = await import('$lib/api/client');
+      const { submitReview } = await import('#lib/api/client.ts');
       customResult = await submitReview(parsed);
     } catch (e) {
       customError = e instanceof Error ? e.message : 'Request failed';

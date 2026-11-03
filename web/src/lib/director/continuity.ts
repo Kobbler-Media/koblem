@@ -7,7 +7,7 @@
  * what changes in it.
  */
 
-import type { DirectorClip, DirectorClipMode, LtxV2vSource } from '$lib/api/client';
+import type { DirectorClip, DirectorClipMode, LtxV2vSource } from '#lib/api/client.ts';
 
 export const isV2v = (m: DirectorClipMode) => m === 'v2v_edit' || m === 'v2v_restyle';
 

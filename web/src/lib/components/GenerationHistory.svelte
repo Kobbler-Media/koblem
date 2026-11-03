@@ -8,8 +8,8 @@
     generationFileUrl,
     fetchTranscriptText,
     ApiError
-  } from '$lib/api/client';
-  import type { Generation, GenerationOutput } from '$lib/types';
+  } from '#lib/api/client.ts';
+  import type { Generation, GenerationOutput } from '#lib/types.ts';
 
   const PAGE = 50;
 

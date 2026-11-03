@@ -6,20 +6,20 @@
     capabilities,
     unavailableFor,
     type DirectorEngine
-  } from '$lib/director/engine';
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import PinTime from '$lib/components/video/PinTime.svelte';
+  } from '#lib/director/engine.ts';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import PinTime from '#lib/components/video/PinTime.svelte';
   import {
     MULTI_CHARACTER_CAVEAT,
     clipHasCharacter,
     refExclusionReason
-  } from '$lib/director/characters';
+  } from '#lib/director/characters.ts';
   import type {
     DirectorCharacter,
     DirectorClip,
     LtxShotAudioKind,
     LyricWord
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   // The clip's words: its idea, the prompt those become, the moments that change inside it, who is
   // in it, and its audio. Every LLM action is a callback because each one is a gated call the

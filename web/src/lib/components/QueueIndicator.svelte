@@ -9,8 +9,8 @@
    * happens to carry status, not a status that sometimes appears.
    */
   import { onDestroy, onMount } from 'svelte';
-  import { getQueueState, startQueueFeed } from '$lib/stores/queue.svelte';
-  import { indicatorState } from '$lib/queue/format';
+  import { getQueueState, startQueueFeed } from '#lib/stores/queue.svelte.ts';
+  import { indicatorState } from '#lib/queue/format.ts';
 
   const queue = getQueueState();
 

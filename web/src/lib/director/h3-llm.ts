@@ -41,7 +41,7 @@ import type {
   H3RetentionEntry,
   H3SubjectDefinition,
   H3TaskType
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 import { looksLikeH3Block, parseH3Block } from './h3-block';
 import { H3_AUDIO_MARKERS, H3_TASK_TYPES, H3_VISIBLE_MARKERS } from './h3-prompt';
 

@@ -12,21 +12,21 @@
     listApiKeys,
     createApiKey,
     revokeApiKey
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
   import type {
     GpuLogsStats,
     ApiKeySummary,
     GpuServiceKind as ApiGpuServiceKind
-  } from '$lib/api/client';
-  import type { SamplingConfig } from '$lib/types';
+  } from '#lib/api/client.ts';
+  import type { SamplingConfig } from '#lib/types.ts';
   import SamplingControls, {
     applyPresetValues,
     emptySampling,
     fromSamplingConfig,
     toSamplingConfig,
     type SamplingState
-  } from '$lib/components/SamplingControls.svelte';
-  import type { SamplingPreset } from '$lib/types';
+  } from '#lib/components/SamplingControls.svelte';
+  import type { SamplingPreset } from '#lib/types.ts';
 
   /** Settings-table keys + labels for the per-surface sampling defaults block.
    *

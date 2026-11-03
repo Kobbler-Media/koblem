@@ -7,7 +7,7 @@
  */
 
 import type { Snippet } from 'svelte';
-import type { DirectorH3Reference, H3ReferenceKind } from '$lib/api/client';
+import type { DirectorH3Reference, H3ReferenceKind } from '#lib/api/client.ts';
 import { h3Ordinals } from './h3-prompt';
 import { roleLabel } from './h3-roles';
 

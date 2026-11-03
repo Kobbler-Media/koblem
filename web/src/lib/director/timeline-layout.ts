@@ -28,8 +28,8 @@
  * timeline show that number without re-deriving the seam arithmetic a fourth time.
  */
 
-import type { DirectorClip } from '$lib/api/client';
-import { actualDuration } from '$lib/ltx/frames';
+import type { DirectorClip } from '#lib/api/client.ts';
+import { actualDuration } from '#lib/ltx/frames.ts';
 import type { PackedGeneration } from './h3-generations';
 import type { SoundtrackPlan } from './h3-soundtrack';
 

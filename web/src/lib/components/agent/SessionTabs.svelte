@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AgentSessionSummary } from '$lib/api/client';
+  import type { AgentSessionSummary } from '#lib/api/client.ts';
 
   let {
     sessions,

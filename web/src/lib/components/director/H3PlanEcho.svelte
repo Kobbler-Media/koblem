@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { planIsEmpty, planNoteCount, type H3Plan } from '$lib/director/h3-plan';
+  import { planIsEmpty, planNoteCount, type H3Plan } from '#lib/director/h3-plan.ts';
   import {
     H3_CHECKPOINT_FLIP_SECONDS as H3_FLIP_SECONDS,
     formatDuration,
     h3Conditioning,
     h3ReloadCost,
     h3RenderWall
-  } from '$lib/director/h3-telemetry';
-  import { DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
+  } from '#lib/director/h3-telemetry.ts';
+  import { DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
 
   /**
    * What the ENGINE said it would render — the plan echo, stamped onto the project at dispatch.

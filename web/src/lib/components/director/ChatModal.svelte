@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ChatEdit, ChatMsg } from '$lib/director/chat';
+  import type { ChatEdit, ChatMsg } from '#lib/director/chat.ts';
 
   type Props = {
     messages: ChatMsg[];

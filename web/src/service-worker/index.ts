@@ -1,19 +1,17 @@
-/// <reference types="@sveltejs/kit" />
-/// <reference lib="webworker" />
-
 /*
  * 🔴 This app is a control panel for a live GPU queue, so a stale response is worse than a slow
  * one. Only the content-hashed build output and `static/` are cached; every navigation goes to the
  * network first and the shell is a fallback for when there is no network at all.
  */
 
-import { build, files, version } from '$service-worker';
-
-const sw = self as unknown as ServiceWorkerGlobalScope;
+import { version } from '$app/env';
+import { assets, immutable } from '$app/manifest';
+import { self as sw } from '$app/service-worker';
+import { precachePathnames } from '#lib/precache.ts';
 
 const CACHE = `koblem-${version}`;
 const SHELL = '/index.html';
-const ASSETS = new Set([...build, ...files]);
+const ASSETS = precachePathnames(sw.registration.scope, [immutable, assets]);
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(

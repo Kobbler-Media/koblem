@@ -19,14 +19,14 @@
     type Sa3Props,
     type Music3Props,
     type RhymeFlag
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import SonggenPanel from '$lib/components/SonggenPanel.svelte';
-  import Sa3Panel from '$lib/components/Sa3Panel.svelte';
-  import Music3Panel from '$lib/components/Music3Panel.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, bool, reattachNote } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import SonggenPanel from '#lib/components/SonggenPanel.svelte';
+  import Sa3Panel from '#lib/components/Sa3Panel.svelte';
+  import Music3Panel from '#lib/components/Music3Panel.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, bool, reattachNote } from '#lib/restore.ts';
   import { onMount, onDestroy, tick } from 'svelte';
 
   let historyKey = $state(0);

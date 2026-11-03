@@ -1,8 +1,8 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { uid } from '@koblibs/ui';
-  import type { DirectorClip } from '$lib/api/client';
-  import { DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
+  import type { DirectorClip } from '#lib/api/client.ts';
+  import { DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
 
   interface Props {
     summary?: string | null;

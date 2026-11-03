@@ -19,15 +19,15 @@
     setQueuePaused,
     type Job,
     type JobStat
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
   import {
     getQueueState,
     onJobEvent,
     refreshQueue,
     startQueueFeed
-  } from '$lib/stores/queue.svelte';
-  import { getNotifyState, setNotifyEnabled } from '$lib/stores/notify.svelte';
-  import { reorderTarget } from '$lib/director/timeline-drag';
+  } from '#lib/stores/queue.svelte.ts';
+  import { getNotifyState, setNotifyEnabled } from '#lib/stores/notify.svelte.ts';
+  import { reorderTarget } from '#lib/director/timeline-drag.ts';
   import {
     BANDS,
     bandLabel,
@@ -41,7 +41,7 @@
     jobEta,
     reorderAfterId,
     unitsLabel
-  } from '$lib/queue/format';
+  } from '#lib/queue/format.ts';
 
   const queue = getQueueState();
   const notify = getNotifyState();

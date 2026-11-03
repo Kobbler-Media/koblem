@@ -25,7 +25,7 @@
  * false, and the LTX path keeps its own elapsed/estimate progress notion untouched.
  */
 
-import type { H3Phase, LtxJobStatus } from '$lib/api/client';
+import type { H3Phase, LtxJobStatus } from '#lib/api/client.ts';
 import { planReloads, type H3GenerationPlan, type H3Plan } from './h3-plan';
 import { vocabFor } from './engine';
 

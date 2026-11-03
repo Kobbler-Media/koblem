@@ -15,20 +15,20 @@
     type LtxVideoProps,
     type LtxSegment,
     type LtxPromptImage
-  } from '$lib/api/client';
-  import { blockedSummary } from '$lib/queue/format';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import { watchLiveJobs, type LiveWatch } from '$lib/queue/live';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import PinTime from '$lib/components/video/PinTime.svelte';
-  import { framesFromSeconds } from '$lib/ltx/frames';
-  import { assetRefFor } from '$lib/ltx/assetRef';
-  import { planActiveJob } from '$lib/ltx/activeJob';
-  import { adoptedElapsedSec } from '$lib/ltx/elapsed';
-  import type { Generation } from '$lib/types';
-  import { str, num, arr, reattachNote } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import { blockedSummary } from '#lib/queue/format.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import { watchLiveJobs, type LiveWatch } from '#lib/queue/live.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import PinTime from '#lib/components/video/PinTime.svelte';
+  import { framesFromSeconds } from '#lib/ltx/frames.ts';
+  import { assetRefFor } from '#lib/ltx/assetRef.ts';
+  import { planActiveJob } from '#lib/ltx/activeJob.ts';
+  import { adoptedElapsedSec } from '#lib/ltx/elapsed.ts';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, arr, reattachNote } from '#lib/restore.ts';
   import { onMount, onDestroy } from 'svelte';
 
   // This device's own render, so a reload re-attaches without waiting on the job list. A fast path

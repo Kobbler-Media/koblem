@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { page } from '$app/stores';
-  import { clearAuth } from '$lib/stores/auth.svelte';
-  import { navItems, isActive } from '$lib/data/nav';
+  import { page } from '$app/state';
+  import { clearAuth } from '#lib/stores/auth.svelte.ts';
+  import { navItems, isActive } from '#lib/data/nav.ts';
 
   function handleLogout() {
     clearAuth();
@@ -15,7 +15,7 @@
         <a
           href={item.href}
           class="nav-item"
-          class:active={isActive($page.url.pathname, item.href)}
+          class:active={isActive(page.url.pathname, item.href)}
           title={item.newTab ? `${item.label} (opens in a new tab)` : item.label}
           target={item.newTab ? '_blank' : undefined}
           rel={item.newTab ? 'noopener' : undefined}

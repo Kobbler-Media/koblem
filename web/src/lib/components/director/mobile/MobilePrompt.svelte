@@ -6,16 +6,16 @@
     H3LoraListing,
     LtxLoraInfo,
     LtxRuntimeLora
-  } from '$lib/api/client';
-  import type { EngineCapabilities, EngineVocab } from '$lib/director/engine';
-  import { parseH3Block } from '$lib/director/h3-block';
-  import { H3_PROMPT_MAX_CHARS } from '$lib/director/h3-prompt';
+  } from '#lib/api/client.ts';
+  import type { EngineCapabilities, EngineVocab } from '#lib/director/engine.ts';
+  import { parseH3Block } from '#lib/director/h3-block.ts';
+  import { H3_PROMPT_MAX_CHARS } from '#lib/director/h3-prompt.ts';
   import {
     MOBILE_REF_GLYPH,
     deadOrdinalNote,
     type MobilePromptTab,
     type MobileRef
-  } from '$lib/director/mobile';
+  } from '#lib/director/mobile.ts';
   import MobilePromptView from './MobilePromptView.svelte';
   import MobileSections from './MobileSections.svelte';
   import MobileBeats from './MobileBeats.svelte';

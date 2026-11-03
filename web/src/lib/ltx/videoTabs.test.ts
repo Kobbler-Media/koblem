@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capabilities } from '$lib/director/engine';
+import { capabilities } from '#lib/director/engine.ts';
 import {
   LTX_VIDEO_ENGINE,
   LTX_VIDEO_HISTORY_SERVICE,

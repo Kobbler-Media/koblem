@@ -8,7 +8,7 @@
     presetFrame,
     secondsToFrame,
     type PinPreset
-  } from '$lib/ltx/frames';
+  } from '#lib/ltx/frames.ts';
 
   let {
     seconds = $bindable(),

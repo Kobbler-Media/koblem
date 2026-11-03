@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorClip, DirectorH3Reference } from '$lib/api/client';
+import type { DirectorClip, DirectorH3Reference } from '#lib/api/client.ts';
 import { packGenerations, h3ScopeAfterToggle, pinsAFrame } from './h3-generations';
 import { h3TaskTypesForRefs, h3UnjustifiedTaskTypes } from './h3-roles';
 import {

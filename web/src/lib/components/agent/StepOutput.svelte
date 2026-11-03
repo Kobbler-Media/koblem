@@ -1,6 +1,6 @@
 <script lang="ts">
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
-  import type { AgentStepOutput } from '$lib/api/client';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
+  import type { AgentStepOutput } from '#lib/api/client.ts';
 
   let {
     output,

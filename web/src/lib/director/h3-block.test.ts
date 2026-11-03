@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorH3Reference } from '$lib/api/client';
+import type { DirectorH3Reference } from '#lib/api/client.ts';
 import { composeH3Prompt, h3Ordinals, type H3ComposeInput } from './h3-prompt';
 import {
   h3MainSection,

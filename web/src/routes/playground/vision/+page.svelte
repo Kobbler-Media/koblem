@@ -6,14 +6,14 @@
     visionClassifyFromEmbeddings,
     getHealth,
     getSettings
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
   import type {
     VisionEmbedResponse,
     VisionClassifyResponse,
     VisionTextEmbedResponse
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
   import { onMount } from 'svelte';
 
   /// 'embed' / 'classify' take image uploads; 'text-embed' takes prompts;

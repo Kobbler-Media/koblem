@@ -23,8 +23,8 @@ import type {
   LtxUpscalerRatio,
   LyricWord,
   StoryContext
-} from '$lib/api/client';
-import { ltxRequestOf } from '$lib/api/client';
+} from '#lib/api/client.ts';
+import { ltxRequestOf } from '#lib/api/client.ts';
 import { clampLoraStrength } from './loras';
 import { readEngine } from './engine';
 

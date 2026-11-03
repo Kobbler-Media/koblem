@@ -1,18 +1,22 @@
 <script lang="ts">
   import { waveformPeaks } from '@koblibs/ui';
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import type { DirectorClip } from '$lib/api/client';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import type { DirectorClip } from '#lib/api/client.ts';
   import {
     moveShot,
     shotGist,
     shotStateLabel,
     type ShotRenderStatus
-  } from '$lib/director/shot-list';
-  import type { RenderTier } from '$lib/director/tier';
-  import { h3GenerationGist, type PackedGeneration } from '$lib/director/h3-generations';
-  import { DEFAULT_VOCAB, type EngineCapabilities, type EngineVocab } from '$lib/director/engine';
-  import type { TimelineLayout } from '$lib/director/timeline-layout';
-  import { tickLabel } from '$lib/director/timeline-ticks';
+  } from '#lib/director/shot-list.ts';
+  import type { RenderTier } from '#lib/director/tier.ts';
+  import { h3GenerationGist, type PackedGeneration } from '#lib/director/h3-generations.ts';
+  import {
+    DEFAULT_VOCAB,
+    type EngineCapabilities,
+    type EngineVocab
+  } from '#lib/director/engine.ts';
+  import type { TimelineLayout } from '#lib/director/timeline-layout.ts';
+  import { tickLabel } from '#lib/director/timeline-ticks.ts';
 
   // The cut, as a list. Time is not a usable axis in the hand, so what the timeline draws on one
   // becomes a row: order, poster, gist, render state in words, and ↑/↓ instead of a drag.

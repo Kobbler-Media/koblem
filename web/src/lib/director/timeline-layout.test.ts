@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { waveformPeaks } from '@koblibs/ui';
-import type { DirectorClip, DirectorH3Reference } from '$lib/api/client';
+import type { DirectorClip, DirectorH3Reference } from '#lib/api/client.ts';
 import { packGenerations } from './h3-generations';
 import {
   H3_SOUNDTRACK_REF_ID,

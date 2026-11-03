@@ -44,7 +44,7 @@ import type {
   DirectorH3Generation,
   DirectorH3Reference,
   H3Task
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 import { H3_FPS, capabilities, h3MaxFrames, snapFrames, vocabFor } from './engine';
 import { parseH3Block } from './h3-block';
 

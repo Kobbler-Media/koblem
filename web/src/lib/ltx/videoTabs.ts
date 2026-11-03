@@ -10,8 +10,8 @@
  * `ltx25` render under `ltx25`, so a page that asks for a bucket its renders were not written to
  * shows an empty list with no error at all. Change this only with `historyServiceFor` in hand.
  */
-import type { DirectorEngine } from '$lib/api/client';
-import { historyServiceFor } from '$lib/director/engine';
+import type { DirectorEngine } from '#lib/api/client.ts';
+import { historyServiceFor } from '#lib/director/engine.ts';
 
 export type VideoTab = 'ltx2b' | 'ltx25' | 'lipdub' | 'wan' | 'upscale';
 

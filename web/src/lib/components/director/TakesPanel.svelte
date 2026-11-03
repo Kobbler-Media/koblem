@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DirectorCharacter, DirectorTake } from '$lib/api/client';
+  import type { DirectorCharacter, DirectorTake } from '#lib/api/client.ts';
 
   // Every retake — yours or the critic's — is kept as its own take, so this is where the choice
   // actually gets made. Picking one re-derives the stitched cut from the selections; promoting a

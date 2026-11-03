@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { audioInputAllowed, getHealth, sendChat } from '$lib/api/client';
-  import type { ChatResponse, SamplingConfig, SamplingPreset } from '$lib/types';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  import { audioInputAllowed, getHealth, sendChat } from '#lib/api/client.ts';
+  import type { ChatResponse, SamplingConfig, SamplingPreset } from '#lib/types.ts';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
   import SamplingControls, {
     fromSamplingConfig,
     loadSamplingFromStorage,
     saveSamplingToStorage,
     toSamplingConfig,
     type SamplingState
-  } from '$lib/components/SamplingControls.svelte';
+  } from '#lib/components/SamplingControls.svelte';
 
   interface Exchange {
     prompt: string;

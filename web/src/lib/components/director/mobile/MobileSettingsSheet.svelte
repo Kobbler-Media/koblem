@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { PREVIEW_TIERS, type SizeTier } from '$lib/director/resolution';
-  import { capabilities, checkCanvas, type DirectorEngine } from '$lib/director/engine';
+  import { PREVIEW_TIERS, type SizeTier } from '#lib/director/resolution.ts';
+  import { capabilities, checkCanvas, type DirectorEngine } from '#lib/director/engine.ts';
 
   // The three settings that change what a phone actually SEES — canvas, frame rate, and what a
   // preview means on this engine — with the hint under each one live. Everything else (LoRAs, steps,

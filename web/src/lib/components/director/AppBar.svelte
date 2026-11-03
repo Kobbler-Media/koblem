@@ -1,9 +1,9 @@
 <script lang="ts">
   import AppbarOverflow from './AppbarOverflow.svelte';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import type { JobKind } from '$lib/api/client';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import type { RenderTier } from '$lib/director/tier';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import type { JobKind } from '#lib/api/client.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import type { RenderTier } from '#lib/director/tier.ts';
 
   // The top bar and the banners under it. The banners are PASSIVE by design: an autosave that lost
   // a race must not interrupt somebody who did nothing, so saving simply stops until one of the

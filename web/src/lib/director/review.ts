@@ -1,4 +1,4 @@
-import type { DirectorH3GenerationBrief, DirectorReviewFinding } from '$lib/api/client';
+import type { DirectorH3GenerationBrief, DirectorReviewFinding } from '#lib/api/client.ts';
 import { seedH3Prompt } from './h3-document';
 import type { PackedGeneration } from './h3-generations';
 

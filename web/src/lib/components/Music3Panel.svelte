@@ -12,12 +12,12 @@
     type Music3ReworkScope,
     type Music3Progress,
     type Music3Props
-  } from '$lib/api/client';
-  import { blockedSummary } from '$lib/queue/format';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
+  } from '#lib/api/client.ts';
+  import { blockedSummary } from '#lib/queue/format.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
   import { onDestroy, onMount } from 'svelte';
-  import { str, num, bool } from '$lib/restore';
+  import { str, num, bool } from '#lib/restore.ts';
 
   let {
     music3Props = null,

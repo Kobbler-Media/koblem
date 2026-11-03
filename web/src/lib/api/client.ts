@@ -1,6 +1,6 @@
-import { clearAuth, getAuthToken } from '$lib/stores/auth.svelte';
-import { queueHeaders, type QueueSubmitOptions } from '$lib/queue/options';
-import type { SubscriptionBody } from '$lib/queue/push';
+import { clearAuth, getAuthToken } from '#lib/stores/auth.svelte.ts';
+import { queueHeaders, type QueueSubmitOptions } from '#lib/queue/options.ts';
+import type { SubscriptionBody } from '#lib/queue/push.ts';
 import { parseTtsSse, type FaEvent } from '@koblibs/ui';
 
 export type { QueueSubmitOptions };
@@ -326,7 +326,7 @@ import type {
   Pixal3dMotionRequest,
   Pixal3dProps,
   Pixal3dRerigRequest
-} from '$lib/types';
+} from '#lib/types.ts';
 
 export function getCorrections(): Promise<{
   generic_rules: GenericRule[];
@@ -2519,7 +2519,7 @@ export interface LtxVideoProps {
    * `/object_info` only after the **comfyui** container restarts — separately from the comfy-api
    * container that answers this endpoint. Until then `beats` is refused at graph build with a 501,
    * after the GPU-gate wait. `undefined` = the engine did not answer, or is old enough not to
-   * publish it; `beatsAvailable()` in `$lib/director/engine` is what a control reads.
+   * publish it; `beatsAvailable()` in `#lib/director/engine` is what a control reads.
    */
   beats_enabled?: boolean;
 }
@@ -2844,7 +2844,7 @@ export interface LtxJobStatus {
    *    so no capability predicts it — this flag is the only structured warning a client gets, and
    *    the prose account of it rides `last_render_warnings`.
    *
-   * See `mediaIsFragment` in `$lib/director/renders`, which is where the two are combined.
+   * See `mediaIsFragment` in `#lib/director/renders`, which is where the two are combined.
    */
   job_is_partial?: boolean;
 
@@ -3709,7 +3709,7 @@ export interface DirectorCritiqueSettings {
  * `ltx25` is LTX-2.5 under ComfyUI: chained shots with banked latents, runtime LoRAs, one DiT, and
  * a soundtrack it writes itself. `h3` is MiniMax-H3: video and its synchronised stereo soundtrack
  * out of ONE denoise, guidance-distilled, and no chained continuation at all.
- * `capabilities()` in `$lib/director/engine` is where the differences are stated, and
+ * `capabilities()` in `#lib/director/engine` is where the differences are stated, and
  * `resumeAvailable()` there is what a control reads.
  *
  * ⚠️ A third value, `'ltx'`, was LTX-2.3 — a separate C++ deployment with its own job store and its

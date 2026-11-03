@@ -20,8 +20,8 @@
    * to prevent is nobody remembering that at 23:00.
    */
   import { onDestroy, onMount } from 'svelte';
-  import { getQueueState, startQueueFeed } from '$lib/stores/queue.svelte';
-  import { isLive } from '$lib/queue/format';
+  import { getQueueState, startQueueFeed } from '#lib/stores/queue.svelte.ts';
+  import { isLive } from '#lib/queue/format.ts';
 
   const queue = getQueueState();
 

@@ -1,6 +1,6 @@
 // Type-only, so the cycle with `client.ts` is erased at build: the queue's own
 // vocabulary lives there and must not be copied here.
-import type { BlockedReason, JobState } from '$lib/api/client';
+import type { BlockedReason, JobState } from '#lib/api/client.ts';
 
 export interface ReviewCandidate {
   name: string;

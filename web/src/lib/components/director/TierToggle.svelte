@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { RenderTier, TierPreference } from '$lib/director/tier';
+  import type { RenderTier, TierPreference } from '#lib/director/tier.ts';
 
   let {
     pref,

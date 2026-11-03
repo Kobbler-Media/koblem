@@ -1,9 +1,9 @@
 <script lang="ts">
   import Timeline from './Timeline.svelte';
-  import type { DirectorClip, LyricWord } from '$lib/api/client';
-  import type { ShotRenderStatus } from '$lib/director/shot-list';
-  import type { PackedGeneration } from '$lib/director/h3-generations';
-  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '$lib/director/engine';
+  import type { DirectorClip, LyricWord } from '#lib/api/client.ts';
+  import type { ShotRenderStatus } from '#lib/director/shot-list.ts';
+  import type { PackedGeneration } from '#lib/director/h3-generations.ts';
+  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '#lib/director/engine.ts';
 
   // The cut, and the edits that act on it. DESKTOP ONLY — below `DIRECTOR_COMPACT` the phone
   // shell replaces the whole workspace, so this bar and its time axis are never mounted there and

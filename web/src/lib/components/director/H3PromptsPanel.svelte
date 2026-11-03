@@ -10,17 +10,17 @@
     stepMatch,
     type PromptMatch,
     type TextWindow
-  } from '$lib/director/prompt-search';
-  import { DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
-  import { H3_PROMPT_MAX_CHARS } from '$lib/director/h3-prompt';
+  } from '#lib/director/prompt-search.ts';
+  import { DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
+  import { H3_PROMPT_MAX_CHARS } from '#lib/director/h3-prompt.ts';
   import {
     H3_SECTION_NAMES,
     looksLikeH3Block,
     parseH3Block,
     sectionLabel,
     type H3SectionName
-  } from '$lib/director/h3-block';
-  import { h3SectionSpans } from '$lib/director/h3-highlight';
+  } from '#lib/director/h3-block.ts';
+  import { h3SectionSpans } from '#lib/director/h3-highlight.ts';
 
   /**
    * **Every H3 prompt in the project, as text, with one find-and-replace across all of them.**

@@ -1,4 +1,4 @@
-import { listGpuCards, type GpuCard } from '$lib/api/client';
+import { listGpuCards, type GpuCard } from '#lib/api/client.ts';
 
 let inFlight: Promise<GpuCard[]> | null = null;
 

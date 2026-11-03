@@ -14,7 +14,7 @@
     type GpuCard,
     type GpuEngineConfig,
     type GpuCardOccupancy
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   let cards = $state<GpuCard[]>([]);
   let engines = $state<GpuEngineConfig[]>([]);

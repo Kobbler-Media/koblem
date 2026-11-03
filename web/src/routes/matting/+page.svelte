@@ -9,11 +9,11 @@
     type MattingHealth,
     type MattingBackend,
     type MattingBgMode
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, bool, reattachNote } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, bool, reattachNote } from '#lib/restore.ts';
   import { onMount } from 'svelte';
 
   let historyKey = $state(0);

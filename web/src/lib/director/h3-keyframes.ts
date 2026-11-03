@@ -65,7 +65,7 @@ import type {
   H3RetentionEntry,
   H3SubjectDefinition,
   H3TaskType
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 import type { H3ParsedBlock } from './h3-block';
 import { h3KeyframeImages, h3KeyframeRefId, type PackedGeneration } from './h3-generations';
 import { h3UnjustifiedTaskTypes, isFrameRole, roleLabel } from './h3-roles';

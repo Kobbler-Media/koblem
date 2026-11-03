@@ -1,4 +1,4 @@
-import type { LtxJobState } from '$lib/api/client';
+import type { LtxJobState } from '#lib/api/client.ts';
 import type { EnqueueLike } from './options';
 
 /**

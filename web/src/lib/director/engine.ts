@@ -41,7 +41,7 @@
  * UI that leaves the control visible is a UI that builds requests which fail.
  */
 
-import type { DirectorEngine, H3Props } from '$lib/api/client';
+import type { DirectorEngine, H3Props } from '#lib/api/client.ts';
 
 export type { DirectorEngine };
 

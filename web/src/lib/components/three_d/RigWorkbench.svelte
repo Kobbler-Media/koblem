@@ -55,7 +55,7 @@
   import { onDestroy, untrack } from 'svelte';
   import * as THREE from 'three';
 
-  import { fetchMediaBlob, pixal3dModelPath, savePixal3dEdit } from '$lib/api/client';
+  import { fetchMediaBlob, pixal3dModelPath, savePixal3dEdit } from '#lib/api/client.ts';
   import ColourHud from './ColourHud.svelte';
   import JointPopover from './JointPopover.svelte';
   import ModelStage, { type EditorStageHandle, type StageMode } from './ModelStage.svelte';

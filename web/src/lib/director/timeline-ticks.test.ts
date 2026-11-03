@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LyricWord } from '$lib/api/client';
+import type { LyricWord } from '#lib/api/client.ts';
 import { fitPhraseLabel, lyricPhrases, rulerTicks, tickLabel } from './timeline-ticks';
 
 describe('rulerTicks', () => {

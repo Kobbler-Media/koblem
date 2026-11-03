@@ -22,9 +22,9 @@
     type BeefyStatus,
     type GpuServiceState,
     type Job
-  } from '$lib/api/client';
-  import { getQueueState, refreshQueue, startQueueFeed } from '$lib/stores/queue.svelte';
-  import { elapsedMs, humanMs, isLive, jobEta } from '$lib/queue/format';
+  } from '#lib/api/client.ts';
+  import { getQueueState, refreshQueue, startQueueFeed } from '#lib/stores/queue.svelte.ts';
+  import { elapsedMs, humanMs, isLive, jobEta } from '#lib/queue/format.ts';
 
   let services = $state<GpuServiceState[]>([]);
   let loading = $state(true);

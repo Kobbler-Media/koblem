@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listReviewSessions, getReviewSession, replayReviewSession } from '$lib/api/client';
+  import { listReviewSessions, getReviewSession, replayReviewSession } from '#lib/api/client.ts';
   import type {
     ReviewSessionSummary,
     ReviewSessionDetail,
     ReviewResponse,
     SamplingConfig
-  } from '$lib/types';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  } from '#lib/types.ts';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
 
   let sessions = $state<ReviewSessionSummary[]>([]);
   let loading = $state(true);

@@ -1,12 +1,12 @@
-import { getPushKey, subscribePush, unsubscribePush } from '$lib/api/client';
-import type { NotifyMessage } from '$lib/queue/notify';
+import { getPushKey, subscribePush, unsubscribePush } from '#lib/api/client.ts';
+import type { NotifyMessage } from '#lib/queue/notify.ts';
 import {
   decodeServerKey,
   isIos,
   pushAvailability,
   subscriptionBody,
   type PushAvailability
-} from '$lib/queue/push';
+} from '#lib/queue/push.ts';
 
 const key = 'koblem-queue-notify';
 

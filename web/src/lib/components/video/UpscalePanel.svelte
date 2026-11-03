@@ -15,7 +15,7 @@
    * arm, and where there is a refine it counts three sigmas that are a small share of the wall
    * clock — the tiled VAE decode dominates and reports nothing.
    */
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
   import {
     uploadUpscaleSource,
     planUpscale,
@@ -27,11 +27,11 @@
     upscaleOutputPath,
     upscaleSegmentUrl,
     prefetchMediaSignatures
-  } from '$lib/api/client';
-  import { blockedSummary } from '$lib/queue/format';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import { watchLiveJobs, type LiveWatch } from '$lib/queue/live';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
+  } from '#lib/api/client.ts';
+  import { blockedSummary } from '#lib/queue/format.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import { watchLiveJobs, type LiveWatch } from '#lib/queue/live.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
   import type {
     UpscaleGenerateRequest,
     UpscaleJob,
@@ -39,7 +39,7 @@
     UpscaleScaleMode,
     UpscaleSegmentPlan,
     UpscaleSource
-  } from '$lib/types';
+  } from '#lib/types.ts';
   import { onDestroy, onMount } from 'svelte';
 
   /** Deep-link from Director: `?tab=upscale&project=<id>&tier=<proxy|final>&shot=<n>&variant=<n>`

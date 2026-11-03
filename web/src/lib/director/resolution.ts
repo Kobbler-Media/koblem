@@ -8,7 +8,7 @@
  * `resolve_quality_plan` in koblem/api `ltx_video.rs`.
  */
 
-import type { LtxQualityProfile, LtxUpscalerRatio } from '$lib/api/client';
+import type { LtxQualityProfile, LtxUpscalerRatio } from '#lib/api/client.ts';
 
 /**
  * A named output preset. Survives only to migrate OLD saved projects whose editor blob stored one;

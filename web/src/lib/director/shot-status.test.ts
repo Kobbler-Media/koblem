@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorClip } from '$lib/api/client';
+import type { DirectorClip } from '#lib/api/client.ts';
 import {
   clipAtPromptedIndex,
   promptedIndexOf,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { audioInputAllowed, getHealth } from '$lib/api/client';
+  import { audioInputAllowed, getHealth } from '#lib/api/client.ts';
   import AttachmentTray from './AttachmentTray.svelte';
   import {
     clipboardAttachments,

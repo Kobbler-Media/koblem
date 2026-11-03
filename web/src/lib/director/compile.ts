@@ -31,8 +31,8 @@ import type {
   LtxSegment,
   LtxUpscalerRatio,
   LtxVideoGenerateRequest
-} from '$lib/api/client';
-import { ltxRequestOf } from '$lib/api/client';
+} from '#lib/api/client.ts';
+import { ltxRequestOf } from '#lib/api/client.ts';
 import { carriedCharacterIds, characterRefsForClip, resolveClipVariants } from './characters';
 import { v2vSourceOf, v2vStrengthDefault } from './continuity';
 import { capabilities } from './engine';
@@ -43,7 +43,7 @@ import {
   snap32,
   type CustomStage
 } from './resolution';
-import { framesFromSeconds } from '$lib/ltx/frames';
+import { framesFromSeconds } from '#lib/ltx/frames.ts';
 // H3's own frame arithmetic lives in `h3-generations.ts` because it applies to a GENERATION, not
 // to a shot — `framesForSeconds` from `./engine` is the LTX-shaped per-shot answer and using it
 // here is what made shots look like renders.

@@ -14,8 +14,8 @@
    * `?tab=pixal3d` deep-links the second tab.
    */
   import { onMount } from 'svelte';
-  import Spar3dPanel from '$lib/components/three_d/Spar3dPanel.svelte';
-  import Pixal3dPanel from '$lib/components/three_d/Pixal3dPanel.svelte';
+  import Spar3dPanel from '#lib/components/three_d/Spar3dPanel.svelte';
+  import Pixal3dPanel from '#lib/components/three_d/Pixal3dPanel.svelte';
 
   type Tab = 'spar3d' | 'pixal3d';
 

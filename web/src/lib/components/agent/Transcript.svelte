@@ -1,6 +1,6 @@
 <script lang="ts">
   import MessageCard from './MessageCard.svelte';
-  import type { AgentMessage } from '$lib/api/client';
+  import type { AgentMessage } from '#lib/api/client.ts';
 
   let {
     messages,

@@ -14,7 +14,7 @@
  * attached to them, not the shot count, and the retained stack multiplied it by 80.
  */
 
-import type { DirectorClip, DirectorEngine } from '$lib/api/client';
+import type { DirectorClip, DirectorEngine } from '#lib/api/client.ts';
 import { clipCastSignature } from './characters';
 
 /**

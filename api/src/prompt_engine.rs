@@ -12,7 +12,7 @@
 use std::collections::BTreeMap;
 
 use koblem_client::types::{ReviewCandidate, ReviewRequest, WantContext};
-use minijinja::{Environment, Value as MJValue};
+use minijinja::{Environment, Value as MJValue, value::Serde};
 use serde::Serialize;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -172,17 +172,17 @@ pub async fn build_messages_with_overrides(
     };
 
     let system = env
-        .render_str(&system_body, &root)
+        .render_str(&system_body, Serde(&root))
         .map_err(|source| EngineError::Template {
             slot: SLOT_SYSTEM.to_string(),
             source,
         })?;
-    let user = env
-        .render_str(&user_body, &root)
-        .map_err(|source| EngineError::Template {
-            slot: SLOT_USER.to_string(),
-            source,
-        })?;
+    let user =
+        env.render_str(&user_body, Serde(&root))
+            .map_err(|source| EngineError::Template {
+                slot: SLOT_USER.to_string(),
+                source,
+            })?;
     Ok(MessagePair { system, user })
 }
 
@@ -235,7 +235,7 @@ async fn resolve_variables_with_overrides(
             .cloned()
             .unwrap_or_else(|| default_variable(&name).to_string());
         let rendered =
-            env.render_str(&body, &*root_ctx)
+            env.render_str(&body, Serde(&*root_ctx))
                 .map_err(|source| EngineError::Variable {
                     name: name.clone(),
                     source,
@@ -254,7 +254,6 @@ async fn resolve_variables_with_overrides(
 
 fn make_environment() -> Environment<'static> {
     let mut env = Environment::new();
-    env.set_keep_trailing_newline(false);
     minijinja_contrib::add_to_environment(&mut env);
     register_filters(&mut env);
     env
@@ -375,7 +374,7 @@ fn filter_flatten(value: MJValue) -> Result<MJValue, minijinja::Error> {
             out.push(item);
         }
     }
-    Ok(MJValue::from_serialize(Value::Array(out)))
+    Ok(MJValue::from(Serde(Value::Array(out))))
 }
 
 /// `{{ candidates | pluck('name') }}` is sugar for `map(attribute='name') | list`.
@@ -395,7 +394,7 @@ fn filter_pluck(value: MJValue, attr: String) -> Result<MJValue, minijinja::Erro
             out.push(v.clone());
         }
     }
-    Ok(MJValue::from_serialize(Value::Array(out)))
+    Ok(MJValue::from(Serde(Value::Array(out))))
 }
 
 fn mj_value_to_json(v: &MJValue) -> Value {
@@ -649,7 +648,7 @@ mod render_snapshots {
             .unwrap()
             .insert("vars".into(), serde_json::json!({}));
         let out = make_environment()
-            .render_str(DEFAULT_USER_TEMPLATE, &root)
+            .render_str(DEFAULT_USER_TEMPLATE, Serde(&root))
             .expect("default user template must render");
         normalise_today(&out)
     }
@@ -793,7 +792,10 @@ mod tests {
             { "name": "B", "signals": [] },
         ]);
         let out = env
-            .render_str("{{ x | render_candidate_list }}", json!({ "x": cands }))
+            .render_str(
+                "{{ x | render_candidate_list }}",
+                Serde(json!({ "x": cands })),
+            )
             .unwrap();
         assert_eq!(out, "  1. A [PROPER seed:10]\n  2. B");
     }
@@ -806,7 +808,7 @@ mod tests {
             { "title": "Law & Order: SVU", "year": 1999, "status": "Returning Series", "season": "27", "episode": "17", "episode_title": "Deep Under" },
         ]);
         let out = env
-            .render_str("{{ x | render_siblings }}", json!({ "x": siblings }))
+            .render_str("{{ x | render_siblings }}", Serde(json!({ "x": siblings })))
             .unwrap();
         assert_eq!(
             out,
@@ -818,7 +820,7 @@ mod tests {
     fn empty_siblings_render_as_empty_string() {
         let env = make_environment();
         let out = env
-            .render_str("{{ x | render_siblings }}", json!({ "x": [] }))
+            .render_str("{{ x | render_siblings }}", Serde(json!({ "x": [] })))
             .unwrap();
         assert_eq!(out, "");
     }
@@ -829,7 +831,7 @@ mod tests {
         let out = env
             .render_str(
                 "{{ items | pluck('id') | join(',') }}",
-                json!({ "items": [{"id": 1}, {"id": 2}, {"id": 3}] }),
+                Serde(json!({ "items": [{"id": 1}, {"id": 2}, {"id": 3}] })),
             )
             .unwrap();
         assert_eq!(out, "1,2,3");
@@ -841,7 +843,7 @@ mod tests {
         let out = env
             .render_str(
                 "{{ x | flatten | join(',') }}",
-                json!({ "x": [[1, 2], [3], [4, 5]] }),
+                Serde(json!({ "x": [[1, 2], [3], [4, 5]] })),
             )
             .unwrap();
         assert_eq!(out, "1,2,3,4,5");
@@ -853,7 +855,7 @@ mod tests {
         let out = env
             .render_str(
                 r"{{ s | regex_replace('\d+', '#') }}",
-                json!({ "s": "version 1.2.3" }),
+                Serde(json!({ "s": "version 1.2.3" })),
             )
             .unwrap();
         assert_eq!(out, "version #.#.#");
@@ -909,7 +911,7 @@ mod tests {
             }),
         );
         let out = make_environment()
-            .render_str(DEFAULT_USER_TEMPLATE, &root)
+            .render_str(DEFAULT_USER_TEMPLATE, Serde(&root))
             .unwrap();
         // Title + per-kind WANTED block.
         assert!(
@@ -943,7 +945,7 @@ mod tests {
             .unwrap()
             .insert("vars".into(), json!({}));
         let out = make_environment()
-            .render_str(DEFAULT_USER_TEMPLATE, &root)
+            .render_str(DEFAULT_USER_TEMPLATE, Serde(&root))
             .unwrap();
         assert!(out.contains("LEAGUE: MotoGP"), "got: {out}");
         assert!(out.contains("ROUND: 4"), "got: {out}");
@@ -976,7 +978,7 @@ mod tests {
             .unwrap()
             .insert("vars".into(), json!({}));
         let out = make_environment()
-            .render_str(DEFAULT_USER_TEMPLATE, &root)
+            .render_str(DEFAULT_USER_TEMPLATE, Serde(&root))
             .unwrap();
         assert!(
             out.contains(

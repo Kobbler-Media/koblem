@@ -5,7 +5,7 @@
  * does not care. Solved by choosing a STEP that fits rather than by drawing everything and hoping.
  */
 
-import type { LyricWord } from '$lib/api/client';
+import type { LyricWord } from '#lib/api/client.ts';
 
 /**
  * Candidate ruler steps as `[labelled, unlabelled]` pairs, seconds.

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getHealth, getCorrections, getSettings } from '$lib/api/client';
+  import { getHealth, getCorrections, getSettings } from '#lib/api/client.ts';
 
   type GpuService = {
     key: 'vision' | 'tts' | 'stt';

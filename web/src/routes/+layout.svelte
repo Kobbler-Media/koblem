@@ -2,15 +2,15 @@
   import { onMount } from 'svelte';
   import '../app.css';
   import { Toast } from '@koblibs/ui';
-  import BeefyBanner from '$lib/components/BeefyBanner.svelte';
-  import LoginForm from '$lib/components/LoginForm.svelte';
-  import NavBar from '$lib/components/NavBar.svelte';
-  import Sidebar from '$lib/components/Sidebar.svelte';
-  import MobileMenu from '$lib/components/MobileMenu.svelte';
-  import { login } from '$lib/api/client';
-  import { getAuthState, loadAuthToken, setAuthToken } from '$lib/stores/auth.svelte';
-  import { getUIState, setTheme, setMenuOpen } from '$lib/stores/ui.svelte';
-  import { loadNotifyPreference } from '$lib/stores/notify.svelte';
+  import BeefyBanner from '#lib/components/BeefyBanner.svelte';
+  import LoginForm from '#lib/components/LoginForm.svelte';
+  import NavBar from '#lib/components/NavBar.svelte';
+  import Sidebar from '#lib/components/Sidebar.svelte';
+  import MobileMenu from '#lib/components/MobileMenu.svelte';
+  import { login } from '#lib/api/client.ts';
+  import { getAuthState, loadAuthToken, setAuthToken } from '#lib/stores/auth.svelte.ts';
+  import { getUIState, setTheme, setMenuOpen } from '#lib/stores/ui.svelte.ts';
+  import { loadNotifyPreference } from '#lib/stores/notify.svelte.ts';
   import { page } from '$app/state';
 
   let { children } = $props();

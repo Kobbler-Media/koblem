@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { LyricWord } from '$lib/api/client';
-  import { tickLabel } from '$lib/director/timeline-ticks';
+  import type { LyricWord } from '#lib/api/client.ts';
+  import { tickLabel } from '#lib/director/timeline-ticks.ts';
 
   // Song setup, slice role and re-transcribe. The bar on the Shots screen is playback only; this is
   // where the track is actually configured. The full desktop sheet — drop zone, lyric lane, per-shot

@@ -13,7 +13,7 @@
  */
 
 import { uid } from '@koblibs/ui';
-import type { DirectorClip } from '$lib/api/client';
+import type { DirectorClip } from '#lib/api/client.ts';
 
 export interface ClipSelection {
   clips: DirectorClip[];

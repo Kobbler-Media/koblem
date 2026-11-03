@@ -1,4 +1,4 @@
-import type { BlockedReason, JobKind, JobState, QueueSnapshot } from '$lib/api/client';
+import type { BlockedReason, JobKind, JobState, QueueSnapshot } from '#lib/api/client.ts';
 import { batchEta, blockedSummary, clockOf, isPending } from './format';
 
 export type SubmitMode = 'queue' | 'now';

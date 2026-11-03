@@ -26,7 +26,7 @@
    * fresh one, and the server refuses a repeat.
    */
   import { onDestroy, onMount } from 'svelte';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
   import RigWorkbench from './RigWorkbench.svelte';
   import {
     animatePixal3dCharacter,
@@ -54,16 +54,16 @@
     renamePixal3dCharacter,
     rerigPixal3dCharacter,
     savePixal3dEdit
-  } from '$lib/api/client';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
+  } from '#lib/api/client.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
   import type {
     Pixal3dBusy,
     Pixal3dCharacter,
     Pixal3dMotion,
     Pixal3dProps,
     Pixal3dTier
-  } from '$lib/types';
+  } from '#lib/types.ts';
 
   const POLL_MS = 2500;
 

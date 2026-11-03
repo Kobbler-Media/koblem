@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorClip, DirectorH3Reference, LyricWord, StoryContext } from '$lib/api/client';
+import type {
+  DirectorClip,
+  DirectorH3Reference,
+  LyricWord,
+  StoryContext
+} from '#lib/api/client.ts';
 import { packGenerations } from './h3-generations';
 import { H3_SOUNDTRACK_REF_ID, H3_SOUNDTRACK_SENTINEL, H3_TRIM_JOIN } from './h3-soundtrack';
 import { layoutClips } from './timeline-layout';

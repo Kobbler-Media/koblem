@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { formatCutTime, h3ShotIsCut, type H3ShotBody } from '$lib/director/h3-prompt';
-  import { capitalise, type EngineVocab } from '$lib/director/engine';
+  import { formatCutTime, h3ShotIsCut, type H3ShotBody } from '#lib/director/h3-prompt.ts';
+  import { capitalise, type EngineVocab } from '#lib/director/engine.ts';
 
   /**
    * The beats of one shot, drawn to scale.

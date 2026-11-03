@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { DeleteConfirmModal } from '@koblibs/ui';
-  import Composer from '$lib/components/agent/Composer.svelte';
-  import Lightbox from '$lib/components/agent/Lightbox.svelte';
-  import SessionTabs from '$lib/components/agent/SessionTabs.svelte';
-  import Transcript from '$lib/components/agent/Transcript.svelte';
-  import type { PendingAttachment } from '$lib/components/agent/attachments';
-  import { POLL_MS, outOfRetries, retryDelay } from '$lib/components/agent/poll';
+  import Composer from '#lib/components/agent/Composer.svelte';
+  import Lightbox from '#lib/components/agent/Lightbox.svelte';
+  import SessionTabs from '#lib/components/agent/SessionTabs.svelte';
+  import Transcript from '#lib/components/agent/Transcript.svelte';
+  import type { PendingAttachment } from '#lib/components/agent/attachments.ts';
+  import { POLL_MS, outOfRetries, retryDelay } from '#lib/components/agent/poll.ts';
   import {
     ApiError,
     cancelAgentTurn,
@@ -18,7 +18,7 @@
     type AgentAttachmentUpload,
     type AgentSession,
     type AgentSessionSummary
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   const ACTIVE_KEY = 'koblem-agent-session';
 

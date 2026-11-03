@@ -9,7 +9,7 @@
     SONGGEN_COMMON,
     SONGGEN_DIMS,
     type SonggenDim
-  } from '$lib/data/songgen-vocab';
+  } from '#lib/data/songgen-vocab.ts';
 
   let { value = $bindable('') }: { value?: string } = $props();
 

@@ -1,10 +1,10 @@
-import type { JobKind } from '$lib/api/client';
+import type { JobKind } from '#lib/api/client.ts';
 import {
   getQueueState,
   onJobEvent,
   onStreamChange,
   startQueueFeed
-} from '$lib/stores/queue.svelte';
+} from '#lib/stores/queue.svelte.ts';
 import { isTerminal } from './format';
 
 /**

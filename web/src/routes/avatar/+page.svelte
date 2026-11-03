@@ -22,14 +22,14 @@
     type AvatarBsaConfig,
     type AvatarProps,
     type TtsVoice
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import { blockedSummary } from '$lib/queue/format';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, bool, obj, reattachNote } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import { blockedSummary } from '#lib/queue/format.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, bool, obj, reattachNote } from '#lib/restore.ts';
   import { WaveformTrim, blobToMonoSamples, sliceSamples, encodeWavMono16 } from '@koblibs/ui';
   import { onMount, onDestroy } from 'svelte';
 

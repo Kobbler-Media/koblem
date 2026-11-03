@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorClip, DirectorH3Generation, DirectorH3Reference } from '$lib/api/client';
+import type { DirectorClip, DirectorH3Generation, DirectorH3Reference } from '#lib/api/client.ts';
 import {
   H3_DOCUMENTED_MIN_FRAMES,
   H3_MAX_FRAMES,

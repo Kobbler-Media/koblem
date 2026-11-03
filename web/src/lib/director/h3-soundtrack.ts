@@ -48,7 +48,7 @@
 
 import { H3_FPS, H3_AUDIO_REF, audioSliceSeconds } from './engine';
 import type { PackedGeneration } from './h3-generations';
-import type { DirectorH3Reference } from '$lib/api/client';
+import type { DirectorH3Reference } from '#lib/api/client.ts';
 
 /**
  * The payload an unresolved soundtrack slice carries where an asset hash would go.

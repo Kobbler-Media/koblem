@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listLlmLogs, getLlmLog, rerunLlmLog } from '$lib/api/client';
-  import type { LlmLogSummary, LlmLogDetail, SamplingPreset } from '$lib/types';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  import { listLlmLogs, getLlmLog, rerunLlmLog } from '#lib/api/client.ts';
+  import type { LlmLogSummary, LlmLogDetail, SamplingPreset } from '#lib/types.ts';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
   import SamplingControls, {
     emptySampling,
     fromSamplingConfig,
     toSamplingConfig,
     type SamplingState
-  } from '$lib/components/SamplingControls.svelte';
+  } from '#lib/components/SamplingControls.svelte';
 
   let logs = $state<LlmLogSummary[]>([]);
   let loading = $state(true);

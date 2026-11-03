@@ -7,18 +7,18 @@
     getAudiobook,
     getHealth,
     getSettings
-  } from '$lib/api/client';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  } from '#lib/api/client.ts';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
   import type {
     SttResponse,
     SttTranscribeParams,
     AudiobookSummary,
     AudiobookDetail
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, obj, reattachNote } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, obj, reattachNote } from '#lib/restore.ts';
 
   let historyKey = $state(0);
   let restoreNote = $state('');

@@ -1,4 +1,4 @@
-import type { Job, JobEvent } from '$lib/api/client';
+import type { Job, JobEvent } from '#lib/api/client.ts';
 import { blockedSummary, humanMsShort } from './format';
 
 export interface NotifyMessage {

@@ -1,6 +1,5 @@
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use argon2::{Argon2, PasswordHasher, PasswordVerifier, password_hash};
 use axum::http::{HeaderMap, StatusCode};
-use password_hash::SaltString;
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use subtle::ConstantTimeEq;
@@ -118,19 +117,14 @@ pub async fn validate_token(
 }
 
 pub fn hash_password(password: &str) -> Result<String, password_hash::Error> {
-    let salt = SaltString::generate(&mut password_hash::rand_core::OsRng);
     Ok(Argon2::default()
-        .hash_password(password.as_bytes(), &salt)?
+        .hash_password(password.as_bytes())?
         .to_string())
 }
 
 pub fn verify_password(password: &str, hash: &str) -> bool {
-    let parsed = match PasswordHash::new(hash) {
-        Ok(parsed) => parsed,
-        Err(_) => return false,
-    };
     Argon2::default()
-        .verify_password(password.as_bytes(), &parsed)
+        .verify_password(password.as_bytes(), hash)
         .is_ok()
 }
 
@@ -138,4 +132,27 @@ pub fn hash_api_key(key: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(key.as_bytes());
     crate::media_sign::hex(&hasher.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{hash_password, verify_password};
+
+    // Minted by argon2 0.5.3 — the users table holds hashes from before the 0.6 bump.
+    const ARGON2_0_5_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$ahjbxy9wUxHcoiYVfRnGaQ$q0pFUL5OpuTuPPrtcaa+yld+xR10HQMQ7cshUVsSuy4";
+
+    #[test]
+    fn verifies_hashes_minted_before_the_argon2_bump() {
+        assert!(verify_password("correct horse", ARGON2_0_5_HASH));
+        assert!(!verify_password("wrong horse", ARGON2_0_5_HASH));
+    }
+
+    #[test]
+    fn round_trips_and_salts_per_hash() {
+        let a = hash_password("pw").unwrap();
+        let b = hash_password("pw").unwrap();
+        assert_ne!(a, b);
+        assert!(verify_password("pw", &a));
+        assert!(!verify_password("pw", "not a phc string"));
+    }
 }

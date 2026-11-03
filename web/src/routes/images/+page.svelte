@@ -24,16 +24,16 @@
     type MattingHealth,
     type MattingBackend,
     type MattingBgMode
-  } from '$lib/api/client';
-  import { blockedSummary } from '$lib/queue/format';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import { assetRefFor } from '$lib/ltx/assetRef';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import Krea2Panel from '$lib/components/Krea2Panel.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, bool, obj, reattachNote } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import { blockedSummary } from '#lib/queue/format.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import { assetRefFor } from '#lib/ltx/assetRef.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import Krea2Panel from '#lib/components/Krea2Panel.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, bool, obj, reattachNote } from '#lib/restore.ts';
   import { onDestroy, onMount } from 'svelte';
 
   // ── Tab: which image engine ────────────────────────────────────────────

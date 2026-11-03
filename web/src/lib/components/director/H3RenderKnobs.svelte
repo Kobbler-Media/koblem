@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { checkCanvas } from '$lib/director/engine';
-  import type { EngineVocab } from '$lib/director/engine';
-  import type { H3LoraListing } from '$lib/api/client';
+  import { checkCanvas } from '#lib/director/engine.ts';
+  import type { EngineVocab } from '#lib/director/engine.ts';
+  import type { H3LoraListing } from '#lib/api/client.ts';
 
   /**
    * **The H3 render knobs — steps, LoRAs and canvas — in ONE place for both scopes.**

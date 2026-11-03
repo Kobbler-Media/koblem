@@ -1,4 +1,4 @@
-import { uploadDirectorAsset } from '$lib/api/client';
+import { uploadDirectorAsset } from '#lib/api/client.ts';
 
 // Refs already minted for a Blob identity. Prompt-assist is a button the user presses repeatedly
 // against the same attachments, and every press used to re-read and re-base64 the whole file; the

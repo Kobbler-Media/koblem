@@ -1,16 +1,21 @@
 <script lang="ts">
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import { DEFAULT_VOCAB, UNAVAILABLE, capitalise, type EngineVocab } from '$lib/director/engine';
-  import { H3_LEGAL_TAIL_FRAMES } from '$lib/director/h3-generations';
-  import { h3Ordinals } from '$lib/director/h3-prompt';
-  import { H3_SOUNDTRACK_REF_ID } from '$lib/director/h3-soundtrack';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import {
+    DEFAULT_VOCAB,
+    UNAVAILABLE,
+    capitalise,
+    type EngineVocab
+  } from '#lib/director/engine.ts';
+  import { H3_LEGAL_TAIL_FRAMES } from '#lib/director/h3-generations.ts';
+  import { h3Ordinals } from '#lib/director/h3-prompt.ts';
+  import { H3_SOUNDTRACK_REF_ID } from '#lib/director/h3-soundtrack.ts';
   import type {
     DirectorClip,
     DirectorH3Reference,
     H3ReferenceKind,
     H3ReferenceRole
-  } from '$lib/api/client';
-  import { H3_ROLES, defaultRoleFor } from '$lib/director/h3-roles';
+  } from '#lib/api/client.ts';
+  import { H3_ROLES, defaultRoleFor } from '#lib/director/h3-roles.ts';
 
   /**
    * MiniMax-H3 omni references — the H3 counterpart of `CastPanel`, and deliberately a separate

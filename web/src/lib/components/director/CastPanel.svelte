@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { assetSrc } from '$lib/director/assets.svelte';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
   import {
     MULTI_CHARACTER_CAVEAT,
     REFERENCE_ROLES,
@@ -7,9 +7,13 @@
     REFERENCE_ROLE_LABEL,
     characterRole,
     referenceSpec
-  } from '$lib/director/characters';
-  import { snap32 } from '$lib/director/resolution';
-  import type { DirectorCharacter, DirectorReferenceRole, LtxRuntimeLora } from '$lib/api/client';
+  } from '#lib/director/characters.ts';
+  import { snap32 } from '#lib/director/resolution.ts';
+  import type {
+    DirectorCharacter,
+    DirectorReferenceRole,
+    LtxRuntimeLora
+  } from '#lib/api/client.ts';
 
   // Character sheets and the identity tags they carry. Project-level, NOT per shot: LTX keys
   // identity off `source_id`, so a character has to present the same tag in every shot it appears

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MOBILE_REF_GLYPH, type MobileRef } from '$lib/director/mobile';
+  import { MOBILE_REF_GLYPH, type MobileRef } from '#lib/director/mobile.ts';
 
   // What an ordinal points at, as one card. Three surfaces open it — the ordinal inside the composed
   // prompt, the thumbnail in the reference strip, and the ⓘ on the block editor's caret bar — and it

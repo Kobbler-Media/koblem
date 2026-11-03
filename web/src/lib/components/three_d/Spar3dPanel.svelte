@@ -31,7 +31,7 @@
    * and would break the re-bind maths — and aims the camera instead. Do not add the centring back.
    */
   import { onMount } from 'svelte';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
   import RigWorkbench from './RigWorkbench.svelte';
   import {
     imageToRig,
@@ -39,7 +39,7 @@
     mediaUrl,
     type ImageToRigProps,
     type RigTextureMode
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   let files = $state<FileList | null>(null);
   let file = $derived(files?.length ? files[0] : null);

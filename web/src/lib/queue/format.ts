@@ -1,4 +1,4 @@
-import type { BlockedReason, Job, JobState, QueueSnapshot } from '$lib/api/client';
+import type { BlockedReason, Job, JobState, QueueSnapshot } from '#lib/api/client.ts';
 
 /** Same shape the CLI prints, so a screenshot and a terminal never disagree. */
 export function humanMs(ms: number): string {

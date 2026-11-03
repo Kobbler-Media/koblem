@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '$lib/director/engine';
-  import { assetSrc } from '$lib/director/assets.svelte';
-  import type { DirectorTake } from '$lib/api/client';
-  import type { ShotRenderStatus } from '$lib/director/shot-list';
-  import type { RenderTier } from '$lib/director/tier';
+  import { DEFAULT_VOCAB, capitalise, type EngineVocab } from '#lib/director/engine.ts';
+  import { assetSrc } from '#lib/director/assets.svelte.ts';
+  import type { DirectorTake } from '#lib/api/client.ts';
+  import type { ShotRenderStatus } from '#lib/director/shot-list.ts';
+  import type { RenderTier } from '#lib/director/tier.ts';
 
   /**
    * The open shot's take, docked to the top of the 320px rail.

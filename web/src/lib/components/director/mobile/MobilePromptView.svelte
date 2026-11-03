@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { parseH3Block } from '$lib/director/h3-block';
-  import { h3Tokens } from '$lib/director/h3-highlight';
+  import { parseH3Block } from '#lib/director/h3-block.ts';
+  import { h3Tokens } from '#lib/director/h3-highlight.ts';
 
   /**
    * The prompt as it is stored, read-only, with the two things worth tapping made tappable: a

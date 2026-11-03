@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorClip, DirectorH3Generation } from '$lib/api/client';
+import type { DirectorClip, DirectorH3Generation } from '#lib/api/client.ts';
 import { packGenerations } from './h3-generations';
 import { h3ReviewGenerations } from './review';
 

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { formatDuration, type H3Telemetry } from '$lib/director/h3-telemetry';
-  import { capitalise, DEFAULT_VOCAB, type EngineVocab } from '$lib/director/engine';
-  import type { RenderTier, TierPreference } from '$lib/director/tier';
-  import { formatShotRanges } from '$lib/director/mobile';
-  import { tickLabel } from '$lib/director/timeline-ticks';
-  import QueueChip from '$lib/components/queue/QueueChip.svelte';
-  import type { JobKind } from '$lib/api/client';
-  import type { EnqueueLike, QueueSubmitOptions } from '$lib/queue/options';
+  import { formatDuration, type H3Telemetry } from '#lib/director/h3-telemetry.ts';
+  import { capitalise, DEFAULT_VOCAB, type EngineVocab } from '#lib/director/engine.ts';
+  import type { RenderTier, TierPreference } from '#lib/director/tier.ts';
+  import { formatShotRanges } from '#lib/director/mobile.ts';
+  import { tickLabel } from '#lib/director/timeline-ticks.ts';
+  import QueueChip from '#lib/components/queue/QueueChip.svelte';
+  import type { JobKind } from '#lib/api/client.ts';
+  import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
 
   // The whole cut. Per-shot render, retake and takes live on the Prompt screen where the shot is;
   // what is left here is genuinely cut-wide — the tier, the scope of a full render, live progress,

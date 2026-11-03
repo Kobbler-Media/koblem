@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Job, JobEvent } from '$lib/api/client';
+import type { Job, JobEvent } from '#lib/api/client.ts';
 import { stuckMessage, terminalMessage } from './notify';
 
 const NOW = Date.parse('2026-08-16T12:00:00Z');

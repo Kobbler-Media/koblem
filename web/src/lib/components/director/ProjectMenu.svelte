@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DirectorProjectSummary } from '$lib/api/client';
+  import type { DirectorProjectSummary } from '#lib/api/client.ts';
 
   // Switch, rename, branch or delete the open project. The name field is here as well as in the app
   // bar because this sheet is what a narrow screen gets instead of one.

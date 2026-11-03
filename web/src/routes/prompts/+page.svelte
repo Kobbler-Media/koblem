@@ -12,7 +12,7 @@
     PromptFixtureSummary,
     RenderPreviewResponse,
     ContextSchemaField
-  } from '$lib/types';
+  } from '#lib/types.ts';
   import {
     getPromptTemplatesOverview,
     getPromptTemplate,
@@ -27,8 +27,8 @@
     listGrammars,
     upsertGrammar,
     deleteGrammar
-  } from '$lib/api/client';
-  import JsonBlock from '$lib/components/JsonBlock.svelte';
+  } from '#lib/api/client.ts';
+  import JsonBlock from '#lib/components/JsonBlock.svelte';
 
   type TabKey = 'system' | 'user' | 'variables';
 

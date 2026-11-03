@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { MOBILE_TABS, type MobileSheetDef, type MobileTab } from '$lib/director/mobile';
+  import { MOBILE_TABS, type MobileSheetDef, type MobileTab } from '#lib/director/mobile.ts';
 
   // Chrome and router only. Every screen arrives as a snippet rendered by `DirectorWorkspace`, so
   // the ~180 `$state` declarations that make up a project stay in the one component that owns them

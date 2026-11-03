@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { EngineVocab } from '$lib/director/engine';
-  import { capitalise } from '$lib/director/engine';
-  import { joinBadge, repairPlan, type UnitContinuity } from '$lib/director/take-continuity';
+  import type { EngineVocab } from '#lib/director/engine.ts';
+  import { capitalise } from '#lib/director/engine.ts';
+  import { joinBadge, repairPlan, type UnitContinuity } from '#lib/director/take-continuity.ts';
 
   /**
    * What a take selection just did to the shots AFTER it — the one thing selecting a take used to

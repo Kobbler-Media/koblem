@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import StepOutput from './StepOutput.svelte';
-  import type { AgentStep } from '$lib/api/client';
+  import type { AgentStep } from '#lib/api/client.ts';
 
   let {
     step,

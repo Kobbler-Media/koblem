@@ -35,7 +35,7 @@
  * koblibs plus emitting an explicit `"lora": []`, and an engine that honours it.
  */
 
-import type { DirectorClip, LtxLoraInfo, LtxRuntimeLora } from '$lib/api/client';
+import type { DirectorClip, LtxLoraInfo, LtxRuntimeLora } from '#lib/api/client.ts';
 
 /**
  * The neutral scale — what an adapter gets when NOBODY has said otherwise.

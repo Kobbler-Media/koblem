@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Job, QueueSnapshot } from '$lib/api/client';
+import type { Job, QueueSnapshot } from '#lib/api/client.ts';
 import {
   effectiveBand,
   enqueueReceipt,

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ReviewItem } from '$lib/director/review';
+  import type { ReviewItem } from '#lib/director/review.ts';
 
   // Continuity findings from the script review. Each is keyed to its clip's stable id, so a finding
   // survives a reorder or a delete between review and fix — a removed shot says so rather than

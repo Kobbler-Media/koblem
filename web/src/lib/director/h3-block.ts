@@ -47,7 +47,7 @@
  * placement) the ruling is ours and is recorded in `SPEC-h3-prompt-emitter.md` §K.
  */
 
-import type { H3RetentionEntry, H3SubjectDefinition, H3Task, H3TaskType } from '$lib/api/client';
+import type { H3RetentionEntry, H3SubjectDefinition, H3Task, H3TaskType } from '#lib/api/client.ts';
 import { H3_TASK_TYPES, H3_TRANSITION_VERBS, type H3Alignment, type H3ShotBody } from './h3-prompt';
 
 /**

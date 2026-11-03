@@ -1,4 +1,4 @@
-import { fetchDirectorAsset, isAssetRef, uploadDirectorAsset } from '$lib/api/client';
+import { fetchDirectorAsset, isAssetRef, uploadDirectorAsset } from '#lib/api/client.ts';
 
 /**
  * Display cache for content-addressed editor assets.

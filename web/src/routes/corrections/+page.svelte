@@ -9,8 +9,8 @@
     deleteEntityRule,
     addDecisionCorrection,
     deleteDecisionCorrection
-  } from '$lib/api/client';
-  import type { GenericRule, EntityRule, DecisionCorrection } from '$lib/types';
+  } from '#lib/api/client.ts';
+  import type { GenericRule, EntityRule, DecisionCorrection } from '#lib/types.ts';
 
   let genericRules = $state<GenericRule[]>([]);
   let entityRules = $state<EntityRule[]>([]);

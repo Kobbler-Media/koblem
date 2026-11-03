@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DirectorEngine, DirectorTimeline } from '$lib/api/client';
+import type { DirectorEngine, DirectorTimeline } from '#lib/api/client.ts';
 import { readTimelineDoc } from './timeline-doc';
 
 const doc = (over: Partial<DirectorTimeline> = {}): DirectorTimeline =>

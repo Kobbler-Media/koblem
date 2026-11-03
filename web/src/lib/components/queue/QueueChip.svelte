@@ -13,16 +13,16 @@
    * "Render" → "Queue" under the cursor would race the snapshot it was computed from.
    */
   import { onDestroy, onMount } from 'svelte';
-  import { type GpuCard, type JobKind } from '$lib/api/client';
-  import { getQueueState, startQueueFeed } from '$lib/stores/queue.svelte';
-  import { BANDS, bandLabel, isLive, isPending } from '$lib/queue/format';
+  import { type GpuCard, type JobKind } from '#lib/api/client.ts';
+  import { getQueueState, startQueueFeed } from '#lib/stores/queue.svelte.ts';
+  import { BANDS, bandLabel, isLive, isPending } from '#lib/queue/format.ts';
   import {
     enqueueReceipt,
     submitConsequence,
     type EnqueueLike,
     type QueueSubmitOptions
-  } from '$lib/queue/options';
-  import { cardOption, gpuCards } from '$lib/queue/cards';
+  } from '#lib/queue/options.ts';
+  import { cardOption, gpuCards } from '#lib/queue/cards.ts';
 
   let {
     kind,

@@ -18,7 +18,7 @@
 # CUDA_ARCHITECTURES below is set for Ampere (86) and Blackwell (120). Change it
 # to match your own card — see the CUDA GPU compute-capability table. sm120
 # needs CUDA >= 12.8.
-FROM nvidia/cuda:13.3.1-devel-ubuntu24.04 AS build
+FROM nvidia/cuda:13.4.3-devel-ubuntu24.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG LLAMA_REPO=https://github.com/ggml-org/llama.cpp.git
@@ -54,7 +54,7 @@ RUN cmake -B build -G Ninja \
     -DCMAKE_SHARED_LINKER_FLAGS="-L/usr/local/cuda/lib64/stubs -lcuda -Wl,-rpath-link,/usr/local/cuda/lib64/stubs" \
     && cmake --build build -j --target llama-server
 
-FROM nvidia/cuda:13.3.1-runtime-ubuntu24.04
+FROM nvidia/cuda:13.4.3-runtime-ubuntu24.04
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libcurl4 libgomp1 curl && rm -rf /var/lib/apt/lists/*
 # build/bin/ holds the server binary + its vendored shared libs (libggml*.so,
 # libllama.so, libmtmd.so) in modern llama.cpp.

@@ -4,8 +4,8 @@
     replaceH3Section,
     sectionLabel,
     type H3SectionName
-  } from '$lib/director/h3-block';
-  import { h3SectionSpans } from '$lib/director/h3-highlight';
+  } from '#lib/director/h3-block.ts';
+  import { h3SectionSpans } from '#lib/director/h3-highlight.ts';
 
   // One section at a time, with a way through. The desktop's lens rail becomes a `<select>` plus
   // ‹ ›, and tapping a header in the composed prompt lands here with that one already loaded.

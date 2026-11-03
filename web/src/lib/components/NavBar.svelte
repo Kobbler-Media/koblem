@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { toggleTheme, getUIState } from '$lib/stores/ui.svelte';
-  import QueueIndicator from '$lib/components/QueueIndicator.svelte';
+  import { toggleTheme, getUIState } from '#lib/stores/ui.svelte.ts';
+  import QueueIndicator from '#lib/components/QueueIndicator.svelte';
 
   interface Props {
     isAuthed: boolean;

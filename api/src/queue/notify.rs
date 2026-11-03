@@ -20,7 +20,7 @@
 use std::time::Duration;
 
 use koblem_client::types::{JobEvent, JobState, WebhookPayload};
-use nats_jobs::{Event, NatsClient, NatsConfig};
+use nats_jobs::{NatsClient, NatsConfig, OptionalPublisher};
 use tracing::{debug, info, warn};
 
 use crate::repositories::{gpu_jobs as store, settings as settings_repo};
@@ -76,7 +76,7 @@ impl Notifier {
     }
 
     pub async fn run(self) {
-        let jetstream = connect_nats(self.nats_url.as_deref()).await;
+        let nats = connect_nats(self.nats_url.as_deref()).await;
         let mut rx = self.events.subscribe();
         let mut batch = Batch::default();
         let mut stuck_tick = tokio::time::interval(STUCK_POLL);
@@ -87,7 +87,7 @@ impl Notifier {
         loop {
             tokio::select! {
                 event = rx.recv() => match event {
-                    Ok(event) => self.on_event(&jetstream, &mut batch, event).await,
+                    Ok(event) => self.on_event(&nats, &mut batch, event).await,
                     // A lagged notifier has missed transitions it cannot reconstruct.
                     // Reset the tally rather than report a wrong one.
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
@@ -101,18 +101,13 @@ impl Notifier {
         }
     }
 
-    async fn on_event(
-        &self,
-        jetstream: &Option<async_nats::jetstream::Context>,
-        batch: &mut Batch,
-        event: JobEvent,
-    ) {
+    async fn on_event(&self, nats: &OptionalPublisher, batch: &mut Batch, event: JobEvent) {
         // 🔴 Progress never reaches here as a push. Only transitions.
         if !event.state.is_terminal() {
             return;
         }
 
-        publish_nats(jetstream, &event).await;
+        publish_nats(nats, &event).await;
 
         batch.open = true;
         match event.state {
@@ -286,27 +281,28 @@ impl Notifier {
     }
 }
 
-async fn connect_nats(nats_url: Option<&str>) -> Option<async_nats::jetstream::Context> {
-    nats_url.filter(|url| !url.is_empty())?;
-    let config = NatsConfig::from_env("koblem-queue-publisher");
-    match NatsClient::connect(&config).await {
-        Ok(nats) => {
-            info!("queue: publishing job events to NATS");
-            Some(nats.jetstream().clone())
-        }
-        // No NATS is the normal single-box deployment, not a failure.
-        Err(e) => {
-            debug!(error = %e, "queue: no NATS; job events stay on SSE and the webhook");
-            None
-        }
-    }
+async fn connect_nats(nats_url: Option<&str>) -> OptionalPublisher {
+    let nats = match nats_url.filter(|url| !url.is_empty()) {
+        None => None,
+        Some(_) => match NatsClient::connect(&NatsConfig::from_env("koblem-queue-publisher")).await
+        {
+            Ok(nats) => {
+                info!("queue: publishing job events to NATS");
+                Some(nats)
+            }
+            // No NATS is the normal single-box deployment, not a failure.
+            Err(e) => {
+                debug!(error = %e, "queue: no NATS; job events stay on SSE and the webhook");
+                None
+            }
+        },
+    };
+    OptionalPublisher::new(nats, "koblem")
 }
 
 /// `events.gpu.job.{completed,failed,blocked}` — for kobbler and anything else in
-/// the ecosystem reacting programmatically. Reuses the existing client and
-/// envelope rather than inventing a second convention.
-async fn publish_nats(jetstream: &Option<async_nats::jetstream::Context>, event: &JobEvent) {
-    let Some(js) = jetstream else { return };
+/// the ecosystem reacting programmatically.
+async fn publish_nats(nats: &OptionalPublisher, event: &JobEvent) {
     let leaf = match event.state {
         JobState::Done => "completed",
         JobState::Failed => "failed",
@@ -315,21 +311,8 @@ async fn publish_nats(jetstream: &Option<async_nats::jetstream::Context>, event:
     let Ok(payload) = serde_json::to_value(event) else {
         return;
     };
-    let envelope = Event::new(format!("gpu.job.{leaf}"), payload, "koblem");
-    let Ok(bytes) = serde_json::to_vec(&envelope) else {
-        return;
-    };
-    match js
-        .publish(format!("events.gpu.job.{leaf}"), bytes.into())
-        .await
-    {
-        Ok(ack) => {
-            if let Err(e) = ack.await {
-                warn!(error = %e, "queue: NATS ack failed");
-            }
-        }
-        Err(e) => warn!(error = %e, "queue: NATS publish failed"),
-    }
+    nats.publish_event(&format!("gpu.job.{leaf}"), payload)
+        .await;
 }
 
 async fn read_i64(pool: &sqlx::PgPool, key: &str, fallback: i64) -> i64 {
@@ -362,6 +345,43 @@ mod tests {
         )
         .await
         .expect("no connection attempt without NATS_URL");
-        assert!(publisher.is_none());
+        assert!(!publisher.is_available());
+    }
+
+    #[tokio::test]
+    async fn terminal_job_events_reach_nats_in_the_shared_envelope() {
+        use koblem_client::types::{JobEvent, JobKind, JobState};
+
+        let nats = crate::nats::test_support::connect().await;
+        let mut sub = nats.client().subscribe("events.gpu.job.>").await.unwrap();
+        let publisher = nats_jobs::OptionalPublisher::new(Some(nats.clone()), "koblem");
+
+        for (state, leaf) in [
+            (JobState::Done, "completed"),
+            (JobState::Failed, "failed"),
+            (JobState::Cancelled, "blocked"),
+        ] {
+            let job_id = uuid::Uuid::new_v4().to_string();
+            let event = JobEvent {
+                job_id: job_id.clone(),
+                kind: JobKind::Flux2,
+                state,
+                progress: None,
+                blocked_reason: None,
+                error: None,
+                warnings: vec!["w".into()],
+                at: "2026-11-03T00:00:00Z".into(),
+            };
+
+            super::publish_nats(&publisher, &event).await;
+
+            let (subject, envelope) = crate::nats::test_support::next_on(&mut sub).await;
+            assert_eq!(subject, format!("events.gpu.job.{leaf}"));
+            assert_eq!(envelope.event_type, format!("gpu.job.{leaf}"));
+            assert_eq!(envelope.source, "koblem");
+            let back: JobEvent = serde_json::from_value(envelope.payload).unwrap();
+            assert_eq!(back.job_id, job_id);
+            assert_eq!(back.warnings, vec!["w".to_string()]);
+        }
     }
 }

@@ -25,7 +25,7 @@ import type {
   H3ReferenceKind,
   H3ReferenceRole,
   H3TaskType
-} from '$lib/api/client';
+} from '#lib/api/client.ts';
 
 export interface H3RoleOption {
   value: H3ReferenceRole;

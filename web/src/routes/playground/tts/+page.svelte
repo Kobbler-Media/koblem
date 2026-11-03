@@ -14,7 +14,7 @@
     fetchAudiobookClipWav,
     getHealth,
     getSettings
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
   import {
     blobToMonoSamples,
     createFaPlayback,
@@ -31,11 +31,11 @@
     TtsVoice,
     AudiobookSummary,
     AudiobookDetail
-  } from '$lib/api/client';
-  import FileDropzone from '$lib/components/FileDropzone.svelte';
-  import GenerationHistory from '$lib/components/GenerationHistory.svelte';
-  import type { Generation } from '$lib/types';
-  import { str, num, bool } from '$lib/restore';
+  } from '#lib/api/client.ts';
+  import FileDropzone from '#lib/components/FileDropzone.svelte';
+  import GenerationHistory from '#lib/components/GenerationHistory.svelte';
+  import type { Generation } from '#lib/types.ts';
+  import { str, num, bool } from '#lib/restore.ts';
 
   let historyKey = $state(0);
   let restoreNote = $state('');

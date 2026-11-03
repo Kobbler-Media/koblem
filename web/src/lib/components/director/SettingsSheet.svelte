@@ -9,7 +9,7 @@
     type ResPreset,
     type ResolutionPlan,
     type SizeTier
-  } from '$lib/director/resolution';
+  } from '#lib/director/resolution.ts';
   import {
     LORA_STRENGTH_MAX,
     LORA_STRENGTH_MIN,
@@ -19,8 +19,8 @@
     loraSummary,
     setLoraStrength,
     toggleLora
-  } from '$lib/director/loras';
-  import { maxShotSeconds, shotLengthError } from '$lib/ltx/frames';
+  } from '#lib/director/loras.ts';
+  import { maxShotSeconds, shotLengthError } from '#lib/ltx/frames.ts';
   import {
     ENGINE_OPTIONS,
     BEATS_RELAY_NOTE,
@@ -35,10 +35,10 @@
     resumeAvailable,
     snappedSeconds,
     unavailableFor
-  } from '$lib/director/engine';
-  import { H3_MAX_SECONDS } from '$lib/director/h3-generations';
+  } from '#lib/director/engine.ts';
+  import { H3_MAX_SECONDS } from '#lib/director/h3-generations.ts';
   import H3RenderKnobs from './H3RenderKnobs.svelte';
-  import type { DirectorEngine } from '$lib/director/engine';
+  import type { DirectorEngine } from '#lib/director/engine.ts';
   import type {
     H3Props,
     LtxFrameDrop,
@@ -46,7 +46,7 @@
     LtxRuntimeLora,
     LtxUpscalerRatio,
     LtxVideoProps
-  } from '$lib/api/client';
+  } from '#lib/api/client.ts';
 
   // The project's render settings. Every field writes straight back into the editor's own state
   // through `bind:` — these values ARE the saved document. The derived readouts (`resPlan`, the

@@ -36,7 +36,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG LLAMA_REPO=https://github.com/ggml-org/llama.cpp.git
 # Pinned upstream SHA — the patch series is git-format-patch output against it.
-ARG LLAMA_REF=8fc0376721e9662d498a5706d7ee8e7574ce99f4
+ARG LLAMA_REF=bcb0152876e8f0b684ba70d3defcab6cdf35adb5
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git cmake build-essential ca-certificates libcurl4-openssl-dev ninja-build pkg-config \

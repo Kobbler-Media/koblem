@@ -1,4 +1,4 @@
-From 038151cd13059b4cb6978603b074ce24b8341fde Mon Sep 17 00:00:00 2001
+From 9ee3f293025a9f701b8e996c89d7e07a76b35a2e Mon Sep 17 00:00:00 2001
 From: kobbler-dev <kobbler-dev@oldug.com>
 Date: Tue, 3 Nov 2026 23:20:46 +1100
 Subject: [PATCH] server: LLAMA_WORKER_ISOLATION parent/child split + lifecycle

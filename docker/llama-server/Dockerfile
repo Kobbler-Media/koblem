@@ -1,19 +1,32 @@
 # llama-server image for koblem — VANILLA upstream llama.cpp pinned to a SHA,
 # plus one small patch series applied on top.
 #
-# Patch series (docker/llama-server/patches/*.patch):
-#   0001  LLAMA_WORKER_ISOLATION parent/child split + /v1/admin/{drain,load,unload}
-#         — a CUDA-free parent owns the HTTP port and fork+execv's a child that
-#           holds the model and the GPU. `POST /v1/admin/unload` SIGKILLs the
-#           child, tearing down the CUDA primary context and returning ALL VRAM
-#           so the heavy engines can borrow the card (koblibs kob-gpu-gate).
-#           Opt-in via LLAMA_WORKER_ISOLATION=1; the hot path is byte-identical
-#           to upstream otherwise.
+# 🔴 ONE image for every llama.cpp service: the chat LLM (gemma4) and the
+# EmbeddingGemma-2 embedders (embed-text, embed-vision) all run
+# koblem-llama:latest. There is one LLAMA_REF (below) and one patch series
+# (patches/). Bump them together, once, for everything.
 #
-# BUMPING UPSTREAM: move LLAMA_REF to the new SHA, rebase the patch series onto
-# it in your own llama.cpp checkout, fix rejects, then regenerate these files
-# with `git format-patch <sha>..HEAD -o`. Keeping the series small is what keeps
-# this cheap.
+# Patch series (docker/llama-server/patches/*.patch):
+#   0001  LLAMA_WORKER_ISOLATION parent/child split + lifecycle endpoints
+#         (/v1/admin/{drain,load,unload}, POST /unload, /v1/gpu/status, idle
+#         unload, WORKER_LOAD_ON_START). A CUDA-free parent owns the HTTP port
+#         and fork+execv's a child that holds the model and the GPU; unloading
+#         SIGKILLs the child, tearing down the CUDA primary context and returning
+#         ALL VRAM so the heavy engines can borrow the card (koblibs
+#         kob-gpu-gate). Opt-in via LLAMA_WORKER_ISOLATION=1; the hot path is
+#         byte-identical to upstream otherwise.
+#
+# BUMPING UPSTREAM:
+#   1. In a llama.cpp checkout: `git checkout --detach <new-sha>`,
+#      `git am -3 docker/llama-server/patches/*.patch`, fix any conflict. Upstream
+#      moves server internals often (main() -> server_run(), subprocess.h
+#      signature changes), so expect the odd small fix.
+#   2. Regenerate: `git format-patch <new-sha>..HEAD -o docker/llama-server/patches/`
+#      (delete the old files first) and set LLAMA_REF below to <new-sha>.
+#   3. `make docker-push-llama`, then on the engines host pull + recreate
+#      llama-server, embed-text and embed-vision together.
+#   4. Before shipping, A/B gemma4 against the old image with prod flags (decode
+#      with/without MTP, prefill at depth, VRAM) and run an unload/load cycle.
 #
 # CUDA_ARCHITECTURES below is set for Ampere (86) and Blackwell (120). Change it
 # to match your own card — see the CUDA GPU compute-capability table. sm120
@@ -23,19 +36,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG LLAMA_REPO=https://github.com/ggml-org/llama.cpp.git
 # Pinned upstream SHA — the patch series is git-format-patch output against it.
-ARG LLAMA_REF=60eeeb6082c1126bb8bc72902c83123cd056811b
+ARG LLAMA_REF=8fc0376721e9662d498a5706d7ee8e7574ce99f4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git cmake build-essential ca-certificates libcurl4-openssl-dev ninja-build pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
-# Which patch series goes on top of LLAMA_REF. `patches/` is gemma4's (the
-# Aug-17 base); `patches-tip/` is the same worker isolation re-grafted onto a
-# current upstream (EmbeddingGemma-2 needs #30054 + #29556), built as
-# koblem-llama-tip by `make docker-push-llama-tip`.
-ARG PATCH_SET=patches
-COPY ${PATCH_SET}/ /patches/
+COPY patches/ /patches/
 
 # CACHEBUST: pass --build-arg CACHEBUST=<unique> (the Makefile uses $(date +%s))
 # to force a fresh clone + re-apply when the SHA or patches change.

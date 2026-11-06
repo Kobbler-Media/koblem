@@ -1,4 +1,4 @@
-.PHONY: all quick web cli fmt fmt-api fmt-web fmt-cli lint lint-api lint-web lint-cli check check-api check-web check-cli sqlx-check sqlx-prepare sqlx-migrate build build-api build-web build-cli test test-api test-cli test-web test-db-up test-db-down docker-push docker-push-koblem docker-push-llama docker-push-llama-tip docker-push-web
+.PHONY: all quick web cli fmt fmt-api fmt-web fmt-cli lint lint-api lint-web lint-cli check check-api check-web check-cli sqlx-check sqlx-prepare sqlx-migrate build build-api build-web build-cli test test-api test-cli test-web test-db-up test-db-down docker-push docker-push-koblem docker-push-llama docker-push-web
 
 all: fmt lint check build test
 
@@ -100,14 +100,6 @@ docker-push-koblem:
 docker-push-llama:
 	docker build --build-arg CACHEBUST=$$(date +%s) -t $(REGISTRY)/koblem-llama:latest docker/llama-server/
 	docker push $(REGISTRY)/koblem-llama:latest
-
-# Upstream tip + the re-grafted worker isolation: the embedding server
-# (EmbeddingGemma-2). gemma4 stays on docker-push-llama until it is re-validated.
-LLAMA_TIP_REF ?= 8fc0376721e9662d498a5706d7ee8e7574ce99f4
-
-docker-push-llama-tip:
-	docker build --build-arg CACHEBUST=$$(date +%s) --build-arg LLAMA_REF=$(LLAMA_TIP_REF) --build-arg PATCH_SET=patches-tip -t $(REGISTRY)/koblem-llama-tip:latest docker/llama-server/
-	docker push $(REGISTRY)/koblem-llama-tip:latest
 
 docker-push-web:
 	docker build --build-context koblibs=../koblibs --target prod -t $(REGISTRY)/koblem-web:latest web/

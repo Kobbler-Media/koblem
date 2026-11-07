@@ -203,6 +203,9 @@ struct OpenAiSpeechRequest {
     speaker: Option<String>,
     #[serde(default)]
     seed: Option<u64>,
+    /// Guidance strength for an `instructions` prompt; see `SpeechRequest`.
+    #[serde(default)]
+    cfg_scale: Option<f64>,
     /// 12.5 Hz frames, not audio tokens.
     #[serde(default)]
     max_new_frames: Option<u32>,
@@ -259,6 +262,7 @@ async fn tier1_speech(
         top_k: req.top_k,
         repetition_penalty: req.repetition_penalty,
         seed: req.seed,
+        cfg_scale: req.cfg_scale,
         max_new_frames: req.max_new_frames,
         stream_format: Some("sse".to_string()),
         stream_batch_size: req.stream_batch_size,

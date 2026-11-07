@@ -711,6 +711,7 @@ fn upstream_request(req: &TtsGenerateRequest) -> SpeechRequest {
         top_k: req.top_k,
         repetition_penalty: req.repetition_penalty,
         seed: req.seed,
+        cfg_scale: req.cfg_scale,
         max_new_frames: req.max_new_frames,
         stream_format,
         stream_batch_size: req.stream_batch_size.filter(|_| streaming),

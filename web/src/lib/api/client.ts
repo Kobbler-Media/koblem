@@ -745,6 +745,8 @@ export interface TtsGenerateRequest {
   top_k?: number;
   repetition_penalty?: number;
   seed?: number;
+  /** Guidance strength for `instructions`; 4 makes the instruction land (~+30% render time). */
+  cfg_scale?: number;
   /** 12.5 Hz FRAMES, not audio tokens. Raising it overflows the context
    *  window rather than producing longer audio — use long-form mode. */
   max_new_frames?: number;

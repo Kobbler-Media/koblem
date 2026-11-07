@@ -98,6 +98,12 @@ pub struct SpeechRequest {
     pub repetition_penalty: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<u64>,
+    /// Classifier-free guidance strength for an `instructions` prompt. `1` (or
+    /// absent) is a single pass; `4` is what the model recommends and makes the
+    /// instruction land (clearly audible on emotion) at ~+30% render time. The
+    /// engine ignores it on a prompt with no instruction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cfg_scale: Option<f64>,
     /// 12.5 Hz FRAMES, not audio tokens. Raising it past `n_ctx` converts a
     /// silent truncation into a hard `context overflow` — use `long` instead.
     #[serde(skip_serializing_if = "Option::is_none")]

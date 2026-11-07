@@ -31,6 +31,7 @@ use tracing::info;
 use super::admit::service_of;
 
 /// How long a resident must stay continuously reclaimable before rule 2 unloads it.
+/// TTS gets [`TTS_RECLAIM_IDLE_GRACE`] instead.
 ///
 /// Some services take work the queue never sees. kobbler's read-along sends a
 /// chapter to TTS as back-to-back passage requests, and between two of them the
@@ -38,6 +39,19 @@ use super::admit::service_of;
 /// every passage paid a ~2.5 s cold load, and an unload landing as the next
 /// passage began killed it outright.
 const RECLAIM_IDLE_GRACE: Duration = Duration::from_secs(30);
+
+/// TTS reloads in ~2.5 s, and a reader pausing between chapters or a koblem user
+/// generating line after line comes back within minutes. Matches breeze's own
+/// 300 s idle unload. Idle still means unheld, so a job that needs the card
+/// evicts it through the gate as before; only the queue's early unload waits.
+const TTS_RECLAIM_IDLE_GRACE: Duration = Duration::from_secs(300);
+
+fn reclaim_grace(kind: ServiceKind) -> Duration {
+    match kind {
+        ServiceKind::Tts => TTS_RECLAIM_IDLE_GRACE,
+        _ => RECLAIM_IDLE_GRACE,
+    }
+}
 
 #[derive(Clone)]
 pub struct Planner {
@@ -67,7 +81,7 @@ impl Planner {
     }
 
     /// The `candidates` that have been reclaimable for at least
-    /// [`RECLAIM_IDLE_GRACE`]. A service that drops out of the candidates (a
+    /// its [`reclaim_grace`]. A service that drops out of the candidates (a
     /// request took a guard, a job wants it, it went away) starts over.
     fn due(&self, candidates: Vec<ServiceKind>, now: Instant) -> Vec<ServiceKind> {
         let mut seen = self.idle_since.lock().unwrap();
@@ -76,7 +90,7 @@ impl Planner {
             .into_iter()
             .filter(|kind| {
                 let since = *seen.entry(*kind).or_insert(now);
-                now.duration_since(since) >= RECLAIM_IDLE_GRACE
+                now.duration_since(since) >= reclaim_grace(*kind)
             })
             .collect()
     }
@@ -244,17 +258,30 @@ mod tests {
     fn reclaim_waits_out_the_idle_grace() {
         let p = Planner::new(gate_with(&[]));
         let t0 = Instant::now();
-        let tts = vec![ServiceKind::Tts];
+        let krea = vec![ServiceKind::Krea2];
 
-        assert!(p.due(tts.clone(), t0).is_empty(), "reclaimed on first sight");
-        assert!(p.due(tts.clone(), t0 + RECLAIM_IDLE_GRACE - Duration::from_secs(1)).is_empty());
-        assert_eq!(p.due(tts.clone(), t0 + RECLAIM_IDLE_GRACE), tts);
+        assert!(p.due(krea.clone(), t0).is_empty(), "reclaimed on first sight");
+        assert!(p.due(krea.clone(), t0 + RECLAIM_IDLE_GRACE - Duration::from_secs(1)).is_empty());
+        assert_eq!(p.due(krea.clone(), t0 + RECLAIM_IDLE_GRACE), krea);
 
-        // A passage takes a guard for one tick: the clock restarts.
+        // A job takes a guard for one tick: the clock restarts.
         let t1 = t0 + RECLAIM_IDLE_GRACE + Duration::from_secs(5);
         assert!(p.due(vec![], t1).is_empty());
-        assert!(p.due(tts.clone(), t1).is_empty());
-        assert_eq!(p.due(tts.clone(), t1 + RECLAIM_IDLE_GRACE), tts);
+        assert!(p.due(krea.clone(), t1).is_empty());
+        assert_eq!(p.due(krea.clone(), t1 + RECLAIM_IDLE_GRACE), krea);
+    }
+
+    /// TTS waits five minutes, not thirty seconds: between read-along passages
+    /// and between chapters it is idle but about to be used again.
+    #[test]
+    fn tts_waits_out_the_longer_grace() {
+        let p = Planner::new(gate_with(&[]));
+        let t0 = Instant::now();
+        let tts = vec![ServiceKind::Tts];
+
+        assert!(p.due(tts.clone(), t0).is_empty());
+        assert!(p.due(tts.clone(), t0 + RECLAIM_IDLE_GRACE).is_empty());
+        assert_eq!(p.due(tts.clone(), t0 + TTS_RECLAIM_IDLE_GRACE), tts);
     }
 
     /// An empty queue reclaims everything idle — that is the overnight case after

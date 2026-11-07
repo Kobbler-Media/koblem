@@ -260,8 +260,17 @@ mod tests {
         let t0 = Instant::now();
         let krea = vec![ServiceKind::Krea2];
 
-        assert!(p.due(krea.clone(), t0).is_empty(), "reclaimed on first sight");
-        assert!(p.due(krea.clone(), t0 + RECLAIM_IDLE_GRACE - Duration::from_secs(1)).is_empty());
+        assert!(
+            p.due(krea.clone(), t0).is_empty(),
+            "reclaimed on first sight"
+        );
+        assert!(
+            p.due(
+                krea.clone(),
+                t0 + RECLAIM_IDLE_GRACE - Duration::from_secs(1)
+            )
+            .is_empty()
+        );
         assert_eq!(p.due(krea.clone(), t0 + RECLAIM_IDLE_GRACE), krea);
 
         // A job takes a guard for one tick: the clock restarts.

@@ -165,12 +165,20 @@ fn json_str_array(v: &Value) -> Vec<String> {
 }
 
 fn engine_from_tuple(r: EngineConfigTuple) -> GpuEngineConfig {
+    // A retired service's name lingers in other rows' eviction sets (0047 dropped
+    // `higgs`'s row but not the references). The gate already ignores it; hiding it
+    // here too keeps the settings page from echoing it back into a PUT that
+    // `validate_engine_config` rightly rejects, which made every row unsaveable.
+    let evictable_by = json_str_array(&r.4)
+        .into_iter()
+        .filter(|s| ServiceKind::parse(s).is_some())
+        .collect();
     GpuEngineConfig {
         service: r.0,
         peak_mb: r.1,
         home_gpu: r.2,
         candidate_gpus: json_str_array(&r.3),
-        evictable_by: json_str_array(&r.4),
+        evictable_by,
         relocatable: r.5,
         rules_json: r.6,
         updated_at: r.7.format(&Rfc3339).ok(),
@@ -219,4 +227,24 @@ pub async fn load_into_gate(pool: &PgPool, gpu: &kob_gpu_gate::GpuLock) -> Resul
         gpu.seed_resident(kind);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn engine_from_tuple_drops_retired_evictor_names() {
+        let row = engine_from_tuple((
+            "tts".to_string(),
+            2800,
+            String::new(),
+            serde_json::json!([]),
+            serde_json::json!(["flux", "higgs", "sa3", "llm"]),
+            false,
+            String::new(),
+            OffsetDateTime::UNIX_EPOCH,
+        ));
+        assert_eq!(row.evictable_by, vec!["flux", "sa3", "llm"]);
+    }
 }

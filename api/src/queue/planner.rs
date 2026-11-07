@@ -20,24 +20,43 @@
 //! never drains on its own — it calls `unload_if_idle`, which is the gate's
 //! existing eviction path and always completes drain→force-unload.
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
 use kob_gpu_gate::{GpuLock, ServiceKind};
 use koblem_client::types::{Job, JobState};
 use tracing::info;
 
 use super::admit::service_of;
 
+/// How long a resident must stay continuously reclaimable before rule 2 unloads it.
+///
+/// Some services take work the queue never sees. kobbler's read-along sends a
+/// chapter to TTS as back-to-back passage requests, and between two of them the
+/// worker holds no guard. With no grace the planner unloaded it in that gap, so
+/// every passage paid a ~2.5 s cold load, and an unload landing as the next
+/// passage began killed it outright.
+const RECLAIM_IDLE_GRACE: Duration = Duration::from_secs(30);
+
 #[derive(Clone)]
 pub struct Planner {
     gate: GpuLock,
+    /// When each resident was first seen reclaimable in an unbroken run of ticks.
+    idle_since: Arc<Mutex<HashMap<ServiceKind, Instant>>>,
 }
 
 impl Planner {
     pub fn new(gate: GpuLock) -> Self {
-        Planner { gate }
+        Planner {
+            gate,
+            idle_since: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     pub async fn plan(&self, pending: &[Job], live: &[Job]) {
-        for kind in self.reclaimable(pending, live) {
+        let due = self.due(self.reclaimable(pending, live), Instant::now());
+        for kind in due {
             if self.gate.unload_if_idle(kind).await {
                 info!(
                     service = kind.as_str(),
@@ -45,6 +64,21 @@ impl Planner {
                 );
             }
         }
+    }
+
+    /// The `candidates` that have been reclaimable for at least
+    /// [`RECLAIM_IDLE_GRACE`]. A service that drops out of the candidates (a
+    /// request took a guard, a job wants it, it went away) starts over.
+    fn due(&self, candidates: Vec<ServiceKind>, now: Instant) -> Vec<ServiceKind> {
+        let mut seen = self.idle_since.lock().unwrap();
+        seen.retain(|kind, _| candidates.contains(kind));
+        candidates
+            .into_iter()
+            .filter(|kind| {
+                let since = *seen.entry(*kind).or_insert(now);
+                now.duration_since(since) >= RECLAIM_IDLE_GRACE
+            })
+            .collect()
     }
 
     /// Residents that are warm, idle, and wanted by nothing pending or live.
@@ -201,6 +235,26 @@ mod tests {
         ]);
         let p = Planner::new(g);
         assert!(p.reclaimable(&[], &[]).is_empty());
+    }
+
+    /// Rule 2 waits out the grace: a resident is not unloaded on the first tick it
+    /// looks idle, only once it has stayed idle, and any tick where it is not
+    /// reclaimable restarts the clock.
+    #[test]
+    fn reclaim_waits_out_the_idle_grace() {
+        let p = Planner::new(gate_with(&[]));
+        let t0 = Instant::now();
+        let tts = vec![ServiceKind::Tts];
+
+        assert!(p.due(tts.clone(), t0).is_empty(), "reclaimed on first sight");
+        assert!(p.due(tts.clone(), t0 + RECLAIM_IDLE_GRACE - Duration::from_secs(1)).is_empty());
+        assert_eq!(p.due(tts.clone(), t0 + RECLAIM_IDLE_GRACE), tts);
+
+        // A passage takes a guard for one tick: the clock restarts.
+        let t1 = t0 + RECLAIM_IDLE_GRACE + Duration::from_secs(5);
+        assert!(p.due(vec![], t1).is_empty());
+        assert!(p.due(tts.clone(), t1).is_empty());
+        assert_eq!(p.due(tts.clone(), t1 + RECLAIM_IDLE_GRACE), tts);
     }
 
     /// An empty queue reclaims everything idle — that is the overnight case after

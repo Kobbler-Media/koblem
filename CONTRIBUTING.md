@@ -74,7 +74,7 @@ What each group needs:
 
 | Target group | Needs |
 |---|---|
-| `fmt-*`, `lint-api`, `check-api`, `build-api`, `build-cli` | cargo + sibling koblibs. No database, no Docker, no network beyond crates.io. |
+| `fmt-*`, `lint-api`, `build-api`, `build-cli` | cargo + sibling koblibs. No database, no Docker, no network beyond crates.io. |
 | `check` (includes `sqlx-check`), `test-api`, `sqlx-*` | the above **plus** Docker and `cargo sqlx` (sqlx-cli). Spins up PostgreSQL on port 5435 via `docker-compose.test.yml`. |
 | `*-web` | Node plus the sibling koblibs for `@koblibs/ui`. |
 | `docker-push-*` | Publishing only. Not needed to contribute — see below. |

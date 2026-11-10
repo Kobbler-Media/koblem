@@ -1,4 +1,4 @@
-.PHONY: all quick web cli fmt fmt-api fmt-web fmt-cli lint lint-api lint-web lint-cli check check-api check-web check-cli sqlx-check sqlx-prepare sqlx-migrate build build-api build-web build-cli test test-api test-cli test-web test-db-up test-db-down docker-push docker-push-koblem docker-push-llama docker-push-web
+.PHONY: all quick web cli fmt fmt-api fmt-web fmt-cli lint lint-api lint-web lint-cli check check-web sqlx-check sqlx-prepare sqlx-migrate build build-api build-web build-cli test test-api test-cli test-web test-db-up test-db-down docker-push docker-push-koblem docker-push-llama docker-push-web
 
 all: fmt lint check build test
 
@@ -13,21 +13,20 @@ cli: fmt-cli lint-cli build-cli
 
 fmt: fmt-api fmt-web fmt-cli
 lint: lint-api lint-web lint-cli
-check: check-api check-web check-cli sqlx-check
+check: check-web sqlx-check
 build: build-api build-web build-cli
 test: test-api test-cli test-web
 
 fmt-api:
 	cargo fmt --manifest-path api/Cargo.toml
 
+# No RUSTFLAGS on cargo steps: they replace .cargo/config rustflags (mold, cfgs) and fork the
+# whole dependency build. Clippy's -D warnings already denies rustc warnings.
 lint-api:
-	SQLX_OFFLINE=true RUSTFLAGS="-D warnings" cargo clippy --manifest-path api/Cargo.toml --all-targets -- -D warnings
-
-check-api:
-	SQLX_OFFLINE=true cargo check --manifest-path api/Cargo.toml
+	SQLX_OFFLINE=true cargo clippy --manifest-path api/Cargo.toml --all-targets -- -D warnings
 
 build-api:
-	SQLX_OFFLINE=true RUSTFLAGS="-D warnings" cargo build --manifest-path api/Cargo.toml
+	SQLX_OFFLINE=true cargo build --manifest-path api/Cargo.toml
 
 # Verify api/.sqlx cache matches code. If stale, run: make sqlx-prepare
 # `--all` so koblibs' nats-jobs (a dep, not a workspace member) is force-recompiled and
@@ -48,13 +47,10 @@ fmt-cli:
 	cargo fmt --manifest-path cli/Cargo.toml
 
 lint-cli:
-	RUSTFLAGS="-D warnings" cargo clippy --manifest-path cli/Cargo.toml --all-targets -- -D warnings
-
-check-cli:
-	cargo check --manifest-path cli/Cargo.toml
+	cargo clippy --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 
 build-cli:
-	RUSTFLAGS="-D warnings" cargo build --manifest-path cli/Cargo.toml
+	cargo build --manifest-path cli/Cargo.toml
 
 fmt-web:
 	npm --prefix web run format

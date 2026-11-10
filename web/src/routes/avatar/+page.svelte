@@ -342,7 +342,7 @@
   // alone can't tame the jitter.
   let audioLowpassHz = $state(0);
   // Model tiers only: 480p (480x832, default) | 720p (720x1248). 720p is ~2.7x
-  // the activations of 480p and OOMs the 12GB card — see README/HANDOFF.
+  // the activations of 480p and OOMs a 12 GB card.
   let resolution = $state<'480p' | '720p'>('480p');
   let offload = $state<AvatarOffload>('true');
   let vaeTiling = $state(true);

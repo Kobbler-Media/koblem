@@ -1428,8 +1428,7 @@ generation\". The join to what came before is koblem's job, not the prose's.";
 
 /// 🔴 Earned the hard way: five distinct defects on ONE 14-second shot over five renders, all the
 /// same shape, none of them the model misbehaving. Each was a span carrying no instruction, filled
-/// with the strongest available prior. Written up in
-/// `~/handoffs/koblem/h3-director/` and worth restating here because a writer that knows it
+/// with the strongest available prior. Worth restating here because a writer that knows it
 /// produces the right prompt first time instead of after five renders:
 ///
 /// | symptom | the actual gap |
@@ -1487,7 +1486,6 @@ generation\". The join to what came before is koblem's job, not the prose's.";
 /// what produced "camera fixed on the robot up close the whole time".
 /// ⚠️ The amplitude metric behind those numbers is a FLOOR DETECTOR: it separates a statue from a
 /// performance and then stops tracking quality and starts working against it. Never rank on it.
-/// Harness, clips and the full ladder: `~/handoffs/docker/comfyui/h3-dance/`.
 ///
 /// The guide cannot supply any of this: it documents the SCHEMA, and this is behaviour.
 ///
@@ -3355,8 +3353,7 @@ mod tests {
         assert!(!prompt.contains("SOMEBODY SPEAKS OR SINGS"), "{prompt}");
     }
 
-    /// The generation-1 row of the measured table (`~/handoffs/koblem/h3-director/
-    /// RESULTS-sealed-by-fate-clock-2026-08-14.md`): song offset 14.3333 s, vocal at LOCAL
+    /// The generation-1 row of the measured clock/vocal table: song offset 14.3333 s, vocal at LOCAL
     /// 8.467-13.187 and 13.827-14.375. The 0-8.467 head is instrumental and has to be named, or the
     /// standing sentence covers it.
     #[test]

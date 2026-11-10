@@ -3,21 +3,25 @@
 A GPU media-services box for [kobbler](https://github.com/Kobbler-Media/kobbler). One
 Axum API (`:8090`) fronts local LLM inference plus a stack of image, audio,
 speech and vision models, arbitrates them onto the available GPUs with a
-priority lock, and exposes the lot over HTTP with a SvelteKit web UI and a `kob`
-CLI on top.
+VRAM-budget scheduler, and exposes the lot over HTTP with a SvelteKit web UI and
+a `kob` CLI on top.
 
 ## Read this first
+
+**koblem is experimental and is published for people to adapt, not to install
+as-is.** It is tuned to one specific hardware setup (two NVIDIA cards, a
+particular set of models and VRAM budgets), and not all of the GPU engine images
+it talks to are published — some of their build contexts are private (see
+[`docs/engines.md`](docs/engines.md)). Expect to change code and configuration
+to fit your own machine.
 
 **koblem is optional. kobbler works fine without it.** Nothing in kobbler
 requires koblem to be running; koblem adds AI-assisted features, and if its URL
 is unset those features are simply absent.
 
 **This is a specialised service, and most people will not want it.** It assumes
-an NVIDIA GPU, it assumes you are comfortable sourcing multi-gigabyte model
-weights yourself, and it was built around one person's hardware and one person's
-media library. It is published because there is no good reason not to — not
-because it is a general-purpose product. There is no support commitment, and the
-install is not one-click.
+an NVIDIA GPU and that you are comfortable sourcing multi-gigabyte model weights
+yourself. There is no support commitment, and the install is not one-click.
 
 If that is still interesting, read on.
 
@@ -39,12 +43,14 @@ and even then only by proxying. Everything is split three ways:
    keys, settings, LLM/GPU logs, the generation gallery), the job queue, and the
    GPU gate that decides who gets the card.
 
-The **GPU gate** (`kob-gpu-gate`, from koblibs) is the interesting part: the LLM
-is resident by default, light engines (TTS > Vision > STT) serialise on a
-priority lock, and the heavy engines drain and unload the LLM to take its VRAM
-for a render, then hand it back. That is what the llama.cpp patch series exists
-to make possible — a parent/child process split so the CUDA context can actually
-be torn down and the VRAM genuinely returned.
+The **GPU gate** (`kob-gpu-gate`, from koblibs) is the interesting part. Each
+engine has a worst-case VRAM peak; it is admitted onto a card only if that peak
+fits the card's remaining budget, possibly after evicting or relocating
+residents that list it in their `evictable_by`. The LLM is resident by default,
+and a render that needs its VRAM drains and unloads it, then hands the card
+back. That is what the llama.cpp patch series exists to make possible — a
+parent/child process split so the CUDA context can actually be torn down and the
+VRAM genuinely returned.
 
 Also in here: an OpenAI-compatible chat proxy, a MeiliSearch tool-parameter
 rewriter, and release-classification endpoints (`/rank-releases`,
@@ -152,11 +158,20 @@ SQL
 ```
 
 With at least one card registered, open **GPU Scheduler** in the web UI and set
-each engine's home and candidate cards. The `peak_mb`, `priority`, `relocatable`
-and `evictable_by` values are seeded with real, tested starting points — you
-should only need to assign cards. Read the comments in
-`api/migrations/0019_gpu_scheduler.sql` onward before changing a peak: several of
-them are sized deliberately so two engines *cannot* co-reside.
+each engine's home and candidate cards. Each engine's row holds:
+
+| Field | Meaning |
+|---|---|
+| `home_gpu` | The card it prefers. |
+| `candidate_gpus` | Every card it may be placed on. |
+| `peak_mb` | Its worst-case VRAM use plus a margin. It is admitted onto a card only if this fits the card's free budget. |
+| `evictable_by` | Engines allowed to evict it to make room. Empty means it is never evicted automatically. A busy, non-relocatable engine is waited for, never killed. |
+| `relocatable` | Whether eviction moves it to another candidate card (even mid-request) instead of stopping it. |
+
+The seeded peaks were measured on the author's cards and models. Keep them while
+you get things running, then re-measure your own engines (`nvidia-smi` during a
+worst-case job) before tightening them. Some are deliberately large so two
+heavy engines never share a card.
 
 Two engines (`spar3d` and `pixal3d`) are pinned to a single card by their own
 deployment. Give each of them a `candidate_gpus` naming exactly the card its

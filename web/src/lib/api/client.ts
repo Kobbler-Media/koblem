@@ -1260,7 +1260,7 @@ export function clearGpuLogs(): Promise<void> {
   return request('/api/v1/gpu-logs', { method: 'DELETE' });
 }
 
-// ── Music (ACE-Step — see acestep.cpp/HANDOFF-koblem-integration.md) ─────
+// ── Music (ACE-Step) ─────
 
 export type MusicMode = 'generate' | 'cover' | 'repaint' | 'extract' | 'lego' | 'complete';
 
@@ -2361,7 +2361,7 @@ export type LtxUpscalerRatio = 'none' | 'x1.5' | 'x2';
 
 /** Named LTX quality profile. `standard` (default) is byte-identical to the historical
  * single-hires ver3 request; `high`/`upscale_4x` bake the multi-stage upscale recipe;
- * `custom` exposes every field. See HANDOFF-ltx-quality-profiles.md. */
+ * `custom` exposes every field. */
 export type LtxQualityProfile = 'standard' | 'high' | 'upscale_4x' | 'custom';
 
 /** One upsample + SDEdit-refine stage in a Custom-profile `hires_chain`. Any field left
@@ -3522,7 +3522,7 @@ export interface DirectorClip {
    * MiniMax-H3 only: **how** this shot's attached first/last images reach the model.
    *
    * There are two paths and they are not variants of one setting — they land on different
-   * checkpoints and buy different things (measured 2026-08-08, `HANDOFF-koblem-h3-fixes` §3):
+   * checkpoints and buy different things (measured against the source frame):
    *
    * | value | wire | frame-0 NCC | keeps references + song | cost |
    * |---|---|---|---|---|
@@ -6010,7 +6010,7 @@ export function setBeefyMode(opts: { on: boolean; force?: boolean }): Promise<Be
   });
 }
 
-// ── Multi-GPU scheduler (HANDOFF-multi-gpu-scheduler.md) ──────────────────────
+// ── Multi-GPU scheduler ──────────────────────
 
 /// A physical GPU the scheduler can place work on.
 export interface GpuCard {

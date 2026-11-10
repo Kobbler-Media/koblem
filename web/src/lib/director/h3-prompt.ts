@@ -9,9 +9,8 @@
  *
  * 🔴 **The authority is MiniMax's own two guides**, vendored verbatim at
  * `api/assets/minimax-h3/VIDEO_PROMPT_WRITING_GUIDE_{base,ref}_en.md` and sent to the prompt LLM
- * unedited. `~/handoffs/docker/wan2gp-dev/SPEC-h3-prompt-emitter.md` reconstructed them and is now
- * authoritative only where the guides are SILENT — task-type ORDER, the `\n\n` section separator,
- * `<scenetrans>` placement (§K). Silence is not disagreement.
+ * unedited. The emitter's own rules apply only where the guides are SILENT — task-type ORDER,
+ * the `\n\n` section separator, `<scenetrans>` placement. Silence is not disagreement.
  *
  * ## The three corrections that bite
  *
@@ -34,8 +33,7 @@
  * is the artifact"*, and that one design property is what made the whole H3 surface a one-way
  * emitter with a form bolted onto the front: the LLM was made to fill the editor's JSON shape
  * instead of writing a prompt, a hand-written block was a dead end, and a half-written draft was
- * indistinguishable from an invalid one. Reversed 2026-08-08 —
- * `~/handoffs/koblem/h3-director/PLAN-h3-director-reversal-2026-08-08.md`.
+ * indistinguishable from an invalid one. Reversed 2026-08-08.
  *
  * **The stored block is the document now** (`DirectorH3Generation.prompt`), and the editor's panels
  * are a lens over it. So this module has exactly two remaining jobs:

@@ -2,8 +2,7 @@
 //!
 //! These two tables hold the load-bearing placement config the koblem layer
 //! pushes into `kob-gpu-gate`'s `Placer` at startup and on every edit (so the
-//! peak/priority table is a settings-page form field, not a recompile — see
-//! HANDOFF-multi-gpu-scheduler.md §8b).
+//! peak/priority table is a settings-page form field, not a recompile).
 //!
 //! Uses runtime sqlx queries (no `query!` macros) so the sqlx-offline cache
 //! doesn't need regenerating — same convention as `settings.rs` /

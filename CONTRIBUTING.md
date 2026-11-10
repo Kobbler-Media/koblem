@@ -55,7 +55,7 @@ make sqlx-prepare    # brings up the throwaway test DB, migrates, regenerates ap
 check`, so a stale cache fails the build rather than silently drifting. Commit
 the regenerated `api/.sqlx/` files with your change.
 
-`api/migrations/` holds 49 sequential migrations and is the complete schema —
+`api/migrations/` holds 50 sequential migrations and is the complete schema —
 `make sqlx-migrate` applies them to the test database from scratch.
 
 ## Build and test
@@ -112,26 +112,15 @@ is not a fix.
 - Machine-specific notes (your build box, your deploy host, your paths) go in the
   gitignored `CLAUDE.local.md` / `AGENTS.local.md`, never in `CLAUDE.md`.
 
-## Known rough edges
+## Known limitations
 
-Honest list of things that will bite a newcomer. Patches welcome.
-
-- **`make docker-push-*` is for maintainers.** Those targets `docker push` to
-  `ghcr.io/kobbler-media/*` and will fail without org push rights. `docker compose up`
-  builds the images locally from this checkout and needs none of that.
+- **`make docker-push-*` is for maintainers.** Those targets push to
+  `ghcr.io/kobbler-media/*` and need org push rights. `docker compose up` builds
+  the images locally and needs none of that.
 - **The engine services are not in this repository.** Image, music, avatar, TTS,
   STT, vision, depth and video are separate GPU services that koblem calls over
-  HTTP; you cannot run them from here.
-- **The GPU scheduler has no card-registration path.** `gpu_cards` rows can only
-  be created with raw SQL — there is no POST/PUT route, no UI form and no CLI
-  command, and the `nvidia-smi` reconciler only reads free VRAM for cards already
-  in the table. Worse, an unregistered card is a silent hang rather than an
-  error: `GpuLock::acquire` gates on `has_engine()` (which is true, because the
-  engine budget rows *are* seeded) rather than on whether any card exists, so
-  placement finds no candidate and the request parks in a 2-second retry loop
-  forever. `Placer::is_configured()` in kob-gpu-gate checks exactly the right
-  predicate (cards non-empty **and** engines non-empty) but has no callers.
-  `ranked_candidates()` also lacks the empty-candidate fallback its three sibling
-  functions have, so a blank `home_gpu` with `[]` candidates is an unclearable
-  `NoEnabledCard` rather than the "no preference" its doc comment promises. Two
-  small, well-isolated fixes; see the README's "First run: register your GPUs".
+  HTTP; see [docs/engines.md](docs/engines.md).
+- **GPUs can only be registered with raw SQL.** There is no route, UI form or CLI
+  command that creates a `gpu_cards` row, and with no cards registered, gated
+  requests wait forever instead of failing. See the README's "First run: register
+  your GPUs".

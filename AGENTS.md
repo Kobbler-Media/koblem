@@ -1,6 +1,6 @@
 Local AI service for the kob ecosystem. One Axum API (`:8090`) fronts llama-server
 plus a stack of GPU engines — images, matting, TTS, STT, music, avatar — behind a
-priority GPU gate. Backed by PostgreSQL (users, API keys, settings, logs,
+VRAM-budget GPU gate. Backed by PostgreSQL (users, API keys, settings, logs,
 generation gallery); optional NATS review consumer. A SvelteKit web UI (`web/`)
 and the `kob` CLI (`cli/`) sit on top.
 
@@ -21,10 +21,11 @@ The OpenAI-format LLM path proxies directly (llama-server handles the chat
 template natively). `/api/v1/*` endpoints are auth-gated (`require_auth`: env key,
 web-login session, or a named API key as `Authorization: Bearer`).
 
-**GPU gate** (`kob-gpu-gate`): the LLM is the always-resident occupant. Light
-engines (TTS > Vision > STT) serialise on a priority lock; the heavy engines
-(Avatar, Flux, Music) drain + unload the LLM and evict light peers for their slot.
-Matting is ungated (tiny, idle-unloads itself).
+**GPU gate** (`kob-gpu-gate`): each engine is admitted onto a card iff its
+`peak_mb` fits the card's remaining budget, after evicting/relocating residents
+that name it in their `evictable_by` (no numeric priority). The LLM is the
+always-resident, relocatable occupant; the text embedder holds a standing
+reservation and never waits on the gate.
 
 **MeiliSearch tool rewriting**: intercepts `_meiliSearchInIndex` tool defs,
 swaps the `filter` string for semantic booleans (`monitored_only`,

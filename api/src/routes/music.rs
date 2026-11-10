@@ -1,6 +1,6 @@
 //! ACE-Step music generation routes (the GPU "music" engine). Auth-gated.
 //!
-//! Three modes (see acestep.cpp/HANDOFF-koblem-integration.md):
+//! Three modes:
 //!   - `generate` (text2music): runs the ace LM code-sketch then the turbo DiT.
 //!     JSON body. Empty lyrics → the LM writes them.
 //!   - `cover` (lyric-swap via ace `cover-nofsq`) and `repaint` (regenerate a

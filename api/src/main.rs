@@ -379,7 +379,7 @@ async fn main() {
     // plain second client on the shared GpuLock budget — it does NOT register a
     // heavy service (only the main LLM owns the resident-drain dance), so this
     // is a call-path wire only; standing gemma up as an on-demand heavy is a
-    // GPU-gated deploy follow-up (see HANDOFF-director-auto-llm.md). None → the
+    // GPU-gated deploy follow-up. None → the
     // /plan route falls back to the main `llama` (Qwen).
     let director_llm = config
         .director_llm_url

@@ -14,7 +14,7 @@ services:
   koblem-api:
     environment:
       LLAMA_SERVER_URL: ${LLAMA_SERVER_URL:-http://llama-server:8080}
-      CONTEXT_SIZE: ${CONTEXT_SIZE:-131072}
+      CONTEXT_SIZE: ${CONTEXT_SIZE:-163840}
       # OFF by default: attach each H3 generation's ~14 s slice of the project
       # song to the prompt writer's turn, so it hears the tone rather than only
       # reading about it. Set to 1 to try it.

@@ -22,7 +22,6 @@
 //! clamp is blind between the load and the first deep prefill, when the model has
 //! claimed only part of what it will hold — the window the 2026-09-03 breeze
 //! incident poisoned it in. Unset variables give the old whole-box lock.
-//! Design and the measured floors: `~/handoffs/koblem/DESIGN-beefy-cotenancy.md`.
 //!
 //! **No Docker control.** ComfyUI keeps running with its models unloaded via
 //! comfy-api's admin route. Measured: it holds a 284 MiB residual after a real

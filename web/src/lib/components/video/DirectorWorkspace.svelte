@@ -590,8 +590,7 @@
   let seed = $state<number | undefined>(undefined);
 
   // Quality profile: Standard (default, byte-identical ver3), High, 4× Upscale, or Custom.
-  // Custom reveals the base-pass overrides + a repeatable upscale-stage editor below. See
-  // HANDOFF-ltx-quality-profiles.md.
+  // Custom reveals the base-pass overrides + a repeatable upscale-stage editor below.
   let qualityProfile = $state<LtxQualityProfile>('standard');
   // Custom base pass overrides (only sent when profile === "custom"; else backend bakes them).
   let customBaseSampler = $state(DEFAULT_BASE_SAMPLER);

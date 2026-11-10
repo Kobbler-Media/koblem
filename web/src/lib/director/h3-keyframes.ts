@@ -6,8 +6,7 @@
  *
  * Until 2026-08-08 any attached first/last frame forced `fl2va`. That is a different weight set,
  * not a flag, so the generation lost **every omni reference and the project song**, and the packer
- * isolated it on both sides. Measured against the source frame
- * (`~/handoffs/docker/h3-wangp/HANDOFF-koblem-h3-fixes-2026-08-08.md` §3):
+ * isolated it on both sides. Measured against the source frame:
  *
  * | path | frame-0 NCC | keeps references + song | cost |
  * |---|---|---|---|

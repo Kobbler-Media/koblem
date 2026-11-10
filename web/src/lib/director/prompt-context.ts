@@ -143,9 +143,8 @@ export function shotHasSpeech(
 /**
  * How long a hole between two sung words has to be before it splits one vocal span into two.
  *
- * 0.45 s, and it is not arbitrary: it is the grouping threshold the measured lane in
- * `~/handoffs/koblem/h3-director/RESULTS-sealed-by-fate-clock-2026-08-14.md` was produced with, so
- * this reproduces that table's spans rather than a second opinion about them. Below it the singer
+ * 0.45 s, and it is not arbitrary: it is the grouping threshold the measured vocal lane was
+ * produced with, so this reproduces that table's spans rather than a second opinion about them. Below it the singer
  * has not stopped singing — they have taken a breath, and telling the writer to close a mouth for
  * 300 ms is worse direction than saying nothing.
  */

@@ -458,9 +458,7 @@ describe('shotContext on H3', () => {
 
 /**
  * The real project, reduced to what the lane reads: "Gawdwin — Sealed by Fate", fifteen 345-frame
- * generations under a 208.008 s track, every seam after the first an anchored `latents` join. Its
- * measured clock and vocal table live in
- * `~/handoffs/koblem/h3-director/RESULTS-sealed-by-fate-clock-2026-08-14.md`.
+ * generations under a 208.008 s track, every seam after the first an anchored `latents` join.
  */
 const SONG_SECONDS = 208.008;
 const SOUNDTRACK_REF: DirectorH3Reference = {
@@ -501,9 +499,7 @@ describe('vocalLaneFor / vocalLanes', () => {
    * the slice offsets reproduces exactly this error.
    *
    * 🔴 These numbers moved on 2026-08-14 with `H3_TRIM_JOIN` 1 → 22 (comfy-api's continuation went
-   * to `placement="on_target"`). They used to be 14.3333 and 8.467, and every span in
-   * `~/handoffs/koblem/h3-director/RESULTS-sealed-by-fate-clock-2026-08-14.md` is still written on
-   * the old trim — that table needs re-measuring before it is trusted again. Derived from the
+   * to `placement="on_target"`). They used to be 14.3333 and 8.467. Derived from the
    * constant here so this file cannot go stale the same way twice.
    */
   it('converts the song clock onto each generation own local clock', () => {

@@ -4932,7 +4932,6 @@ async fn reference_edge_alpha(png: &[u8]) -> std::io::Result<ReferenceEdgeAlpha>
 /// of ONE tensor (`stable-diffusion.cpp`, "all references in one shot must share a resolution"), so
 /// anything per-reference makes a two-reference shot fail at RENDER time as a generic
 /// `generation_failed`. Whatever the canvas is, it must be uniform across a shot.
-/// See `~/handoffs/docker/ltx-video/HANDOFF-reference-perf.md`.
 ///
 /// The padding VALUE is not a presentation choice: white is the trained convention for a
 /// memory-regime reference, and `force_original_aspect_ratio=decrease` is what guarantees the

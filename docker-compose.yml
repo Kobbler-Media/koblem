@@ -34,9 +34,8 @@ services:
       retries: 5
 
   koblem-api:
-    # Local tag name. `build:` below means `docker compose up` builds it from
-    # this checkout — no registry access needed. Publishing is opt-in via the
-    # Makefile's docker-push targets.
+    # Published by CI; `docker compose pull` fetches it, `--build` builds it
+    # from this checkout instead.
     image: ghcr.io/kobbler-media/koblem:latest
     build:
       context: .

@@ -37,6 +37,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cp /build/api/target/release/koblem /build/koblem-binary
 
 FROM debian:trixie-slim
+LABEL org.opencontainers.image.source="https://github.com/Kobbler-Media/koblem"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl ffmpeg \

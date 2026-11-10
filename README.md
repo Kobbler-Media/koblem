@@ -72,10 +72,12 @@ These are hard requirements, not suggestions.
   / `LLAMA_MMPROJ` / `LLAMA_DRAFT_MODEL`, or set `TEXT_URL` / `MMPROJ_URL` /
   `DRAFT_URL` to something `curl` can fetch. A missing file with no URL is a hard
   error and the container will refuse to start.
-- **A sibling checkout of [koblibs](https://github.com/Kobbler-Media/koblibs)** at
-  `../koblibs`. koblibs is a shared Rust workspace (plus a Svelte UI package)
-  that is not on crates.io or npm yet, so both the Rust and the web builds expect
-  it next to this repository:
+- **To build from source only:** a sibling checkout of
+  [koblibs](https://github.com/Kobbler-Media/koblibs) at `../koblibs`. The
+  `koblem`, `koblem-web` and `koblem-llama` images are published to
+  `ghcr.io/kobbler-media` (linux/amd64), so running the stack doesn't need it. koblibs is a shared Rust
+  workspace (plus a Svelte UI package) that is not on crates.io or npm yet, so
+  both the Rust and the web builds expect it next to this repository:
 
   ```
   parent/
@@ -93,6 +95,7 @@ These are hard requirements, not suggestions.
 
 ```sh
 cp .env.example .env     # edit it
+docker compose -f docker-compose.yml -f docker-compose.llm.yml pull
 docker compose -f docker-compose.yml -f docker-compose.llm.yml up -d
 ```
 

@@ -71,6 +71,7 @@ RUN cmake -B build -G Ninja \
     && cmake --build build -j --target llama-server
 
 FROM nvidia/cuda:13.4.3-runtime-ubuntu24.04
+LABEL org.opencontainers.image.source="https://github.com/Kobbler-Media/koblem"
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libcurl4 libgomp1 curl && rm -rf /var/lib/apt/lists/*
 # build/bin/ holds the server binary + its vendored shared libs (libggml*.so,
 # libllama.so, libmtmd.so) in modern llama.cpp.

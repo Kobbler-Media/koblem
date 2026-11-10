@@ -37,7 +37,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libavformat-dev libavcodec-dev libavutil-dev libavfilter-dev \
             libswresample-dev libswscale-dev libchromaprint-dev \
-            clang libclang-dev pkg-config
+            clang libclang-dev pkg-config ffmpeg
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.99"
@@ -51,9 +51,20 @@ jobs:
       - name: clippy
         working-directory: koblem/${{ matrix.dir }}
         run: cargo clippy --all-targets -- -D warnings
+      - name: start test backing services (postgres, nats)
+        if: matrix.dir == 'api'
+        working-directory: koblem
+        run: docker compose -f docker-compose.test.yml up -d --wait
       - name: test
+        if: matrix.dir != 'api'
         working-directory: koblem/${{ matrix.dir }}
         run: cargo test
+      - name: test (with postgres + nats)
+        if: matrix.dir == 'api'
+        working-directory: koblem/api
+        env:
+          DATABASE_URL: postgres://koblem:koblem@localhost:5435/koblem_test
+        run: cargo test -- --test-threads=4
 
   web:
     name: web (svelte)

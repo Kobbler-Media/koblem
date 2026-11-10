@@ -35,8 +35,8 @@ services:
 
   koblem-api:
     # Published by CI; `docker compose pull` fetches it, `--build` builds it
-    # from this checkout instead.
-    image: ghcr.io/kobbler-media/koblem:latest
+    # from this checkout instead. KOBLEM_TAG pins a release (e.g. 0.1).
+    image: ghcr.io/kobbler-media/koblem:${KOBLEM_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -92,7 +92,7 @@ services:
         max-file: "3"
 
   web:
-    image: ghcr.io/kobbler-media/koblem-web:latest
+    image: ghcr.io/kobbler-media/koblem-web:${KOBLEM_TAG:-latest}
     build:
       context: ./web
       additional_contexts:

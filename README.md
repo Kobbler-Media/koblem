@@ -74,8 +74,11 @@ These are hard requirements, not suggestions.
   error and the container will refuse to start.
 - **To build from source only:** a sibling checkout of
   [koblibs](https://github.com/Kobbler-Media/koblibs) at `../koblibs`. The
-  `koblem`, `koblem-web` and `koblem-llama` images are published to
-  `ghcr.io/kobbler-media` (linux/amd64), so running the stack doesn't need it. koblibs is a shared Rust
+  `koblem` and `koblem-web` images are published to `ghcr.io/kobbler-media`
+  for linux/amd64 and linux/arm64 (`koblem-llama` for amd64 only), so running
+  the stack doesn't need it. `:latest` follows `main`; set `KOBLEM_TAG` in
+  `.env` to a [release](https://github.com/Kobbler-Media/koblem/releases)
+  (`0.1`, or exactly `0.1.0`) to stay on it. koblibs is a shared Rust
   workspace (plus a Svelte UI package) that is not on crates.io or npm yet, so
   both the Rust and the web builds expect it next to this repository:
 

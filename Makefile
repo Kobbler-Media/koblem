@@ -89,18 +89,19 @@ test-web:
 # @ pinned SHA + kobbler patch series, CUDA 13.4) takes ~15 minutes and the
 # image rarely changes. Run `make docker-push-llama` ad-hoc.
 REGISTRY ?= ghcr.io/kobbler-media
+TAG ?= latest
 
 docker-push: docker-push-koblem docker-push-web
 
 docker-push-koblem:
 	cd api && cargo update -p koblem-client -p kob-providers
-	docker build --build-context koblibs=../koblibs -t $(REGISTRY)/koblem:latest .
-	docker push $(REGISTRY)/koblem:latest
+	docker build --build-context koblibs=../koblibs -t $(REGISTRY)/koblem:$(TAG) .
+	docker push $(REGISTRY)/koblem:$(TAG)
 
 docker-push-llama:
 	docker build --build-arg CACHEBUST=$$(date +%s) -t $(REGISTRY)/koblem-llama:latest docker/llama-server/
 	docker push $(REGISTRY)/koblem-llama:latest
 
 docker-push-web:
-	docker build --build-context koblibs=../koblibs --target prod -t $(REGISTRY)/koblem-web:latest web/
-	docker push $(REGISTRY)/koblem-web:latest
+	docker build --build-context koblibs=../koblibs --target prod -t $(REGISTRY)/koblem-web:$(TAG) web/
+	docker push $(REGISTRY)/koblem-web:$(TAG)

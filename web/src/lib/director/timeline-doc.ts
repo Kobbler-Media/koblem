@@ -171,9 +171,15 @@ export function readTimelineDoc(t: DirectorTimeline): AdoptedTimeline {
   // an upscaler ratio or a hires chain to recover.
   const req = ltxRequestOf(t.request);
   let upscalerRatio: LtxUpscalerRatio = req?.upscaler_ratio ?? 'x2';
-  const resPreset = (t.editor?.resPreset as ResPreset) ?? '1080p';
+  let resPreset = (t.editor?.resPreset as ResPreset) ?? '1080p';
   let width: number;
   let height: number;
+  // A v2+ doc stores the OUTPUT dims, so its saved width/height win over a preset NAME — which the
+  // H3 canvas controls never clear, and which otherwise snapped every reload back to 1920×1088.
+  // Read back as `custom` so the next save stops persisting the stale name.
+  if (resPreset !== 'custom' && (t.version ?? 1) >= 2 && t.width && t.height) {
+    resPreset = 'custom';
+  }
   if (resPreset === 'custom') {
     // v1 docs stored width/height as the BASE pass; v2+ store the OUTPUT target. Migrate a v1
     // custom-resolution doc by scaling its base up by the saved upscaler ratio — the output the old

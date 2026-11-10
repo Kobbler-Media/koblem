@@ -60,6 +60,30 @@ describe('readTimelineDoc — resolution migration', () => {
     );
     expect(out).toMatchObject({ width: 1920, height: 1088, upscalerRatio: 'x2' });
   });
+
+  /**
+   * The H3 canvas controls set width/height and never touch `resPreset`, so a project created on
+   * the 1080p default kept `"1080p"` beside a 1344×768 canvas — and every reload put it back to
+   * 1920×1088 behind the author's back. A v2 doc's dims ARE the output; the name only migrates v1.
+   */
+  it('a v2 doc keeps its saved dims over a stale named preset, and reads back as custom', () => {
+    const out = readTimelineDoc(
+      doc({
+        version: 2,
+        engine: 'h3',
+        width: 1344,
+        height: 768,
+        request: { generations: [], width: 1344, height: 768, fps: 24 },
+        editor: { resPreset: '1080p' }
+      })
+    );
+    expect(out).toMatchObject({ width: 1344, height: 768, resPreset: 'custom' });
+  });
+
+  it('a v2 doc with no saved dims still takes them from its named preset', () => {
+    const out = readTimelineDoc(doc({ version: 2, editor: { resPreset: '720p' } }));
+    expect(out).toMatchObject({ width: 1280, height: 704, upscalerRatio: 'none' });
+  });
 });
 
 describe('readTimelineDoc — defaults for fields added later', () => {

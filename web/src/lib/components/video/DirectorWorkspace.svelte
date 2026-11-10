@@ -8445,6 +8445,17 @@
       ><button class="x" onclick={dismissAiToast}>Dismiss</button>
     </div>
   {/if}
+
+  <!-- On desktop `renderError` was drawn only inside the Renders drawer, which is unmounted while
+       closed — so a render the server refused (or a failed summarise/rework) looked like a button
+       that did nothing. The phone's `MobileRender` draws it already. -->
+  {#if renderError && !rendersOpen && !compact.current}
+    <div class="err-toast" role="alert">
+      <span>{renderError}</span><button class="x" onclick={() => (renderError = null)}
+        >Dismiss</button
+      >
+    </div>
+  {/if}
 </div>
 
 {#if scopePrompt}

@@ -127,7 +127,7 @@ pub struct SpeechRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub align_stream: Option<String>,
     /// Where the forced aligner runs: "gpu", "cpu" or "off". Left unset, koblem
-    /// chooses — see `synthesize_stream`.
+    /// sends "cpu" — see `synthesize_stream`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub align_device: Option<String>,
 }
@@ -253,9 +253,11 @@ impl BreezeTtsClient {
     /// `speed_applied = 1.0`. A 400 for any other reason survives the retry and
     /// is returned with the engine's own message.
     pub async fn synthesize_stream(&self, req: &SpeechRequest) -> Result<StreamHandle, Error> {
-        // 🔴 Beefy admits TTS beside the 27B against a 3000 MiB reservation sized on
-        // the STREAMED peak (2,243 + 634 aligner). Buffered measured 4,309 and grows
-        // with output length — admitting it would overrun the 3060 the 27B shares.
+        // 🔴 Beefy admits TTS beside the 27B against `tts`'s reservation (2600 MiB,
+        // 0051), sized on the STREAMED peak: two concurrent 400-word streams with
+        // the aligner on the CPU, 2,408 MiB on the 3060 / 2,508 on the 5060 Ti.
+        // Buffered was measured at 4,309 and grows with output length — admitting
+        // it would overrun the 3060 the 27B shares.
         // Every call funnels through here; only the playground ever goes buffered.
         if req.stream_format.is_none() && self.gate.exclusive().is_some() {
             return Err(Error::BufferedDuringBeefy);
@@ -271,16 +273,13 @@ impl BreezeTtsClient {
             if let Some(g) = guard.chosen_gpu() {
                 obj.insert("gpu".into(), Value::String(g.to_string()));
             }
-            // 🔴 Alignment costs ~630 MiB of VRAM on top of the worker's ~2,400.
-            // Beside Beefy there is not room for both, and alignment is the half
-            // of a read-along that can degrade without silencing the voice — so
-            // it moves to the CPU (same timings, ~2.6 s per chunk, no VRAM)
-            // rather than taking the request down with it. A caller that names a
-            // device has already decided and is left alone.
-            if req.align == Some(true)
-                && req.align_device.is_none()
-                && self.gate.exclusive().is_some()
-            {
+            // 🔴 The forced aligner always runs on the CPU. On the GPU it adds
+            // ~530 MiB to the worker (3060, two 400-word streams: 2,936 vs
+            // 2,408 MiB) for no audio speed — it only lands the first highlight
+            // 1-2 s sooner — and `tts`'s `peak_mb` (0051) is sized for the CPU
+            // aligner. A caller that names a device has decided and is left
+            // alone; "gpu" there is not covered by the reservation.
+            if req.align == Some(true) && req.align_device.is_none() {
                 obj.insert("align_device".into(), Value::String("cpu".into()));
             }
         }

@@ -770,7 +770,11 @@ pub fn build_chain(
         }
 
         // ── Continuation ─────────────────────────────────────────────────────
-        if let Some(c) = &g.continuation {
+        // A hard cut is no continuation at all — the shim parses `none` to absent — and sending it
+        // made a one-generation retake of a hard-cut render fail the generation-0 `prev` check.
+        if let Some(c) = &g.continuation
+            && c.mode != H3ContinuationMode::None
+        {
             o.insert("continuation".into(), build_continuation(c, gi)?);
         }
 
@@ -2391,6 +2395,17 @@ mod tests {
     /// Continuation is only meaningful across a boundary. `"prev"` is resolved by the shim at RUN
     /// time (which is what makes it survive a retake), so on the first generation it resolves to
     /// nothing and must be caught before the GPU is taken.
+    /// A hard cut (`mode: none`) is not a continuation, and a single-generation retake of one hits
+    /// the generation-0 `prev` check: the retake path resolves `prev` only for joining modes, so the
+    /// unresolved `prev` survived and every retake of a hard-cut render was refused. The shim reads
+    /// `none` as absent anyway, so nothing is sent.
+    #[test]
+    fn a_hard_cut_is_not_sent_as_a_continuation() {
+        let cut = one_gen(json!({ "continuation": { "mode": "none" } }));
+        let chain = build_chain(&req(cut.clone()), &cut).expect("a hard cut needs nothing before it");
+        assert_eq!(chain.chain["generations"][0].get("continuation"), None);
+    }
+
     #[test]
     fn a_continuation_needs_something_to_continue_from() {
         let first = one_gen(json!({ "continuation": { "mode": "latents" } }));

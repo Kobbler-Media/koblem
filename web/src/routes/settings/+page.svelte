@@ -1145,8 +1145,8 @@
         Per-surface llama.cpp sampling defaults — one panel per place koblem talks to the LLM. An
         empty field is <strong>not sent at all</strong>: the call site's own value stands, and
         failing that llama-server's flags do. Callers can still override per request. Reset clears a
-        panel back to that inherit behaviour (the music, FLUX.2 and Krea 2 panels fall back
-        to the shipped values named in their descriptions instead).
+        panel back to that inherit behaviour (the music, FLUX.2 and Krea 2 panels fall back to the
+        shipped values named in their descriptions instead).
       </p>
 
       <div class="bulk-apply">

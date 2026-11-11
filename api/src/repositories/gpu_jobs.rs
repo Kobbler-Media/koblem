@@ -171,7 +171,10 @@ pub async fn enqueue(pool: &PgPool, new: &NewJob) -> Result<(Job, bool)> {
     .await?;
 
     if let Some(row) = inserted {
-        return row.into_job().map(|j| (j, false)).ok_or(sqlx::Error::RowNotFound);
+        return row
+            .into_job()
+            .map(|j| (j, false))
+            .ok_or(sqlx::Error::RowNotFound);
     }
 
     // The unique index is scoped to the non-terminal states, so the only row this

@@ -804,10 +804,8 @@
 
     <label>
       Delivery instructions
-      <textarea
-        rows="2"
-        bind:value={qInstructions}
-        placeholder="e.g. Warm and gentle, unhurried."></textarea>
+      <textarea rows="2" bind:value={qInstructions} placeholder="e.g. Warm and gentle, unhurried."
+      ></textarea>
       <span class="hint">
         Description-driven prosody / style. With a cloned voice it steers delivery and the clone
         keeps its identity.

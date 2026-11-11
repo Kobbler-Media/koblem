@@ -91,39 +91,15 @@ pub(super) async fn make_video(ctx: &Ctx, engine: &EngineOption, args: &Value) -
         ),
         768,
     );
-    // The container travels with the route: the two sd.cpp-fork engines deliver VP9-in-webm, and
     // LTX-2.5 delivers mp4 (ComfyUI's only audio-carrying save node is `SaveVideo`). The agent's
     // copy IS the clip, so naming it wrongly here is a file nothing will play later.
-    let (path, jobs, body, ext) = match engine.id {
-        "wan" => (
-            "/api/v1/wan-vace/generate",
-            "/api/v1/wan-vace/jobs",
-            json!({
-                "segments": [{"prompt": prompt, "seconds": seconds}],
-                "width": width, "height": height,
-            }),
-            "webm",
-        ),
-        "ltx2b" => (
-            "/api/v1/ltx-2b/generate",
-            "/api/v1/ltx-2b/jobs",
-            json!({
-                "segments": [{"prompt": prompt, "seconds": seconds}],
-                "width": width, "height": height,
-            }),
-            "webm",
-        ),
-        // `ltx`, and anything unrecognised: no `?engine=`, which the LTX route reads as LTX-2.5.
-        _ => (
-            "/api/v1/ltx-video/generate",
-            "/api/v1/ltx-video/jobs",
-            json!({
-                "segments": [{"prompt": prompt, "seconds": seconds}],
-                "width": width, "height": height,
-            }),
-            "mp4",
-        ),
-    };
+    let path = "/api/v1/ltx-video/generate";
+    let jobs = "/api/v1/ltx-video/jobs";
+    let ext = "mp4";
+    let body = json!({
+        "segments": [{"prompt": prompt, "seconds": seconds}],
+        "width": width, "height": height,
+    });
 
     let accepted = match post_json(ctx, path, &body).await {
         Ok(v) => v,

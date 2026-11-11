@@ -241,9 +241,7 @@ impl LtxJob {
     /// Whether this job's engine banks per-segment latents — the thing a resume, a `bank_job_id`
     /// and a retake all continue FROM.
     ///
-    /// 🔴 Everything but H3, and the untagged case is NOT dead: `ltx_2b_jobs` is a second
-    /// [`LtxJobStore`] whose jobs carry no engine tag, and the 2B engine banks into the job dir it
-    /// always writes. So this cannot narrow to `ltx25` without taking LTX-2B's resume with it.
+    /// Everything but H3.
     ///
     /// 🔴 TRUE ON `ltx25` SINCE kobbler `6ca0b6f2` ("a latent bank, resume, retake, and partials
     /// inside one prompt"). A ComfyUI custom node writes one entry per segment the moment it
@@ -290,11 +288,9 @@ impl LtxJob {
     }
 
     /// Which engine rendered this job. A stored value wins; absent reads as `ltx`, which covers
-    /// two untagged populations and nothing else: every job of the SECOND store (`ltx_2b_jobs`,
-    /// whose renders are all the one engine, so they are created without a tag), and any sidecar
-    /// still on disk from the retired C++ `ltx-video` service. Nothing writes `"ltx"`; it is only
-    /// ever read — which still matters to [`clip_ext`](Self::clip_ext), since both of those
-    /// populations are VP9-in-webm.
+    /// only untagged sidecars still on disk from the retired sd.cpp-fork engines (the C++
+    /// `ltx-video` service and LTX-2B). Nothing writes `"ltx"`; it is only ever read — which still
+    /// matters to [`clip_ext`](Self::clip_ext), since those clips are VP9-in-webm.
     pub fn engine_name(&self) -> &str {
         match self.engine.as_deref() {
             Some(e) if !e.is_empty() => e,
@@ -323,9 +319,8 @@ impl LtxJob {
     /// wart: the first `ffmpeg -c copy` concat that rebuilds a cut fails, at a point with nothing
     /// to say about where the wrong name came from.
     ///
-    /// 🔴 The `webm` arm is the UNTAGGED one — LTX-2B's whole store, plus any sidecar the retired
-    /// C++ `ltx-video` engine left behind for the rest of the TTL. Both are the sd.cpp fork, and
-    /// both already have `.webm` files on disk that this is what finds.
+    /// 🔴 The `webm` arm is the UNTAGGED one — any sidecar the retired sd.cpp-fork engines (C++
+    /// `ltx-video`, LTX-2B) left behind, whose `.webm` files on disk this is what finds.
     pub fn clip_ext(&self) -> &'static str {
         if self.engine_name() == ENGINE_LTX {
             "webm"

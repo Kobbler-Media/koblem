@@ -7,7 +7,7 @@
  * one render unit and are handed that unit's neighbours as context. `Draft all` is N of those, in
  * order. This is the other shape: `POST /api/v1/ltx-video/script-from-llm` takes a brief and `n`
  * and answers with `n` finished units in one turn — which is what the standalone LTX pages have
- * always used (`routes/ltx-video/+page.svelte`, `Ltx2bPanel.svelte`) and what the owner asked for
+ * always used (`routes/ltx-video/+page.svelte`) and what the owner asked for
  * on H3: *"whole project in one pass should exist like it used to for ltx"*.
  *
  * 🔴 **The reply cannot mint anything.** On H3 the generations are DERIVED from the clips by

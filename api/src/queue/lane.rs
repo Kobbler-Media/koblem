@@ -33,11 +33,12 @@ pub enum Lane {
     LongcatRig,
     Flux2,
     Krea2,
-    WanVace,
-    Ltx2b,
     Songgen,
     Sa3,
-    Avatar,
+    /// The kinds of retired engines (avatar, wan_vace, ltx_2b) that `JobKind` still
+    /// names so their historical rows parse. No adapter is registered for them, so
+    /// enqueue refuses them and nothing is ever admitted here.
+    Retired,
 }
 
 impl Lane {
@@ -73,11 +74,9 @@ impl Lane {
             Lane::LongcatRig => "longcat-rig",
             Lane::Flux2 => "flux2",
             Lane::Krea2 => "krea2",
-            Lane::WanVace => "wan-vace",
-            Lane::Ltx2b => "ltx-2b",
             Lane::Songgen => "songgen",
             Lane::Sa3 => "sa3",
-            Lane::Avatar => "avatar",
+            Lane::Retired => "retired",
         }
     }
 
@@ -91,11 +90,9 @@ impl Lane {
             JobKind::Pixal3dRig | JobKind::Pixal3dMotion => Lane::LongcatRig,
             JobKind::Flux2 => Lane::Flux2,
             JobKind::Krea2 => Lane::Krea2,
-            JobKind::WanVace => Lane::WanVace,
-            JobKind::Ltx2b => Lane::Ltx2b,
             JobKind::Songgen => Lane::Songgen,
             JobKind::Sa3 => Lane::Sa3,
-            JobKind::Avatar => Lane::Avatar,
+            JobKind::Avatar | JobKind::WanVace | JobKind::Ltx2b => Lane::Retired,
         }
     }
 }

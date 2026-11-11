@@ -11,7 +11,7 @@
 //! that evicts the LLM can drain it instead of deadlocking against a permit the
 //! agent is still holding (llama-server is `--parallel 1`).
 //!
-//! Async engines (LTX-2.5, LTX-2B, Wan) answer 202 + `job_id`; we poll their
+//! Async engines (LTX-2.5) answer 202 + `job_id`; we poll their
 //! status route and then fetch the finished clip. Cancellation is checked on
 //! every poll: [`CancelFlag`] is the same cooperative flag `ltx_jobs` uses.
 
@@ -92,7 +92,6 @@ pub async fn dispatch(ctx: &Ctx, live: &LiveTool, args: &Value) -> ToolOutcome {
         Tool::MakeImage => engines::make_image(ctx, engine, args).await,
         Tool::EditImage => edits::edit_image(ctx, args).await,
         Tool::MakeVideo => engines::make_video(ctx, engine, args).await,
-        Tool::MakeAvatar => edits::make_avatar(ctx, args).await,
         Tool::MakeMusic => engines::make_music(ctx, engine, args).await,
         Tool::TransformMusic => edits::transform_music(ctx, args).await,
         Tool::MakeSpeech => engines::make_speech(ctx, engine, args).await,

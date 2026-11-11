@@ -92,15 +92,14 @@
     }
   }
 
-  // Human-readable label per service kind. Covers all 18 of `ServiceKind::ALL`
+  // Human-readable label per live service kind of `ServiceKind::ALL`
   // (kob-gpu-gate), cross-checked against kobbler's docker-compose service
   // comments — the Beefy card and dialog build their "keeps running" / "stops
-  // working" lists from these names. Falls back to the raw name if the backend
-  // adds a service we haven't named.
+  // working" lists from these names. Falls back to the raw name for a service
+  // we haven't named (including the retired avatar / ltx_2b / wan_vace).
   const LABELS: Record<string, string> = {
     llm: 'LLM',
     tts: 'TTS (BreezeTTS 2)',
-    avatar: 'Avatar (longcat-avatar)',
     music: 'Music (ACE-Step)',
     sa3: 'Music (SA3)',
     vision: 'Embeddings (EmbeddingGemma-2)',
@@ -111,8 +110,6 @@
     matting: 'Matting (RMBG)',
     songgen: 'Music: SongGen (LeVo2)',
     ltx: 'Video (LTX-2.5)',
-    ltx_2b: 'Video (LTX-2B)',
-    wan_vace: 'Video (Wan2.2-VACE)',
     minimax_h3: 'Video + audio (MiniMax-H3)',
     spar3d: '3D (SPAR3D + RigAnything)',
     pixal3d: '3D (Pixal3D / longcat-rig)'

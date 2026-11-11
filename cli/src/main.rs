@@ -13,7 +13,7 @@ use crate::client::{Client, QueueFlags};
 use crate::config::{Config, ConfigCmd};
 
 /// CLI for koblem — generate images and video, remove backgrounds, synthesize
-/// speech, transcribe audio, compose music and sound effects, render avatars,
+/// speech, transcribe audio, compose music and sound effects,
 /// browse the gallery, and chat with the LLM.
 #[derive(Parser, Debug)]
 #[command(name = "kob", version, about, long_about = None)]
@@ -92,13 +92,11 @@ enum Command {
         #[command(subcommand)]
         cmd: commands::sfx::SfxCmd,
     },
-    /// Render video clips (LTX-2.5 / LTX-2B / Wan-VACE).
+    /// Render video clips (LTX-2.5).
     Video {
         #[command(subcommand)]
         cmd: commands::video::VideoCmd,
     },
-    /// Render a talking-head avatar clip, or manage saved portraits.
-    Avatar(commands::avatar::AvatarArgs),
     /// Render a Director project on MiniMax-H3 (joint audio+video).
     H3 {
         #[command(subcommand)]
@@ -207,7 +205,6 @@ async fn run() -> Result<()> {
         Command::Song { cmd } => commands::song::run(&ctx, cmd).await,
         Command::Sfx { cmd } => commands::sfx::run(&ctx, cmd).await,
         Command::Video { cmd } => commands::video::run(&ctx, cmd).await,
-        Command::Avatar(args) => commands::avatar::run(&ctx, args).await,
         Command::H3 { cmd } => commands::h3::run(&ctx, cmd).await,
         Command::Rig { cmd } => commands::rig::run(&ctx, cmd).await,
         Command::Vision { cmd } => commands::vision::run(&ctx, cmd).await,

@@ -68,13 +68,10 @@ async fn engine_live(state: &AppState, kind: ServiceKind) -> bool {
         ServiceKind::Krea2 => state.krea2.is_configured(),
         ServiceKind::Flux => state.flux2.is_configured(),
         ServiceKind::Ltx => state.ltx25.is_configured(),
-        ServiceKind::Ltx2b => state.ltx_2b.is_configured(),
-        ServiceKind::WanVace => state.wan_vace.is_configured(),
         ServiceKind::Music => state.music.is_configured(),
         ServiceKind::Sa3 => state.sa3.is_configured(),
         ServiceKind::Songgen => state.songgen.is_configured(),
         ServiceKind::Matting => state.matting.is_configured(),
-        ServiceKind::Avatar => state.avatar.is_configured(),
         ServiceKind::Spar3d => state.spar3d.is_configured(),
         ServiceKind::Pixal3d => state.pixal3d.is_configured(),
         // TTS/STT/Vision clients carry their URL in the gate's service table
@@ -96,13 +93,10 @@ async fn healthy(state: &AppState, kind: ServiceKind) -> bool {
         ServiceKind::Krea2 => state.krea2.healthy().await,
         ServiceKind::Flux => state.flux2.healthy().await,
         ServiceKind::Ltx => state.ltx25.healthy().await,
-        ServiceKind::Ltx2b => state.ltx_2b.healthy().await,
-        ServiceKind::WanVace => state.wan_vace.healthy().await,
         ServiceKind::Music => state.music.healthy().await,
         ServiceKind::Sa3 => state.sa3.healthy().await,
         ServiceKind::Songgen => state.songgen.healthy().await,
         ServiceKind::Matting => state.matting.health().await.is_ok(),
-        ServiceKind::Avatar => state.avatar.healthy().await,
         // The supervisor answers /v1/health without initialising CUDA, so this costs nothing
         // and is honest about whether a render could actually start.
         ServiceKind::Spar3d => state

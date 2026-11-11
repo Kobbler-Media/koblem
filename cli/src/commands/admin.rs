@@ -256,11 +256,11 @@ mod tests {
 
         let e: GpuEnginesResponse = serde_json::from_str(
             r#"{"engines":[{"service":"llm","peak_mb":7000,"home_gpu":"GPU-1",
-                 "candidate_gpus":["GPU-1"],"evictable_by":["flux","avatar"],
+                 "candidate_gpus":["GPU-1"],"evictable_by":["flux","songgen"],
                  "relocatable":true,"rules_json":"{}","updated_at":"2026-07-31T00:00:00Z"}]}"#,
         )
         .unwrap();
-        assert_eq!(e.engines[0].evictable_by, vec!["flux", "avatar"]);
+        assert_eq!(e.engines[0].evictable_by, vec!["flux", "songgen"]);
         assert!(e.engines[0].relocatable);
     }
 

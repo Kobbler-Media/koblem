@@ -26,7 +26,6 @@ pub enum Tool {
     MakeImage,
     EditImage,
     MakeVideo,
-    MakeAvatar,
     MakeMusic,
     TransformMusic,
     MakeSpeech,
@@ -38,11 +37,10 @@ pub enum Tool {
 }
 
 impl Tool {
-    pub const ALL: [Tool; 12] = [
+    pub const ALL: [Tool; 11] = [
         Tool::MakeImage,
         Tool::EditImage,
         Tool::MakeVideo,
-        Tool::MakeAvatar,
         Tool::MakeMusic,
         Tool::TransformMusic,
         Tool::MakeSpeech,
@@ -58,7 +56,6 @@ impl Tool {
             Tool::MakeImage => "make_image",
             Tool::EditImage => "edit_image",
             Tool::MakeVideo => "make_video",
-            Tool::MakeAvatar => "make_avatar",
             Tool::MakeMusic => "make_music",
             Tool::TransformMusic => "transform_music",
             Tool::MakeSpeech => "make_speech",
@@ -342,7 +339,6 @@ mod tests {
     fn single_engine_tools_never_offer_an_engine_argument() {
         for t in [
             Tool::EditImage,
-            Tool::MakeAvatar,
             Tool::TransformMusic,
             Tool::DescribeImage,
             Tool::FindShots,

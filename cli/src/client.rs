@@ -51,7 +51,7 @@ impl Client {
         retry_busy: bool,
         max_wait: Duration,
     ) -> Result<Self> {
-        // No request timeout: heavy renders (avatar, music) run for minutes.
+        // No request timeout: heavy renders (video, music) run for minutes.
         let http = reqwest::Client::builder()
             .build()
             .context("building HTTP client")?;

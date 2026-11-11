@@ -20,22 +20,12 @@ pub const LTX_VIDEO: Engine = Engine {
     name: "ltx",
     base: "/api/v1/ltx-video",
 };
-pub const LTX_2B: Engine = Engine {
-    name: "ltx-2b",
-    base: "/api/v1/ltx-2b",
-};
-pub const WAN_VACE: Engine = Engine {
-    name: "wan",
-    base: "/api/v1/wan-vace",
-};
 
 impl Engine {
     pub fn parse(s: &str) -> Result<Engine> {
         match s {
             "ltx" | "ltx-video" | "ltx25" | "ltx-2.5" => Ok(LTX_VIDEO),
-            "ltx-2b" | "ltx2b" | "2b" => Ok(LTX_2B),
-            "wan" | "wan-vace" | "vace" => Ok(WAN_VACE),
-            _ => bail!("unknown engine '{s}' (ltx|ltx-2b|wan)"),
+            _ => bail!("unknown engine '{s}' (ltx)"),
         }
     }
 
@@ -444,8 +434,7 @@ mod tests {
     fn engine_aliases_resolve() {
         assert_eq!(Engine::parse("ltx").unwrap(), LTX_VIDEO);
         assert_eq!(Engine::parse("ltx-video").unwrap(), LTX_VIDEO);
-        assert_eq!(Engine::parse("2b").unwrap(), LTX_2B);
-        assert_eq!(Engine::parse("wan-vace").unwrap(), WAN_VACE);
+        assert!(Engine::parse("wan").is_err());
         assert!(Engine::parse("sora").is_err());
     }
 
@@ -453,8 +442,8 @@ mod tests {
     fn engine_paths_match_the_server_routes() {
         assert_eq!(LTX_VIDEO.job_path("x"), "/api/v1/ltx-video/jobs/x");
         assert_eq!(LTX_VIDEO.media_path("x"), "/api/v1/ltx-video/jobs/x/media");
-        assert_eq!(LTX_2B.jobs_path(), "/api/v1/ltx-2b/jobs");
-        assert_eq!(WAN_VACE.cancel_path(), "/api/v1/wan-vace/cancel");
+        assert_eq!(LTX_VIDEO.jobs_path(), "/api/v1/ltx-video/jobs");
+        assert_eq!(LTX_VIDEO.cancel_path(), "/api/v1/ltx-video/cancel");
     }
 
     #[test]
@@ -532,8 +521,8 @@ mod tests {
             PathBuf::from("ltx-j1.webm")
         );
         assert_eq!(
-            media_target(WAN_VACE, "j2", "mp4", &None),
-            PathBuf::from("wan-j2.mp4")
+            media_target(LTX_VIDEO, "j2", "mp4", &None),
+            PathBuf::from("ltx-j2.mp4")
         );
         assert_ne!(
             media_target(LTX_VIDEO, "j1", "webm", &None),

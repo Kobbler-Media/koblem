@@ -1,5 +1,4 @@
 pub mod admin;
-pub mod avatar;
 pub mod bg;
 pub mod chat;
 pub mod gallery;

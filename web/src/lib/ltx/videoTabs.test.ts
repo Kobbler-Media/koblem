@@ -51,7 +51,7 @@ describe('the flags the LTX tabs gate their controls on', () => {
 
 describe('VIDEO_TABS', () => {
   it('is the full tab set', () => {
-    const tabs: VideoTab[] = ['ltx2b', 'ltx25', 'lipdub', 'wan', 'upscale'];
+    const tabs: VideoTab[] = ['ltx25', 'lipdub', 'upscale'];
     expect(VIDEO_TABS).toEqual(tabs);
   });
 });

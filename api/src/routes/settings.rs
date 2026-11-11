@@ -150,9 +150,9 @@ async fn update_settings(
             | "stt_service_url" => {
                 gpu_urls_changed = true;
             }
-            // Music + Avatar URLs: propagate to the running clients so a
+            // Music URL: propagate to the running client so a
             // settings edit doesn't require a koblem-api restart. The
-            // MusicClient / AvatarClient set_base_url methods take an
+            // MusicClient set_base_url method takes an
             // Option<String> — empty string clears the URL (lazy-fail on
             // next call), matching the existing STT/TTS/Vision shape.
             "ace_server_url" => {
@@ -161,13 +161,6 @@ async fn update_settings(
                     .map(|s| s.trim().to_string())
                     .filter(|s| !s.is_empty());
                 state.music.set_base_url(url);
-            }
-            "avatar_server_url" => {
-                let url = value
-                    .as_str()
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty());
-                state.avatar.set_base_url(url);
             }
             "flux2_server_url" => {
                 let url = value
@@ -223,24 +216,6 @@ async fn update_settings(
                     .filter(|s| !s.is_empty());
                 state.upscale.set_base_url(url);
             }
-            "wan_vace_server_url" => {
-                // wan_vace self-registers as a HEAVY peer (set_base_url re-registers
-                // on the gate under HeavyKind::WanVace), same shape as ltx.
-                let url = value
-                    .as_str()
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty());
-                state.wan_vace.set_base_url(url);
-            }
-            "ltx_2b_server_url" => {
-                // ltx_2b self-registers as a HEAVY peer (set_base_url re-registers
-                // on the gate under HeavyKind::Ltx2b), same shape as ltx.
-                let url = value
-                    .as_str()
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty());
-                state.ltx_2b.set_base_url(url);
-            }
             "minimax_h3_server_url" => {
                 // minimax_h3 self-registers as a HEAVY peer (set_base_url re-registers
                 // on the gate under HeavyKind::MinimaxH3), same shape as ltx.
@@ -252,7 +227,7 @@ async fn update_settings(
             }
             "songgen_server_url" => {
                 // songgen is a self-registering HEAVY peer (set_base_url
-                // re-registers on the gate), same shape as avatar/flux2.
+                // re-registers on the gate), same shape as flux2.
                 let url = value
                     .as_str()
                     .map(|s| s.trim().to_string())
@@ -358,7 +333,6 @@ async fn resolve_service_url(state: &AppState, key: &str) -> Option<String> {
         "vision_service_url" => state.config.vision_url.clone(),
         "text_embed_service_url" => state.config.text_embed_url.clone(),
         "ace_server_url" => state.config.ace_server_url.clone(),
-        "avatar_server_url" => state.config.avatar_server_url.clone(),
         "songgen_server_url" => state.config.songgen_server_url.clone(),
         "sa3_server_url" => state.config.sa3_server_url.clone(),
         "flux2_server_url" => state.config.flux2_url.clone(),
@@ -366,8 +340,6 @@ async fn resolve_service_url(state: &AppState, key: &str) -> Option<String> {
         "ltx25_server_url" => state.config.ltx25_url.clone(),
         "music3_server_url" => state.config.music3_url.clone(),
         "upscale_server_url" => state.config.upscale_url.clone(),
-        "wan_vace_server_url" => state.config.wan_vace_url.clone(),
-        "ltx_2b_server_url" => state.config.ltx_2b_url.clone(),
         "minimax_h3_server_url" => state.config.minimax_h3_url.clone(),
         "matting_service_url" => state.config.matting_url.clone(),
         "spar3d_service_url" => state.config.spar3d_url.clone(),
@@ -428,8 +400,8 @@ async fn test_library_provider(
 #[derive(Deserialize)]
 struct TestGpuServiceRequest {
     /// "llm" | "vision" | "text_embed" | "tts" | "stt" | "music" | "sa3"
-    /// | "music3" | "upscale" | "songgen" | "avatar" | "flux2" | "krea2" | "ltx"
-    /// | "ltx_2b" | "wan_vace" | "minimax_h3" | "matting" | "spar3d" | "depth"
+    /// | "music3" | "upscale" | "songgen" | "flux2" | "krea2" | "ltx"
+    /// | "minimax_h3" | "matting" | "spar3d" | "depth"
     ///
     /// `"ltx"` is the request-side key the web settings page has always sent; it now resolves to
     /// `ltx25_server_url`, LTX-2.5 being the only LTX engine.
@@ -469,12 +441,9 @@ async fn test_gpu_service(
         "sa3" => "sa3_server_url",
         "music3" => "music3_server_url",
         "upscale" => "upscale_server_url",
-        "avatar" => "avatar_server_url",
         "flux2" => "flux2_server_url",
         "krea2" => "krea2_server_url",
         "ltx" => "ltx25_server_url",
-        "wan_vace" => "wan_vace_server_url",
-        "ltx_2b" => "ltx_2b_server_url",
         "minimax_h3" => "minimax_h3_server_url",
         "matting" => "matting_service_url",
         "spar3d" => "spar3d_service_url",
@@ -487,7 +456,7 @@ async fn test_gpu_service(
             return Json(TestGpuServiceResponse {
                 success: false,
                 message:
-                    "unknown service (expected llm/vision/text_embed/tts/stt/music/sa3/music3/upscale/songgen/avatar/flux2/krea2/ltx/ltx_2b/minimax_h3/wan_vace/matting/spar3d/pixal3d/depth)"
+                    "unknown service (expected llm/vision/text_embed/tts/stt/music/sa3/music3/upscale/songgen/flux2/krea2/ltx/minimax_h3/matting/spar3d/pixal3d/depth)"
                         .to_string(),
                 model: None,
             })

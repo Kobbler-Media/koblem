@@ -1,4 +1,4 @@
-# koblem — media overlay: image, music and avatar engines.
+# koblem — media overlay: image and music engines.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.media.yml up -d
 #
@@ -19,5 +19,3 @@ services:
       KREA2_SERVICE_URL: ${KREA2_SERVICE_URL:-}
       # ACE-Step music engine (acestep.cpp ace-server).
       ACE_SERVER_URL: ${ACE_SERVER_URL:-}
-      # LongCat-Video-Avatar talking-head engine (longcat-avatar.cpp).
-      AVATAR_SERVER_URL: ${AVATAR_SERVER_URL:-}

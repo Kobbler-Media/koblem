@@ -33,7 +33,7 @@ and even then only by proxying. Everything is split three ways:
 1. **llama-server** — llama.cpp with a small patch series, built from
    `docker/llama-server/`. This is the one engine koblem's compose files start
    for you. It is the always-resident occupant of the GPU gate.
-2. **The other engines** — image, music, avatar, TTS, STT, vision, matting,
+2. **The other engines** — image, music, TTS, STT, vision, matting,
    depth, video, 3D. koblem **does not run these**. They are separate GPU
    services; koblem calls them over HTTP at URLs you configure.
    [`docs/engines.md`](docs/engines.md) lists where each server and its weights
@@ -117,7 +117,7 @@ parts you have hardware for. Combine them with repeated `-f`:
 | `docker-compose.vision.yml` | URLs for classification, matting and depth. |
 | `docker-compose.tts.yml` | URL for the Breeze TTS engine. |
 | `docker-compose.stt.yml` | URL for the Parakeet STT engine. |
-| `docker-compose.media.yml` | URLs for the image, music and avatar engines. |
+| `docker-compose.media.yml` | URLs for the image and music engines. |
 | `docker-compose.test.yml` | Throwaway PostgreSQL for the test suite. |
 
 The four engine overlays only set environment variables: those engines are
@@ -209,7 +209,6 @@ There are well over a hundred routes; these are the load-bearing ones.
 | `POST /api/v1/tts/generate` | Text-to-speech |
 | `POST /api/v1/stt/transcribe` | Speech-to-text |
 | `POST /api/v1/music/{generate,transform,understand}` | Music |
-| `POST /api/v1/avatar/generate` | Talking-head video |
 | `POST /api/v1/vision/classify` | Zero-shot image scoring |
 | `GET /api/v1/gpu/scheduler/*` | What is on each card and why |
 | `/api/v1/auth/api-keys`, `/api/v1/generations`, `/api/v1/settings` | Keys, gallery, config |

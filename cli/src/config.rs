@@ -74,26 +74,18 @@ pub const DEFAULTS_TEMPLATE: &str = r##"# kob config — uncomment any value to 
 # vocal_language = "en"      # string
 # steps = 8                  # int
 
-[defaults.avatar]
-# resolution = "480p"        # 480p | 720p | WxH
-# segment_frames = 53        # int
-# steps = 8                  # int
-
-# Read by `kob video generate`. Keys an engine has no field for are skipped for
-# that engine (model/profile/upscaler_ratio are inert on LTX-2.5; frames/quant wan).
+# Read by `kob video generate` (LTX-2.5).
 [defaults.video]
 # negative = "blurry, text"  # string
 # width = 1280               # int
 # height = 704               # int
 # fps = 24                   # int
-# steps = 8                  # int (ltx, ltx-2b)
-# cfg = 1.0                  # float (ltx, ltx-2b)
-# sampler = "euler_a"        # string (ltx, ltx-2b)
-# scheduler = "simple"       # string (ltx, ltx-2b)
-# segment_frames = 97        # int (ltx, ltx-2b)
-# cont_latent_frames = 3     # int (ltx, ltx-2b)
-# frames = 65                # int (wan only)
-# quant = "nvfp4"            # nvfp4 | q4_k (wan only)
+# steps = 8                  # int
+# cfg = 1.0                  # float
+# sampler = "euler_a"        # string
+# scheduler = "simple"       # string
+# segment_frames = 97        # int
+# cont_latent_frames = 3     # int
 "##;
 
 /// On-disk config (`~/.config/kob/config.toml`). `defaults` is a table keyed by

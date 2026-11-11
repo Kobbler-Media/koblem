@@ -142,7 +142,6 @@
   const SERVICE_LABELS: Record<string, string> = {
     llm: 'LLM',
     tts: 'TTS (BreezeTTS 2)',
-    avatar: 'Avatar',
     music: 'Music (ACE-Step)',
     sa3: 'Music (SA3)',
     vision: 'Embeddings (EmbeddingGemma-2)',

@@ -236,12 +236,12 @@ describe('indicatorState', () => {
         }),
         job({
           id: 'b',
-          blocked_reason: { reason: 'service_disabled', service: 'avatar' },
+          blocked_reason: { reason: 'service_disabled', service: 'songgen' },
           blocked_since: '2026-08-16T06:00:00Z'
         })
       ]
     });
-    expect(indicatorState(s, NOW).text).toBe('⛁ 2 · 2 BLOCKED 6h · avatar is disabled');
+    expect(indicatorState(s, NOW).text).toBe('⛁ 2 · 2 BLOCKED 6h · songgen is disabled');
   });
 
   // 🔴 Beefy on an EMPTY queue is the case worth a test of its own: every other

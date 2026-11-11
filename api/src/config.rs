@@ -124,10 +124,6 @@ pub struct Config {
     /// across filesystems degrades to copying a multi-gigabyte video. A subdirectory rather than
     /// the staging root itself so the retention sweep can only ever see captures.
     pub queue_capture_dir: String,
-    /// longcat-avatar.cpp avatar_server (LongCat-Video-Avatar) base URL. DB
-    /// settings override this. Optional — the avatar tab is disabled when
-    /// unset.
-    pub avatar_server_url: Option<String>,
     /// flux2.cpp sd-server (FLUX.2-Klein image gen) base URL. DB settings
     /// override this. Optional — the images tab is disabled when unset.
     pub flux2_url: Option<String>,
@@ -161,15 +157,6 @@ pub struct Config {
     /// instead of being decided here. What it still does not do is re-pin the
     /// shots after a retake — the tail is restored as it was.
     pub ltx25_url: Option<String>,
-    /// wan-vace video-server (Wan2.2-VACE T2V/I2V/continuation) base URL. DB
-    /// settings override this. Optional — the Wan Video tab is disabled when unset.
-    pub wan_vace_url: Option<String>,
-    /// ltx-2b video-server (LTX-Video 0.9.8 2B — the fast, video-only "fun toy")
-    /// base URL. The sd.cpp-fork `ltx-video-server` binary serving the same
-    /// `/ltx/v1/generate` async API, reusing the LTX director request shape
-    /// (single model, no variants/relip/audio). DB settings override this.
-    /// Optional — the LTX-2B tab is disabled when unset.
-    pub ltx_2b_url: Option<String>,
     /// MiniMax-H3 joint audio+video base URL — the `kobbler-h3-wangp` shim (a WanGP
     /// runtime, NOT the sd.cpp fork every other engine here is). Its own contract:
     /// `/h3/v1/generate` takes a `generations[]` list, and poll / media / per-generation
@@ -403,9 +390,6 @@ impl Config {
             queue_files_dir: std::env::var("QUEUE_FILES_DIR")
                 .unwrap_or_else(|_| DEFAULT_QUEUE_FILES_DIR.to_string()),
             queue_capture_dir,
-            avatar_server_url: std::env::var("AVATAR_SERVER_URL")
-                .ok()
-                .filter(|s| !s.is_empty()),
             flux2_url: std::env::var("FLUX2_SERVICE_URL")
                 .ok()
                 .filter(|s| !s.is_empty()),
@@ -417,12 +401,6 @@ impl Config {
                     .unwrap_or_else(|_| DEFAULT_LTX25_SERVICE_URL.to_string()),
             )
             .filter(|s| !s.trim().is_empty()),
-            wan_vace_url: std::env::var("WAN_VACE_SERVICE_URL")
-                .ok()
-                .filter(|s| !s.is_empty()),
-            ltx_2b_url: std::env::var("LTX_2B_SERVICE_URL")
-                .ok()
-                .filter(|s| !s.is_empty()),
             minimax_h3_url: std::env::var("MINIMAX_H3_SERVICE_URL")
                 .ok()
                 .filter(|s| !s.is_empty()),

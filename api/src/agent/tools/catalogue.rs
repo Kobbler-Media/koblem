@@ -108,29 +108,14 @@ pub fn catalogue() -> &'static [ToolDef] {
             tool: Tool::MakeVideo,
             description: "Render a short video clip from a text prompt. Takes minutes, not \
                           seconds.",
-            engines: &[
-                EngineOption {
-                    // The id the model emits, and the key `dispatch::engines::make_video` routes
-                    // on — not the gate's budget line (LTX-2.5 queues as `minimax_h3`).
-                    id: "ltx",
-                    service: Some(ServiceKind::Ltx),
-                    blurb: "ltx (LTX-2.5) — the best-looking engine and the only one that can \
-                            generate synchronised audio. Describe ONE continuous shot: what is in \
-                            frame, what moves, how the camera moves. Slowest.",
-                },
-                EngineOption {
-                    id: "ltx2b",
-                    service: Some(ServiceKind::Ltx2b),
-                    blurb: "ltx2b (LTX-Video 2B) — the fast, rough one. Video only, no audio. Use \
-                            it for a quick look or when the user asks for speed over quality.",
-                },
-                EngineOption {
-                    id: "wan",
-                    service: Some(ServiceKind::WanVace),
-                    blurb: "wan (Wan2.2-VACE) — strong subject motion and identity holding. Video \
-                            only, no audio.",
-                },
-            ],
+            engines: &[EngineOption {
+                // The id the model emits — not the gate's budget line (LTX-2.5 queues as
+                // `minimax_h3`).
+                id: "ltx",
+                service: Some(ServiceKind::Ltx),
+                blurb: "ltx (LTX-2.5) — renders the picture with synchronised audio. Describe ONE \
+                        continuous shot: what is in frame, what moves, how the camera moves.",
+            }],
             extra_properties: || {
                 json!({
                     "prompt": {
@@ -150,34 +135,7 @@ pub fn catalogue() -> &'static [ToolDef] {
                     },
                 })
             },
-            required: &["prompt", "engine"],
-            required_when: &[],
-        },
-        ToolDef {
-            tool: Tool::MakeAvatar,
-            description: "Make the person in the most recent image talk: a lip-synced video of \
-                          that face speaking. Takes a couple of minutes.",
-            engines: &[EngineOption {
-                id: "longcat",
-                service: Some(ServiceKind::Avatar),
-                blurb: "",
-            }],
-            extra_properties: || {
-                json!({
-                    "script": {
-                        "type": "string",
-                        "description": "What the face should say — it is spoken aloud for you. \
-                                        Leave it out to lip-sync the most recent audio in this \
-                                        conversation instead.",
-                    },
-                    "orientation": {
-                        "type": "string",
-                        "enum": ["portrait", "landscape"],
-                        "description": "Frame shape. Defaults to portrait, which suits a face.",
-                    },
-                })
-            },
-            required: &[],
+            required: &["prompt"],
             required_when: &[],
         },
         ToolDef {

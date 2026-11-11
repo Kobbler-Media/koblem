@@ -3,7 +3,7 @@
 //! Two paths, both landing on `/api/v1/generations/{id}/file/{n}`. When the
 //! engine route already returned a `generation_id` (images, krea2, matting) the
 //! row is reused as-is. When it did not, the agent persists its own copy — which
-//! is not a fallback for video: the LTX/Wan job store TTL-sweeps a finished clip
+//! is not a fallback for video: the LTX job store TTL-sweeps a finished clip
 //! after an hour, so an agent-owned copy is what keeps the conversation
 //! replayable.
 

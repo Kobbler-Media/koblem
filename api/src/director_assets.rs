@@ -882,14 +882,11 @@ mod tests {
         // ref has put an artifact into a JSON string.
         const SUBMIT_PATHS: &[&str] = &[
             "routes/ltx_video.rs",
-            "routes/ltx_2b.rs",
-            "routes/wan_vace.rs",
             "routes/ltx_director.rs",
             "routes/minimax_h3.rs",
             "routes/images.rs",
             "routes/krea2.rs",
             "routes/three_d.rs",
-            "routes/avatar.rs",
         ];
         // The expanding entry points. `AssetJson` is deliberately absent: it is the extractor for
         // the prompt routes, several of which live in the same files.

@@ -67,8 +67,6 @@ pub const SAMPLING_KEYS: &[&str] = &[
     // Video writers
     "sampling_director",
     "sampling_ltx_video",
-    "sampling_wan_vace",
-    "sampling_ltx_2b",
     "sampling_ltx_critic",
     // Music writers
     "sampling_music",
@@ -77,7 +75,6 @@ pub const SAMPLING_KEYS: &[&str] = &[
     // Image / character prompt assists
     "sampling_images",
     "sampling_krea2",
-    "sampling_avatar",
     "sampling_character_sheet",
     // Housekeeping
     "sampling_title",
@@ -123,7 +120,7 @@ pub fn baseline_for(key: &str) -> SamplingConfig {
             top_p: Some(0.9),
             ..SamplingConfig::default()
         },
-        "sampling_images" | "sampling_avatar" => SamplingConfig {
+        "sampling_images" => SamplingConfig {
             temperature: Some(0.85),
             top_p: Some(0.95),
             ..SamplingConfig::default()
@@ -149,7 +146,6 @@ fn inherited_keys(key: &str) -> &'static [&'static str] {
         "sampling_music3" | "sampling_songgen" => &["music_llm_sampling", "sampling_music"],
         "sampling_krea2" => &["krea2_llm_sampling"],
         "sampling_images" => &["flux_llm_sampling"],
-        "sampling_avatar" => &["avatar_llm_sampling"],
         _ => &[],
     }
 }
@@ -210,7 +206,6 @@ mod tests {
                     | "sampling_songgen"
                     | "sampling_krea2"
                     | "sampling_images"
-                    | "sampling_avatar"
             );
             assert_eq!(has_values, expected, "{key} baseline");
         }

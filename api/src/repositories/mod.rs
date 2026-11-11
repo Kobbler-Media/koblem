@@ -1,5 +1,4 @@
 pub mod auth;
-pub mod avatar_assets;
 pub mod corrections;
 pub mod director_assets;
 pub mod director_projects;

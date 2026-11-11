@@ -117,7 +117,7 @@ is not a fix.
 - **`make docker-push-*` is for maintainers.** Those targets push to
   `ghcr.io/kobbler-media/*` and need org push rights. `docker compose up` builds
   the images locally and needs none of that.
-- **The engine services are not in this repository.** Image, music, avatar, TTS,
+- **The engine services are not in this repository.** Image, music, TTS,
   STT, vision, depth and video are separate GPU services that koblem calls over
   HTTP; see [docs/engines.md](docs/engines.md).
 - **GPUs can only be registered with raw SQL.** There is no route, UI form or CLI

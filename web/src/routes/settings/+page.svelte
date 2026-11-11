@@ -100,18 +100,6 @@
     },
     {
       group: 'Video prompt writers',
-      key: 'sampling_wan_vace',
-      label: 'Wan-VACE prompt writer',
-      desc: 'Same job as above for the Wan-VACE engine.'
-    },
-    {
-      group: 'Video prompt writers',
-      key: 'sampling_ltx_2b',
-      label: 'LTX-2B prompt writer',
-      desc: 'Short-form prompt writer for the small LTX model.'
-    },
-    {
-      group: 'Video prompt writers',
       key: 'sampling_ltx_critic',
       label: 'Clip critic',
       desc:
@@ -165,12 +153,6 @@
     },
     {
       group: 'Image & character assists',
-      key: 'sampling_avatar',
-      label: 'Avatar script writer',
-      desc: 'Writes the spoken script an avatar recites. Ships at temp 0.85 / top_p 0.95.'
-    },
-    {
-      group: 'Image & character assists',
       key: 'sampling_character_sheet',
       label: 'Character sheet',
       desc:
@@ -213,7 +195,6 @@
   // minimax_h3 (and ltx25). It is its own setting so it can be split onto another box later.
   let music3ServerUrl = $state('');
   let songgenServerUrl = $state('');
-  let avatarServerUrl = $state('');
   let flux2ServerUrl = $state('');
   let krea2ServerUrl = $state('');
   let ltx25ServerUrl = $state('');
@@ -235,7 +216,6 @@
     | 'sa3'
     | 'music3'
     | 'songgen'
-    | 'avatar'
     | 'flux2'
     | 'krea2'
     | 'ltx'
@@ -260,7 +240,6 @@
     sa3: initialTest(),
     music3: initialTest(),
     songgen: initialTest(),
-    avatar: initialTest(),
     flux2: initialTest(),
     krea2: initialTest(),
     ltx: initialTest(),
@@ -281,7 +260,6 @@
     sa3: '',
     music3: '',
     songgen: '',
-    avatar: '',
     flux2: '',
     krea2: '',
     ltx: '',
@@ -306,7 +284,7 @@
   let queueFilesRetentionDays = $state(3);
 
   // Generation gallery. Empty dir = persistence DISABLED for
-  // images/matting/tts/stt (avatar/music use their own dirs regardless).
+  // images/matting/tts/stt (music uses its own dir regardless).
   // Retention 0 = keep until manually deleted.
   let generationsDir = $state('');
   let genRetentionMaxEntries = $state(0);
@@ -353,7 +331,6 @@
       sa3ServerUrl = (settings.sa3_server_url as string) || '';
       music3ServerUrl = (settings.music3_server_url as string) || '';
       songgenServerUrl = (settings.songgen_server_url as string) || '';
-      avatarServerUrl = (settings.avatar_server_url as string) || '';
       flux2ServerUrl = (settings.flux2_server_url as string) || '';
       krea2ServerUrl = (settings.krea2_server_url as string) || '';
       ltx25ServerUrl = (settings.ltx25_server_url as string) || '';
@@ -510,7 +487,6 @@
         sa3_server_url: sa3ServerUrl,
         music3_server_url: music3ServerUrl,
         songgen_server_url: songgenServerUrl,
-        avatar_server_url: avatarServerUrl,
         flux2_server_url: flux2ServerUrl,
         krea2_server_url: krea2ServerUrl,
         ltx25_server_url: ltx25ServerUrl,
@@ -683,11 +659,6 @@
       placeholder: 'http://songgen:8097'
     },
     {
-      key: 'avatar',
-      label: 'Avatar (LongCat)',
-      placeholder: 'http://longcat-avatar:8080'
-    },
-    {
       key: 'flux2',
       label: 'Images (FLUX.2)',
       placeholder: 'http://flux2:8080'
@@ -748,8 +719,6 @@
         return music3ServerUrl;
       case 'songgen':
         return songgenServerUrl;
-      case 'avatar':
-        return avatarServerUrl;
       case 'flux2':
         return flux2ServerUrl;
       case 'krea2':
@@ -794,9 +763,6 @@
         break;
       case 'songgen':
         songgenServerUrl = v;
-        break;
-      case 'avatar':
-        avatarServerUrl = v;
         break;
       case 'flux2':
         flux2ServerUrl = v;
@@ -1144,8 +1110,8 @@
     <div class="settings-card">
       <h3>Generation Gallery</h3>
       <p class="desc">
-        Per-page history of generated assets (avatar, music, images, TTS, STT, background removal)
-        with a delete button. Avatar &amp; music always save to their own dirs.
+        Per-page history of generated assets (music, images, TTS, STT, background removal) with a
+        delete button. Music always saves to its own dir.
         <strong
           >Images, background removal, TTS and STT save nothing until you set a directory below</strong
         > — this keeps a fresh deploy from writing into a volume before you've chosen where. Retention
@@ -1179,7 +1145,7 @@
         Per-surface llama.cpp sampling defaults — one panel per place koblem talks to the LLM. An
         empty field is <strong>not sent at all</strong>: the call site's own value stands, and
         failing that llama-server's flags do. Callers can still override per request. Reset clears a
-        panel back to that inherit behaviour (the music, FLUX.2, Krea 2 and avatar panels fall back
+        panel back to that inherit behaviour (the music, FLUX.2 and Krea 2 panels fall back
         to the shipped values named in their descriptions instead).
       </p>
 

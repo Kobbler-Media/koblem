@@ -13,15 +13,14 @@
 import type { DirectorEngine } from '#lib/api/client.ts';
 import { historyServiceFor } from '#lib/director/engine.ts';
 
-export type VideoTab = 'ltx2b' | 'ltx25' | 'lipdub' | 'wan' | 'upscale';
+export type VideoTab = 'ltx25' | 'lipdub' | 'upscale';
 
-export const VIDEO_TABS: VideoTab[] = ['ltx2b', 'ltx25', 'lipdub', 'wan', 'upscale'];
+export const VIDEO_TABS: VideoTab[] = ['ltx25', 'lipdub', 'upscale'];
 
 /**
  * The engine behind both `LtxVideoClient` tabs — the generate tab and Lip-dub.
  *
- * ⚠️ Not every tab on this page is one. `ltx2b` and `wan` have their own clients and their own
- * panels, and `upscale` is LTX-2.5's own upsampler — a restorer that takes a finished mp4 and
+ * ⚠️ Not every tab on this page is one. `upscale` is LTX-2.5's own upsampler — a restorer that takes a finished mp4 and
  * gives a bigger one back, so it has no render engine and no generations bucket at all.
  */
 export const LTX_VIDEO_ENGINE: DirectorEngine = 'ltx25';

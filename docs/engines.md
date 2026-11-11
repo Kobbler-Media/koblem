@@ -56,9 +56,6 @@ Expect real work here.
 |---|---|
 | `FLUX2_SERVICE_URL` | FLUX.2 Klein text-to-image and edit |
 | `KREA2_SERVICE_URL` | Krea 2 Turbo text-to-image |
-| `AVATAR_SERVER_URL` | LongCat-Video-Avatar talking heads |
-| `LTX_2B_SERVICE_URL` | LTX-Video 2B |
-| `WAN_VACE_SERVICE_URL` | Wan 2.2 VACE |
 | `PIXAL3D_SERVICE_URL` | Image to rigged 3D (`longcat-rig`) |
 
 ## Other stacks

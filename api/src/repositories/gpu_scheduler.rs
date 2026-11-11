@@ -5,8 +5,7 @@
 //! peak/priority table is a settings-page form field, not a recompile).
 //!
 //! Uses runtime sqlx queries (no `query!` macros) so the sqlx-offline cache
-//! doesn't need regenerating — same convention as `settings.rs` /
-//! `avatar_assets.rs`.
+//! doesn't need regenerating — same convention as `settings.rs`.
 
 use kob_gpu_gate::{Card, EngineDesc, ServiceKind};
 use koblem_client::types::{GpuCard, GpuEngineConfig};

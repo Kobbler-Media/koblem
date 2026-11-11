@@ -1,7 +1,7 @@
 # kob — koblem CLI
 
 Call koblem's image / video / background-removal / TTS / STT / music / sfx /
-avatar / chat endpoints from the terminal or scripts. Takes file paths in and
+chat endpoints from the terminal or scripts. Takes file paths in and
 writes files out — no base64 juggling.
 
 ## Install
@@ -62,7 +62,7 @@ kob rmbg a.png b.png c.png --sensitivity 0.6
 
 kob tts "hello there" --voice default -o hi.mp3
 kob tts voices                           # list cloned voices
-kob tts voices add my-voice sample.wav --engine higgs
+kob tts voices add my-voice sample.wav
 kob tts voices delete my-voice
 
 kob stt recording.wav --granularity word --timestamps
@@ -83,14 +83,9 @@ kob sfx edit room.wav --mode a2a "the same room, underwater"
 
 kob video generate "a dragon banks over a city" --image opener.png
 kob video generate "shot one" "shot two" --engine ltx --save-partials
-kob video generate "a slow dolly in" --engine wan --mode i2v --image face.png
 kob video jobs --engine ltx              # list, or --id <job> to re-attach
-kob video props --engine wan
+kob video props
 kob video relip --video clip.mp4 --audio vo.wav
-
-kob avatar --image face.png --tts-script "hi there" -o clip.webm
-kob avatar --asset-id <id> --audio voice.wav
-kob avatar assets                        # list saved portraits
 
 kob vision classify cat.png --prompt "a cat" --prompt "a dog"
 
@@ -103,17 +98,16 @@ kob keys create ci-bot                   # mint an API key
 ```
 
 `@PATH` reads the value from a file (`@-` from stdin) for the long-text flags —
-`--lyrics`, `--tts-script`, `--refine-source`.
+`--lyrics`, `--refine-source`.
 
 Every render command takes `--no-save` to keep the result out of the gallery.
-`kob video generate` and `kob avatar` run as async jobs: `--detach` prints the
+`kob video generate` runs as an async job: `--detach` prints the
 job id instead of waiting, and `kob video jobs --id <id>` re-attaches to a render
 still in flight (a dropped connection no longer kills the client).
 
-Video flags are engine-specific and the CLI rejects the ones an engine cannot
-honour rather than letting the server drop them silently: `--model`, `--profile`,
-`--upscaler-ratio`, `--dims-are-target`, `--audio`, `--bgm` and `--save-partials`
-are LTX-2.3 only; `--mode`, `--frames`, `--quant` and `--reference` are Wan only.
+The CLI rejects the video flags LTX-2.5 takes on the wire but does not act on
+(`--model`, `--steps`, `--cfg`, `--sampler`, `--scheduler` — the checkpoint is
+distilled and ships one DiT) rather than letting the render ignore them silently.
 
 ## Global flags
 
@@ -134,7 +128,7 @@ kob completions fish > ~/.config/fish/completions/kob.fish
 
 - Image / rmbg results (base64-in-JSON) are decoded to PNGs; batches get
   `-1`/`-2` suffixes; chained cutouts become `<name>-cutout.png`.
-- Music / song / sfx / avatar return server-saved URLs — the CLI downloads them
+- Music / song / sfx return server-saved URLs — the CLI downloads them
   (authed) to the server's filename, or to `-o` when there is exactly one file.
   A batch keeps the server names and says so rather than dropping `-o` quietly.
 - TTS audio streams to `speech.<format>` (or `-o`).

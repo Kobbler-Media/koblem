@@ -12,7 +12,7 @@ fn eq(actual: &impl serde::Serialize, expected: Value) {
     assert_eq!(serde_json::to_value(actual).unwrap(), expected);
 }
 
-// ── async video jobs (ltx-video / ltx-2b / wan-vace) ──────────────────────────
+// ── async video jobs (ltx-video) ──────────────────────────────────────────────
 
 fn full_job_status() -> VideoJobStatus {
     VideoJobStatus {
@@ -164,8 +164,7 @@ fn video_job_sidecar_fields_round_trip() {
 /// whose format enum is `["auto","mp4"]` (`SaveWEBM` takes images and has no audio input at all).
 /// mp4 bytes under a `.webm` name break the first `ffmpeg -c copy` concat that rebuilds a cut, at
 /// a point with nothing to say about where the wrong name came from. The untagged `webm` reading
-/// is the sd.cpp fork's: LTX-2B's whole store, plus any sidecar the retired C++ `ltx-video` engine
-/// left on disk.
+/// is the sd.cpp fork's: any sidecar the retired C++ `ltx-video` or LTX-2B engines left on disk.
 #[test]
 fn job_engine_tag_decides_the_container() {
     let job = |engine: Value| -> crate::ltx_jobs::LtxJob {
@@ -184,8 +183,8 @@ fn job_engine_tag_decides_the_container() {
         }))
         .unwrap()
     };
-    // Absent and explicit-"ltx" are the same job: an LTX-2B render (that store tags nothing) or a
-    // sidecar the retired C++ engine left behind.
+    // Absent and explicit-"ltx" are the same job: a sidecar a retired sd.cpp-fork engine left
+    // behind.
     assert_eq!(job(Value::Null).engine_name(), "ltx");
     assert_eq!(job(Value::Null).clip_ext(), "webm");
     assert_eq!(job(json!("ltx")).clip_ext(), "webm");
@@ -235,8 +234,7 @@ fn only_the_banked_engine_is_resumable() {
     assert!(!failed(json!("h3")).banks_latents());
 
     // A deployment with no bank directory. The engine implements resume fully and answers 501 to
-    // it, so a job of ANY engine is unresumable there — including the untagged LTX-2B one, whose
-    // caller passes `true` unconditionally because it has no directory to leave unset.
+    // it, so a job of ANY engine is unresumable there — including an untagged legacy one.
     assert!(!failed(json!("ltx25")).resumable(false));
     assert!(!failed(json!("ltx")).resumable(false));
 
@@ -392,7 +390,7 @@ fn gpu_engines_json() {
     eq(
         &GpuEnginesResponse {
             engines: vec![GpuEngineConfig {
-                service: "avatar".to_string(),
+                service: "songgen".to_string(),
                 peak_mb: 9700,
                 home_gpu: "GPU-abc".to_string(),
                 candidate_gpus: vec!["GPU-abc".to_string()],
@@ -403,7 +401,7 @@ fn gpu_engines_json() {
             }],
         },
         json!({ "engines": [{
-            "service": "avatar",
+            "service": "songgen",
             "peak_mb": 9700,
             "home_gpu": "GPU-abc",
             "candidate_gpus": ["GPU-abc"],

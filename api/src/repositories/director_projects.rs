@@ -7,7 +7,7 @@
 //!
 //! Uses runtime sqlx queries (no `query!` macros) so the sqlx-offline cache
 //! doesn't need regenerating on every migration touch — same convention as
-//! `repositories/avatar_assets.rs` / `repositories/settings.rs`.
+//! `repositories/settings.rs`.
 
 use serde::Serialize;
 use serde_json::Value;

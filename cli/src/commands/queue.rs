@@ -58,8 +58,8 @@ pub enum QueueCmd {
 
 #[derive(Args, Debug)]
 pub struct AddArgs {
-    /// Engine kind: ltx25, h3, flux2, krea2, avatar, music3, songgen, sa3, upscale,
-    /// wan_vace, ltx_2b, ltx_relip, pixal3d_rig, pixal3d_motion.
+    /// Engine kind: ltx25, h3, flux2, krea2, music3, songgen, sa3, upscale,
+    /// ltx_relip, pixal3d_rig, pixal3d_motion.
     pub kind: String,
     /// The engine's own request body. `@PATH` reads it from a file, `@-` from stdin.
     #[arg(long, value_name = "JSON|@FILE")]

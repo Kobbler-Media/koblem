@@ -1,6 +1,5 @@
 mod agent;
 mod auth;
-mod avatar;
 mod beefy;
 mod config;
 mod context;
@@ -11,7 +10,6 @@ mod flux2;
 mod jobs;
 mod krea2;
 mod llama;
-mod ltx_2b;
 mod ltx_jobs;
 mod ltx_video;
 mod matting;
@@ -43,7 +41,6 @@ mod tool_rewrite;
 mod tts_breeze;
 mod upscale;
 mod vision;
-mod wan_vace;
 mod wire;
 #[cfg(test)]
 mod wire_json_tests;
@@ -185,12 +182,8 @@ pub struct AppState {
     /// 🔴 Both containers mount it at the SAME absolute path. A source video is routinely
     /// gigabytes and handing over a path is what keeps those bytes off the HTTP hop entirely.
     pub upscale_staging_dir: Arc<std::path::PathBuf>,
-    /// LongCat-Video-Avatar engine (longcat-avatar.cpp avatar_server), gated as
-    /// the `avatar` heavy slot. Drains the LLM + evicts light peers on acquire.
-    pub avatar: avatar::AvatarClient,
     /// FLUX.2-Klein image-gen engine (flux2.cpp sd-server), gated as the `flux`
-    /// heavy slot. Drains the LLM + evicts light peers on acquire; serialises
-    /// against the avatar heavy.
+    /// heavy slot. Drains the LLM + evicts light peers on acquire.
     pub flux2: flux2::Flux2Client,
     /// Krea-2-Turbo text→image engine (the `krea2` sd-server — same sd.cpp fork
     /// as flux2, different checkpoint), gated on its OWN `krea2` budget line: the
@@ -217,14 +210,6 @@ pub struct AppState {
     /// Content-addressed Director editor assets (see `director_assets`). Bind-mounted like the
     /// render store; a project's timeline references these instead of inlining their bytes.
     pub director_assets_dir: Arc<std::path::PathBuf>,
-    /// Wan2.2-VACE video engine (wan-vace video-server), gated as the `wan_vace` heavy
-    /// slot. Drains the LLM + serialises against the other heavies on acquire; renders
-    /// T2V/I2V/continuation clips.
-    pub wan_vace: wan_vace::WanVaceClient,
-    /// LTX-Video 0.9.8 2B engine (the fast, video-only "fun toy") — an ltx-2b container running
-    /// the sd.cpp-fork `ltx-video-server` binary, gated as the `ltx_2b` heavy slot. Reuses the LTX
-    /// director request shape (single model, no variants/relip/audio).
-    pub ltx_2b: ltx_2b::Ltx2bClient,
     /// MiniMax-H3 joint audio+video engine — the `h3-wangp` container, gated as the `minimax_h3`
     /// slot. The Director's SECOND engine, and the only one in the fleet that is NOT the sd.cpp
     /// fork: it is a WanGP runtime with its own wire contract.
@@ -267,7 +252,7 @@ pub struct AppState {
     pub samples_dir: Arc<std::path::PathBuf>,
     /// Where rendered music tracks are saved (bind-mounted to a host directory).
     pub songs_dir: Arc<std::path::PathBuf>,
-    /// Where rendered avatar clips are saved (bind-mounted to a host directory).
+    /// Where the retired avatar engine's clips were saved; still the gallery root for those rows.
     pub avatars_dir: Arc<std::path::PathBuf>,
 }
 
@@ -418,8 +403,8 @@ async fn main() {
     gpu.set_tts_hold_seconds(hold);
 
     // Register the LLM heavy service on the gate. Without this,
-    // `acquire_for_avatar` silently skips the drain dance and the kid's avatar
-    // render fights the always-resident LLM for VRAM. The koblem-llama fork
+    // a heavy acquire silently skips the drain dance and the render fights the
+    // always-resident LLM for VRAM. The koblem-llama fork
     // ships `/v1/admin/{drain,unload}` (GO-LIVE-PLAN §3.4.b); the gate POSTs
     // to drain_path first, waits up to llm_drain_seconds for in-flight chats
     // to finish naturally, then POSTs unload_path to SIGKILL the worker child.
@@ -472,7 +457,7 @@ async fn main() {
     // songgen-server (the LeVo2 music engine) URL. The SonggenClient self-registers
     // on the gate's HEAVY registry (set_songgen_service), so acquire_for_songgen
     // drains+unloads the LLM and evicts light peers, it serialises against
-    // Avatar/Flux, and a peer-heavy acquire or operator disable force-unloads its
+    // Flux, and a peer-heavy acquire or operator disable force-unloads its
     // render child to true-0 VRAM via /unload. (acestep stays the light `music`
     // engine; songgen's ~7 GB render is too big to co-reside with the LLM there.)
     let songgen_server_url =
@@ -485,12 +470,6 @@ async fn main() {
     // no longer sharing acestep's slot — so it co-resides with other engines whenever
     // its small peak fits (unlike the ~7 GB songgen).
     let sa3_server_url = resolve_gpu_url(&db, "sa3_server_url", &config.sa3_server_url).await;
-
-    // longcat-avatar (LongCat-Video-Avatar) URL. The AvatarClient self-registers
-    // on the gate's heavy slot when configured, so acquire_for_avatar can drain
-    // + light-peer-evict properly and the §6.5 disable can SIGKILL renders.
-    let avatar_server_url =
-        resolve_gpu_url(&db, "avatar_server_url", &config.avatar_server_url).await;
 
     // flux2.cpp sd-server (FLUX.2-Klein image gen) URL. The Flux2Client
     // self-registers on the gate's heavy slot when configured (set_flux_service),
@@ -544,7 +523,6 @@ async fn main() {
              request until it is. Both koblem and comfy-api must mount it at this absolute path.",
         );
     }
-    let avatar = avatar::AvatarClient::new(avatar_server_url.clone(), gpu.clone());
     let flux2 = flux2::Flux2Client::new(flux2_url.clone(), gpu.clone());
     let krea2 = krea2::Krea2Client::new(krea2_url.clone(), gpu.clone());
     // LTX-2.5 (`ltx25` on comfy-api). Resolved here, at BOOT, like every other service: the DB
@@ -552,15 +530,6 @@ async fn main() {
     // only through the `ltx25_server_url` arm in `routes::settings`.
     let ltx25_url = resolve_gpu_url(&db, "ltx25_server_url", &config.ltx25_url).await;
     let ltx25 = ltx_video::LtxVideoClient::new(ltx25_url, gpu.clone());
-    // wan-vace video-server (Wan2.2-VACE). Self-registers on the gate's heavy slot when
-    // configured (set_base_url re-registers under HeavyKind::WanVace), same shape as ltx.
-    let wan_vace_url = resolve_gpu_url(&db, "wan_vace_server_url", &config.wan_vace_url).await;
-    let wan_vace = wan_vace::WanVaceClient::new(wan_vace_url.clone(), gpu.clone());
-    // ltx-2b video-server (LTX-Video 0.9.8 2B), the sd.cpp-fork `ltx-video-server` binary.
-    // Self-registers on the gate's heavy slot when configured (set_base_url re-registers under
-    // HeavyKind::Ltx2b).
-    let ltx_2b_url = resolve_gpu_url(&db, "ltx_2b_server_url", &config.ltx_2b_url).await;
-    let ltx_2b = ltx_2b::Ltx2bClient::new(ltx_2b_url.clone(), gpu.clone());
     // MiniMax-H3 joint audio+video — the `h3-wangp` shim (a WanGP runtime, not the sd.cpp fork),
     // speaking its own `/h3/v1/*` contract. Self-registers on the gate under HeavyKind::MinimaxH3
     // — the budget line LTX-2.5 also queues on, since the two are plugins on one comfy-api process
@@ -639,8 +608,8 @@ async fn main() {
     }
     let songs_dir = Arc::new(songs_dir);
 
-    // Rendered-avatar output directory. Bind-mounted to a host directory in
-    // compose; defaults under /var/lib/koblem locally. Created at startup.
+    // The retired avatar engine's output directory, kept as the gallery root for
+    // its existing rows. Bind-mounted in compose.
     let avatars_dir = std::path::PathBuf::from(
         std::env::var("AVATARS_DIR").unwrap_or_else(|_| "/var/lib/koblem/avatars".to_string()),
     );
@@ -702,11 +671,8 @@ async fn main() {
         (queue::lane::Lane::ComfyApi, music3_url.clone()),
         (queue::lane::Lane::Flux2, flux2_url.clone()),
         (queue::lane::Lane::Krea2, krea2_url.clone()),
-        (queue::lane::Lane::WanVace, wan_vace_url.clone()),
-        (queue::lane::Lane::Ltx2b, ltx_2b_url.clone()),
         (queue::lane::Lane::Songgen, songgen_server_url.clone()),
         (queue::lane::Lane::Sa3, sa3_server_url.clone()),
-        (queue::lane::Lane::Avatar, avatar_server_url.clone()),
         (queue::lane::Lane::LongcatRig, pixal3d_url.clone()),
     ]
     .into_iter()
@@ -734,15 +700,12 @@ async fn main() {
         music3,
         upscale,
         upscale_staging_dir: Arc::new(upscale_staging_dir),
-        avatar,
         flux2,
         krea2,
         ltx25,
         ltx_jobs,
         director_renders_dir: Arc::new(director_renders_dir),
         director_assets_dir: Arc::new(director_assets_dir.clone()),
-        wan_vace,
-        ltx_2b,
         minimax_h3,
         matting,
         depth,
@@ -802,17 +765,14 @@ async fn main() {
         .merge(routes::sa3::routes())
         .merge(routes::music3::routes())
         .merge(routes::upscale::routes())
-        .merge(routes::avatar::routes())
         .merge(routes::images::routes())
         .merge(routes::krea2::routes())
         .merge(routes::oneshot::routes())
         .merge(routes::character_sheet::routes())
         .merge(routes::summon::routes())
         .merge(routes::ltx_video::routes())
-        .merge(routes::ltx_2b::routes())
         .merge(routes::minimax_h3::routes())
         .merge(routes::ltx_director::routes())
-        .merge(routes::wan_vace::routes())
         .merge(routes::matting::routes())
         .merge(routes::depth::routes())
         .merge(routes::parts::routes())
@@ -913,9 +873,6 @@ async fn main() {
             registry.register(Arc::new(a::upscale::UpscaleAdapter::new(s.clone())));
             registry.register(Arc::new(a::krea2::Krea2Adapter::new(s.clone())));
             registry.register(Arc::new(a::flux2::Flux2Adapter::new(s.clone())));
-            registry.register(Arc::new(a::avatar::AvatarAdapter::new(s.clone())));
-            registry.register(Arc::new(a::wan_vace::WanVaceAdapter::new(s.clone())));
-            registry.register(Arc::new(a::ltx_2b::Ltx2bAdapter::new(s.clone())));
             registry.register(Arc::new(a::songgen::SonggenAdapter::new(s.clone())));
             registry.register(Arc::new(a::sa3::Sa3Adapter::new(s.clone())));
             registry.register(Arc::new(a::pixal3d_rig::Pixal3dRigAdapter::new(s.clone())));

@@ -1,5 +1,5 @@
 Local AI service for the kob ecosystem. One Axum API (`:8090`) fronts llama-server
-plus a stack of GPU engines — images, matting, TTS, STT, music, avatar — behind a
+plus a stack of GPU engines — images, matting, TTS, STT, music, video — behind a
 VRAM-budget GPU gate. Backed by PostgreSQL (users, API keys, settings, logs,
 generation gallery); optional NATS review consumer. A SvelteKit web UI (`web/`)
 and the `kob` CLI (`cli/`) sit on top.

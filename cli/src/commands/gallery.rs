@@ -23,7 +23,7 @@ pub enum GenCmd {
     Retitle { id: String },
     /// Delete every generation for one service.
     Clear {
-        /// Service to wipe (images, matting, music, avatar, tts, stt, …).
+        /// Service to wipe (images, matting, music, tts, stt, …).
         #[arg(long)]
         service: String,
         /// Skip the confirmation guard.
@@ -34,7 +34,7 @@ pub enum GenCmd {
 
 #[derive(Args, Debug)]
 pub struct ListArgs {
-    /// Filter by service (images, matting, music, avatar, tts, stt).
+    /// Filter by service (images, matting, music, tts, stt).
     #[arg(long)]
     pub service: Option<String>,
     #[arg(long, default_value_t = 50)]

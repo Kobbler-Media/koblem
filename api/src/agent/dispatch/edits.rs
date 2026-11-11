@@ -6,14 +6,9 @@
 use base64::Engine as _;
 use serde_json::{Value, json};
 
-use crate::routes::tier2_helpers::OutputBytes;
-
-use super::outputs::{
-    find_generation_by_filename, gate_detail, outputs_from_generation, persist_agent_outputs,
-    resolve,
-};
-use super::transport::{fetch, file_part, poll_job, post_json, post_multipart};
-use super::{Ctx, ToolOutcome, secs, str_arg, truncate};
+use super::outputs::{find_generation_by_filename, gate_detail, outputs_from_generation, resolve};
+use super::transport::{file_part, post_json, post_multipart};
+use super::{Ctx, ToolOutcome, secs, str_arg};
 use crate::agent::media;
 
 /// The edit's OUTPUT frame is whatever `width`/`height` ask for — a reference image sets the
@@ -152,144 +147,6 @@ fn edit_dims(source: Option<(u32, u32)>) -> (u32, u32) {
 
 fn snap16(v: u32) -> u32 {
     (v.clamp(256, EDIT_MAX_SIDE) / 16) * 16
-}
-
-// ── talking head ─────────────────────────────────────────────────────────────
-
-pub(super) async fn make_avatar(ctx: &Ctx, args: &Value) -> ToolOutcome {
-    let Some(portrait) = ctx.media.latest_image() else {
-        return ToolOutcome::failed(
-            "there is no image in this conversation to animate — send a photo of a face first",
-        );
-    };
-    let Ok(image) = resolve(ctx, portrait).await else {
-        return ToolOutcome::failed("the portrait could not be read back");
-    };
-    let script = str_arg(args, "script");
-    let orientation = match args.get("orientation").and_then(|v| v.as_str()) {
-        Some("landscape") => "landscape",
-        _ => "portrait",
-    };
-
-    // Either koblem speaks a script for us (the route runs TTS itself, against
-    // the already-resident engine) or the conversation's own audio is uploaded.
-    // `AvatarAudioSource::LibraryClipId` is deliberately unused: it names a
-    // saved TTS render, and a chat has no way to have picked one.
-    let spoken = match &script {
-        Some(_) => None,
-        None => {
-            let Some(clip) = ctx.media.latest_audio() else {
-                return ToolOutcome::failed(
-                    "there is nothing for the face to say — give me a script, or send some audio \
-                     to lip-sync",
-                );
-            };
-            match resolve(ctx, clip).await {
-                Ok(bytes) => Some((bytes, clip.mime.clone())),
-                Err(_) => return ToolOutcome::failed("the audio could not be read back"),
-            }
-        }
-    };
-
-    let request = json!({
-        "image_source": {"kind": "upload"},
-        "audio_source": match &script {
-            Some(s) => json!({"kind": "tts", "script": s}),
-            None => json!({"kind": "upload"}),
-        },
-        "orientation": orientation,
-    });
-    let mut form = reqwest::multipart::Form::new()
-        .text("request", request.to_string())
-        .part("image", file_part(image, &portrait.mime, "portrait.png"));
-    if let Some((bytes, mime)) = spoken {
-        form = form.part("audio", file_part(bytes, &mime, "speech.wav"));
-    }
-
-    // 🔴 Avatar is a queued kind now: the submit answers 202 with a job id and the
-    // clip only exists once the row reaches `done`. Reading the accept body for a
-    // filename would find nothing on every render.
-    let accepted = match post_multipart(ctx, "/api/v1/avatar/generate", form).await {
-        Ok(v) => v,
-        Err(e) => return ToolOutcome::failed(format!("avatar render failed: {e}")),
-    };
-    let Some(job_id) = accepted.get("job_id").and_then(|v| v.as_str()) else {
-        return ToolOutcome::failed("the avatar submit did not return a job id");
-    };
-    let resp = match poll_job(ctx, "/api/v1/avatar/jobs", job_id).await {
-        Ok(j) => j,
-        Err(e) => return ToolOutcome::failed(format!("avatar render failed: {e}")),
-    };
-    let filename = resp
-        .pointer("/clip/filename")
-        .and_then(|v| v.as_str())
-        .unwrap_or_default()
-        .to_string();
-    if filename.is_empty() {
-        return ToolOutcome::failed("the avatar rendered but returned no clip");
-    }
-    let outputs = avatar_outputs(ctx, &resp, &filename).await;
-    if outputs.is_empty() {
-        return ToolOutcome::failed("the avatar rendered but its clip could not be saved");
-    }
-
-    let render_ms = resp.get("render_ms").and_then(|v| v.as_u64()).unwrap_or(0);
-    let seconds = resp
-        .pointer("/clip/duration_ms")
-        .and_then(|v| v.as_u64())
-        .map(|ms| (ms as f64 / 100.0).round() / 10.0);
-    ToolOutcome {
-        ok: true,
-        observation: json!({
-            "ok": true,
-            "seconds": seconds,
-            "spoken": resp.get("script_used").and_then(|v| v.as_str()).map(|s| truncate(s, 600)),
-        }),
-        detail: gate_detail(&resp, format!("talking clip in {}", secs(render_ms))),
-        outputs,
-    }
-}
-
-/// The avatar route saves under `AVATARS_DIR` and records a gallery row, so the
-/// filename it echoes back is the key to outputs already on disk. The copy is
-/// the fallback for a render that skipped the gallery — losing the clip would
-/// leave the step with nothing to play.
-async fn avatar_outputs(
-    ctx: &Ctx,
-    resp: &Value,
-    filename: &str,
-) -> Vec<crate::agent::wire::StepOutput> {
-    if let Some(id) = find_generation_by_filename(ctx, "avatar", filename).await {
-        let outputs = outputs_from_generation(ctx, &id).await;
-        if !outputs.is_empty() {
-            return outputs;
-        }
-    }
-    let url = resp
-        .pointer("/clip/url")
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
-        .unwrap_or_else(|| format!("/api/v1/avatar/file/{filename}"));
-    let Ok(bytes) = fetch(ctx, &url).await else {
-        return Vec::new();
-    };
-    let mime = resp
-        .pointer("/clip/content_type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("video/webm")
-        .to_string();
-    persist_agent_outputs(
-        ctx,
-        "make_avatar",
-        json!({"filename": filename}),
-        vec![OutputBytes {
-            ext: "webm".to_string(),
-            mime,
-            kind: "video".to_string(),
-            bytes,
-        }],
-    )
-    .await
 }
 
 // ── music transforms ─────────────────────────────────────────────────────────

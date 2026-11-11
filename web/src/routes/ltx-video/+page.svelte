@@ -25,8 +25,6 @@
   import QueueChip from '#lib/components/queue/QueueChip.svelte';
   import type { EnqueueLike, QueueSubmitOptions } from '#lib/queue/options.ts';
   import { ltxReceipt } from '#lib/queue/ltx-receipt.ts';
-  import Ltx2bPanel from '#lib/components/video/Ltx2bPanel.svelte';
-  import WanPanel from '#lib/components/video/WanPanel.svelte';
   import UpscalePanel from '#lib/components/video/UpscalePanel.svelte';
   import PinTime from '#lib/components/video/PinTime.svelte';
   import type { Generation } from '#lib/types.ts';
@@ -801,20 +799,16 @@
   {/if}
 
   <div class="tabs">
-    <button class="tab" class:on={tab === 'ltx2b'} onclick={() => (tab = 'ltx2b')}>LTX-2B</button>
     <button class="tab" class:on={tab === 'ltx25'} onclick={() => (tab = 'ltx25')}
       >{caps.label}</button
     >
     <button class="tab" class:on={tab === 'lipdub'} onclick={() => (tab = 'lipdub')}>Lipdub</button>
-    <button class="tab" class:on={tab === 'wan'} onclick={() => (tab = 'wan')}>Wan</button>
     <button class="tab" class:on={tab === 'upscale'} onclick={() => (tab = 'upscale')}
       >Upscale</button
     >
   </div>
 
-  {#if tab === 'ltx2b'}
-    <Ltx2bPanel />
-  {:else if tab === 'ltx25'}
+  {#if tab === 'ltx25'}
     <section class="card">
       <h3>Inputs</h3>
       <div class="cap">
@@ -1278,8 +1272,6 @@
       shot={upscaleShot}
       variant={upscaleVariant}
     />
-  {:else}
-    <WanPanel />
   {/if}
 
   {#if tab === 'ltx25' || tab === 'lipdub'}

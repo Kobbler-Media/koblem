@@ -2402,7 +2402,8 @@ mod tests {
     #[test]
     fn a_hard_cut_is_not_sent_as_a_continuation() {
         let cut = one_gen(json!({ "continuation": { "mode": "none" } }));
-        let chain = build_chain(&req(cut.clone()), &cut).expect("a hard cut needs nothing before it");
+        let chain =
+            build_chain(&req(cut.clone()), &cut).expect("a hard cut needs nothing before it");
         assert_eq!(chain.chain["generations"][0].get("continuation"), None);
     }
 

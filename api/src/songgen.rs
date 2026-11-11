@@ -11,7 +11,7 @@
 //! reclaims VRAM to true-0.
 //!
 //! Unlike acestep (the light `music` lane), songgen peaks ~7 GB, so it's an
-//! on-demand HEAVY consumer like Avatar/Flux: [`acquire_for_songgen`] drains +
+//! on-demand HEAVY consumer like Flux: [`acquire_for_songgen`] drains +
 //! unloads the always-resident LLM and serialises against the other heavies on
 //! the heavy mutex (it would not fit beside the resident LLM in the light lane).
 //! It self-registers on the gate's heavy registry (`set_songgen_service`) so a
@@ -72,7 +72,7 @@ impl SonggenClient {
             .build()
             .expect("failed to build HTTP client");
         let normalized = base_url.map(|s| s.trim_end_matches('/').to_string());
-        // Self-register on the gate's heavy registry (like Avatar/Flux) so a
+        // Self-register on the gate's heavy registry (like Flux) so a
         // peer-heavy acquire or an operator disable force-unloads songgen's
         // render child via /unload (true-0 VRAM).
         register_songgen(&gate, normalized.as_deref());
@@ -108,7 +108,7 @@ impl SonggenClient {
     }
 
     /// Acquire the GPU as the songgen HEAVY consumer: drains + unloads the LLM,
-    /// evicts light peers, and serialises against Avatar/Flux. `None` = songgen is
+    /// evicts light peers, and serialises against Flux. `None` = songgen is
     /// administratively disabled (the caller should 503).
     pub async fn acquire(&self) -> Option<(GpuSonggenGuard, Duration)> {
         let start = Instant::now();

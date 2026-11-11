@@ -255,8 +255,8 @@ pub fn catalogue() -> &'static [ToolDef] {
                     },
                     "instructions": {
                         "type": "string",
-                        "description": "Voice design, e.g. \"warm friendly young woman, gentle \
-                                        accent\".",
+                        "description": "How to deliver it — tone, emotion, pace — e.g. \
+                                        \"warm and gentle, unhurried\".",
                     },
                 })
             },

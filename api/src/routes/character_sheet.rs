@@ -394,7 +394,7 @@ async fn character_sheet(
 ///
 /// The LLM goes through `chat_completion_json`, which is where the gate's LLM
 /// budget guard is taken — a call that reached llama-server any other way would
-/// let a concurrent flux or avatar render OOM the card.
+/// let a concurrent flux render OOM the card.
 pub(crate) async fn sheet_for(
     state: &AppState,
     text: &str,

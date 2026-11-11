@@ -23,7 +23,7 @@ use tokio_util::io::ReaderStream;
 /// ~800 reads rather than ~6000, small enough to stay off the large-alloc path.
 const STREAM_CHUNK: usize = 64 * 1024;
 
-/// Media that MAY be rewritten in place (a legacy `{uuid}-{i}` gallery name, an avatar portrait):
+/// Media that MAY be rewritten in place (a legacy `{uuid}-{i}` gallery name):
 /// a cache may hold it but must revalidate every time.
 const CACHE_CONTROL: &str = "private, max-age=0, must-revalidate";
 

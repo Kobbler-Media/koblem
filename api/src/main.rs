@@ -147,7 +147,7 @@ pub struct AppState {
     /// ACE-Step music engine (acestep.cpp ace-server), gated as `music`.
     pub music: music::MusicClient,
     /// songgen.cpp (LeVo2) — the heavier music engine offered as a tab alongside
-    /// acestep. Gated as an on-demand HEAVY (like Avatar/Flux): it drains the LLM
+    /// acestep. Gated as an on-demand HEAVY (like Flux): it drains the LLM
     /// and serialises against the other heavies, because its ~7 GB render won't
     /// fit beside the resident LLM in acestep's light `music` lane.
     pub songgen: songgen::SonggenClient,

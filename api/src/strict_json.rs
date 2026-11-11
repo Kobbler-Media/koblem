@@ -2,11 +2,11 @@
 //!
 //! # Why
 //!
-//! `kob video generate --engine wan` posted an LTX-shaped body to `/api/v1/wan-vace/generate`.
-//! The route deserialises [`WanVaceGenerateRequest`], serde drops what it does not recognise, and
-//! the request 202'd: the opening frame, the reference image and every sampling knob were
-//! discarded, and a t2v clip came back from an i2v ask — discovered only after a full render. The
-//! CLI is fixed; any other client can still do it.
+//! A CLI once posted an LTX-shaped body to a different video engine's `/generate`. That route
+//! deserialised its own request type, serde dropped what it did not recognise, and the request
+//! 202'd: the opening frame, the reference image and every sampling knob were discarded, and a
+//! t2v clip came back from an i2v ask — discovered only after a full render. The CLI is fixed; any
+//! other client can still do it.
 //!
 //! So the render submits deserialise through here instead: a body carrying a field the endpoint's
 //! type does not have is a 400 in milliseconds, and the message NAMES the offending fields plus
@@ -177,12 +177,9 @@ impl<'de> serde::Deserializer<'de> for FieldProbe {
 /// leave the tests asserting against a shape no client sends.
 #[cfg(test)]
 pub(crate) mod test_bodies {
-    use koblem_client::types::{
-        LtxImageSource, LtxSegment, LtxVideoGenerateRequest, WanImageSource, WanSegment,
-        WanVaceGenerateRequest, WanVaceMode,
-    };
+    use koblem_client::types::{LtxImageSource, LtxSegment, LtxVideoGenerateRequest};
 
-    /// An i2v LTX submit: the shape `kob video generate` sent to `wan-vace /generate`.
+    /// An i2v LTX submit, as `kob video generate` sends it.
     pub(crate) fn ltx() -> Vec<u8> {
         serde_json::to_vec(&LtxVideoGenerateRequest {
             segments: vec![LtxSegment {
@@ -197,22 +194,7 @@ pub(crate) mod test_bodies {
         .expect("serialize")
     }
 
-    /// The same render asked for in wan's own vocabulary.
-    pub(crate) fn wan() -> Vec<u8> {
-        serde_json::to_vec(&WanVaceGenerateRequest {
-            mode: WanVaceMode::I2v,
-            segments: vec![WanSegment {
-                prompt: "a woman turns to camera".to_string(),
-                seconds: Some(4.0),
-            }],
-            init_source: WanImageSource::Upload,
-            frames: Some(65),
-            ..Default::default()
-        })
-        .expect("serialize")
-    }
-
-    /// No `asset:<hash>` ref appears in either body, so no store is read.
+    /// No `asset:<hash>` ref appears in the body, so no store is read.
     pub(crate) fn no_assets_dir() -> &'static std::path::Path {
         std::path::Path::new("/nonexistent-koblem-asset-store")
     }
@@ -221,14 +203,14 @@ pub(crate) mod test_bodies {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use koblem_client::types::{LtxVideoGenerateRequest, WanVaceGenerateRequest};
+    use koblem_client::types::{ImageGenerateRequest, LtxVideoGenerateRequest};
     use serde_json::json;
 
     #[test]
     fn accepted_fields_come_from_the_derive() {
-        let wan = accepted_fields::<WanVaceGenerateRequest>();
-        assert!(wan.contains(&"init_source"), "{wan:?}");
-        assert!(!wan.contains(&"image_source"), "{wan:?}");
+        let image = accepted_fields::<ImageGenerateRequest>();
+        assert!(image.contains(&"init_image"), "{image:?}");
+        assert!(!image.contains(&"image_source"), "{image:?}");
         assert!(accepted_fields::<LtxVideoGenerateRequest>().contains(&"image_source"));
     }
 
@@ -236,31 +218,31 @@ mod tests {
     /// endpoint wanted instead, or a client author still has to diff two schemas by hand.
     #[test]
     fn the_message_names_the_offending_field_and_its_intended_twin() {
-        let msg = from_value_strict::<WanVaceGenerateRequest>(
-            json!({"segments": [{"prompt": "a"}], "image_source": {"kind": "upload"}}),
-            "wan-vace /generate",
+        let msg = from_value_strict::<ImageGenerateRequest>(
+            json!({"prompt": "a", "reference_image": ["x"]}),
+            "images /generate",
         )
-        .expect_err("an LTX image slot is not a wan field");
-        assert!(msg.contains("wan-vace /generate"), "{msg}");
-        assert!(msg.contains("unknown field `image_source`"), "{msg}");
-        assert!(msg.contains("expected `init_source`"), "{msg}");
+        .expect_err("reference_image is not an image field");
+        assert!(msg.contains("images /generate"), "{msg}");
+        assert!(msg.contains("unknown field `reference_image`"), "{msg}");
+        assert!(msg.contains("expected `reference_images`"), "{msg}");
     }
 
     #[test]
     fn a_foreign_field_is_caught_inside_a_segment_too() {
-        let msg = from_value_strict::<WanVaceGenerateRequest>(
-            json!({"segments": [{"prompt": "a", "keyframes": []}]}),
-            "wan-vace /generate",
+        let msg = from_value_strict::<LtxVideoGenerateRequest>(
+            json!({"segments": [{"prompt": "a", "init_image": "x"}]}),
+            "ltx-video /generate",
         )
-        .expect_err("LTX per-shot keys are not wan segment fields");
-        assert!(msg.contains("segments.0.keyframes"), "{msg}");
+        .expect_err("an image-endpoint key is not an LTX segment field");
+        assert!(msg.contains("segments.0.init_image"), "{msg}");
     }
 
     #[test]
     fn a_field_with_no_plausible_twin_is_named_without_a_guess() {
-        let msg = from_value_strict::<WanVaceGenerateRequest>(
-            json!({"segments": [{"prompt": "a"}], "hires_chain": []}),
-            "wan-vace /generate",
+        let msg = from_value_strict::<ImageGenerateRequest>(
+            json!({"prompt": "a", "hires_chain": []}),
+            "images /generate",
         )
         .expect_err("hires_chain is LTX-only");
         assert!(msg.contains("unknown field `hires_chain`"), "{msg}");

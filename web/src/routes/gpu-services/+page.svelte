@@ -95,8 +95,8 @@
   // Human-readable label per live service kind of `ServiceKind::ALL`
   // (kob-gpu-gate), cross-checked against kobbler's docker-compose service
   // comments — the Beefy card and dialog build their "keeps running" / "stops
-  // working" lists from these names. Falls back to the raw name for a service
-  // we haven't named (including the retired avatar / ltx_2b / wan_vace).
+  // working" lists from these names. Falls back to the raw name if the backend
+  // adds a service we haven't named.
   const LABELS: Record<string, string> = {
     llm: 'LLM',
     tts: 'TTS (BreezeTTS 2)',

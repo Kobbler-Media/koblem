@@ -803,13 +803,14 @@
     </label>
 
     <label>
-      Voice design — instructions
+      Delivery instructions
       <textarea
         rows="2"
         bind:value={qInstructions}
-        placeholder="e.g. A warm friendly young woman with a gentle American accent."></textarea>
+        placeholder="e.g. Warm and gentle, unhurried."></textarea>
       <span class="hint">
-        Description-driven prosody / style. Only meaningful without a cloned voice selected.
+        Description-driven prosody / style. With a cloned voice it steers delivery and the clone
+        keeps its identity.
       </span>
     </label>
 

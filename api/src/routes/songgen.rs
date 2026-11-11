@@ -324,7 +324,7 @@ async fn separate(State(state): State<AppState>, headers: HeaderMap, mp: Multipa
     };
     // Separation is a quick htdemucs pass, but it runs on the GPU under
     // songgen-server's compute lock, so take the heavy `music` slot like a render
-    // (drains the LLM, serialises vs Avatar/Flux/acestep). None = disabled.
+    // (drains the LLM, serialises vs Flux/acestep). None = disabled.
     let Some((guard, gate_wait)) = state.songgen.acquire().await else {
         return err(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -1131,7 +1131,7 @@ async fn run_pipeline(
     // instrumental path below still apply.
     let lyric = normalize_lyrics_to_songgen(&req.lyric);
 
-    // Acquire the heavy slot (drains the LLM, serialises vs Avatar/Flux); None =
+    // Acquire the heavy slot (drains the LLM, serialises vs Flux); None =
     // songgen administratively disabled.
     let Some((guard, gate_wait)) = state.songgen.acquire().await else {
         return err(

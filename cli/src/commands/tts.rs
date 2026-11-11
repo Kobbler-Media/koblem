@@ -28,7 +28,7 @@ pub struct TtsArgs {
     /// Output codec: wav (default) | mp3 | pcm.
     #[arg(long)]
     pub format: Option<String>,
-    /// Voice-design instructions, e.g. "a gruff sea captain, slow and gravelly".
+    /// Delivery instructions (tone, emotion, pace), e.g. "gruff, slow and gravelly".
     /// Only meaningful without --voice.
     #[arg(long)]
     pub instructions: Option<String>,

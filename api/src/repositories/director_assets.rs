@@ -118,7 +118,7 @@ mod tests {
     async fn seed_job(pool: &PgPool, state: &str, hash: &str) {
         sqlx::query(
             "INSERT INTO gpu_jobs (id, kind, payload, state, queue_rank, created_by) \
-             VALUES ($1, 'avatar', $2, $3, 1, 'test')",
+             VALUES ($1, 'flux2', $2, $3, 1, 'test')",
         )
         .bind(uuid::Uuid::now_v7().to_string())
         .bind(json!({ "image": format!("asset:{hash}"), "return": "bytes" }))

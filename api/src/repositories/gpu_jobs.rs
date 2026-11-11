@@ -81,13 +81,20 @@ fn rfc3339(t: OffsetDateTime) -> String {
 }
 
 impl Row {
-    fn into_job(self) -> Job {
-        Job {
-            // An unknown kind string cannot happen through the API (the enum is
-            // parsed at enqueue) but can survive a rollback that removed a kind.
-            // Falling back keeps the row visible and cancellable instead of
-            // making the whole list query fail.
-            kind: JobKind::parse(&self.kind).unwrap_or(JobKind::Flux2),
+    /// `None` for a row whose kind this build does not run — a retired engine's
+    /// historical row. It is skipped everywhere rather than read as some other
+    /// kind: it never dispatches, never reattaches and never lists.
+    fn into_job(self) -> Option<Job> {
+        let Some(kind) = JobKind::parse(&self.kind) else {
+            tracing::debug!(
+                id = %self.id,
+                kind = %self.kind,
+                "gpu_jobs: skipping a row of an unknown kind"
+            );
+            return None;
+        };
+        Some(Job {
+            kind,
             state: JobState::parse(&self.state).unwrap_or(JobState::Failed),
             id: self.id,
             band: self.band,
@@ -121,7 +128,7 @@ impl Row {
             eta_finish: None,
             eta_finish_p90: None,
             estimate_samples: 0,
-        }
+        })
     }
 }
 
@@ -164,7 +171,7 @@ pub async fn enqueue(pool: &PgPool, new: &NewJob) -> Result<(Job, bool)> {
     .await?;
 
     if let Some(row) = inserted {
-        return Ok((row.into_job(), false));
+        return row.into_job().map(|j| (j, false)).ok_or(sqlx::Error::RowNotFound);
     }
 
     // The unique index is scoped to the non-terminal states, so the only row this
@@ -193,7 +200,9 @@ pub async fn enqueue(pool: &PgPool, new: &NewJob) -> Result<(Job, bool)> {
     )
     .fetch_one(pool)
     .await?;
-    Ok((row.into_job(), true))
+    row.into_job()
+        .map(|j| (j, true))
+        .ok_or(sqlx::Error::RowNotFound)
 }
 
 /// The rank a new job gets: after everything currently in its band.
@@ -224,7 +233,7 @@ pub async fn pending(pool: &PgPool) -> Result<Vec<Job>> {
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Row::into_job).collect())
+    Ok(rows.into_iter().filter_map(Row::into_job).collect())
 }
 
 /// Rows occupying a lane and a VRAM claim right now.
@@ -244,7 +253,7 @@ pub async fn live(pool: &PgPool) -> Result<Vec<Job>> {
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Row::into_job).collect())
+    Ok(rows.into_iter().filter_map(Row::into_job).collect())
 }
 
 pub async fn get(pool: &PgPool, id: &str) -> Result<Option<Job>> {
@@ -262,7 +271,7 @@ pub async fn get(pool: &PgPool, id: &str) -> Result<Option<Job>> {
     )
     .fetch_optional(pool)
     .await?;
-    Ok(row.map(Row::into_job))
+    Ok(row.and_then(Row::into_job))
 }
 
 pub async fn payload(pool: &PgPool, id: &str) -> Result<Option<(Value, Option<Value>)>> {
@@ -290,7 +299,7 @@ pub async fn recent(pool: &PgPool, limit: i64) -> Result<Vec<Job>> {
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Row::into_job).collect())
+    Ok(rows.into_iter().filter_map(Row::into_job).collect())
 }
 
 /// Claim a queued job for this dispatcher.
@@ -747,7 +756,7 @@ pub async fn reattachable(pool: &PgPool) -> Result<Vec<Job>> {
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Row::into_job).collect())
+    Ok(rows.into_iter().filter_map(Row::into_job).collect())
 }
 
 /// Drop terminal rows past the retention horizon.
@@ -795,7 +804,7 @@ pub async fn stuck(pool: &PgPool, secs: i64) -> Result<Vec<Job>> {
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(Row::into_job).collect())
+    Ok(rows.into_iter().filter_map(Row::into_job).collect())
 }
 
 /// An identical non-terminal job enqueued moments ago, for callers that did not
@@ -831,7 +840,7 @@ pub async fn recent_duplicate(
     )
     .fetch_optional(pool)
     .await?;
-    Ok(row.map(Row::into_job))
+    Ok(row.and_then(Row::into_job))
 }
 
 #[cfg(test)]

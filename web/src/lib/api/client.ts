@@ -726,7 +726,7 @@ export interface TtsGenerateRequest {
   input: string;
   /** A cloned voice id. Omit to let the engine pick one and hold it. */
   voice?: string;
-  /** Voice design, only meaningful without `voice`. */
+  /** Delivery instructions (tone, emotion, pace). */
   instructions?: string;
   /** Built-in speaker token S0..S9. For a stable narrator use `voice`. */
   speaker?: string;
@@ -7043,9 +7043,6 @@ export type JobKind =
   | 'upscale'
   | 'krea2'
   | 'flux2'
-  | 'avatar'
-  | 'wan_vace'
-  | 'ltx_2b'
   | 'songgen'
   | 'sa3'
   | 'pixal3d_rig'

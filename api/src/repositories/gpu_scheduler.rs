@@ -86,7 +86,9 @@ type EngineConfigTuple = (
     OffsetDateTime,
 );
 
-/// List all per-service configs.
+/// List the per-service configs of every service this build runs. A retired
+/// engine's row is left in the table but not listed: nothing can place it, and
+/// the settings page would only offer an edit `validate_engine_config` refuses.
 pub async fn list_engine_configs(pool: &PgPool) -> Result<Vec<GpuEngineConfig>> {
     let rows: Vec<EngineConfigTuple> = sqlx::query_as(
         r#"
@@ -98,7 +100,11 @@ pub async fn list_engine_configs(pool: &PgPool) -> Result<Vec<GpuEngineConfig>> 
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows.into_iter().map(engine_from_tuple).collect())
+    Ok(rows
+        .into_iter()
+        .filter(|r| ServiceKind::parse(&r.0).is_some())
+        .map(engine_from_tuple)
+        .collect())
 }
 
 /// Upsert one service's config. `service` must be a valid `ServiceKind` name.
@@ -163,9 +169,9 @@ fn json_str_array(v: &Value) -> Vec<String> {
 }
 
 fn engine_from_tuple(r: EngineConfigTuple) -> GpuEngineConfig {
-    // A retired service's name lingers in other rows' eviction sets (0047 dropped
-    // `higgs`'s row but not the references). The gate already ignores it; hiding it
-    // here too keeps the settings page from echoing it back into a PUT that
+    // A retired service's name lingers in other rows' eviction sets (its own row
+    // is skipped, but not the references to it). The gate already ignores it;
+    // hiding it here too keeps the settings page from echoing it back into a PUT that
     // `validate_engine_config` rightly rejects, which made every row unsaveable.
     let evictable_by = json_str_array(&r.4)
         .into_iter()
@@ -238,7 +244,7 @@ mod tests {
             2800,
             String::new(),
             serde_json::json!([]),
-            serde_json::json!(["flux", "higgs", "sa3", "llm"]),
+            serde_json::json!(["flux", "retired_engine", "sa3", "llm"]),
             false,
             String::new(),
             OffsetDateTime::UNIX_EPOCH,

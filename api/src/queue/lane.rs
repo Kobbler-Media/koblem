@@ -35,10 +35,6 @@ pub enum Lane {
     Krea2,
     Songgen,
     Sa3,
-    /// The kinds of retired engines (avatar, wan_vace, ltx_2b) that `JobKind` still
-    /// names so their historical rows parse. No adapter is registered for them, so
-    /// enqueue refuses them and nothing is ever admitted here.
-    Retired,
 }
 
 impl Lane {
@@ -76,7 +72,6 @@ impl Lane {
             Lane::Krea2 => "krea2",
             Lane::Songgen => "songgen",
             Lane::Sa3 => "sa3",
-            Lane::Retired => "retired",
         }
     }
 
@@ -92,7 +87,6 @@ impl Lane {
             JobKind::Krea2 => Lane::Krea2,
             JobKind::Songgen => Lane::Songgen,
             JobKind::Sa3 => Lane::Sa3,
-            JobKind::Avatar | JobKind::WanVace | JobKind::Ltx2b => Lane::Retired,
         }
     }
 }

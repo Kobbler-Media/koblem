@@ -103,10 +103,6 @@ pub fn service_of(kind: JobKind) -> ServiceKind {
         JobKind::Music3 | JobKind::Upscale => ServiceKind::MinimaxH3,
         JobKind::Krea2 => ServiceKind::Krea2,
         JobKind::Flux2 => ServiceKind::Flux,
-        // Retired engines: still named so their historical rows parse; never enqueued.
-        JobKind::Avatar => ServiceKind::Avatar,
-        JobKind::WanVace => ServiceKind::WanVace,
-        JobKind::Ltx2b => ServiceKind::Ltx2b,
         JobKind::Songgen => ServiceKind::Songgen,
         JobKind::Sa3 => ServiceKind::Sa3,
         JobKind::Pixal3dRig | JobKind::Pixal3dMotion => ServiceKind::Pixal3d,

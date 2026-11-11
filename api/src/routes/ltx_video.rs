@@ -4161,14 +4161,13 @@ mod tests {
         assert_eq!(ok.segments.len(), 1);
         assert!(staged.is_empty());
 
-        let msg = super::parse_generate_json(dir, &test_bodies::wan())
+        let mut foreign = serde_json::from_slice::<serde_json::Value>(&test_bodies::ltx()).unwrap();
+        foreign["init_image"] = serde_json::json!("opener.png");
+        let msg = super::parse_generate_json(dir, &serde_json::to_vec(&foreign).unwrap())
             .await
-            .expect_err("a wan body must not render here");
+            .expect_err("an image-endpoint field must not render here");
         assert!(msg.contains("ltx-video /generate"), "{msg}");
-        assert!(
-            msg.contains("unknown field `init_source`, expected `image_source`"),
-            "{msg}"
-        );
+        assert!(msg.contains("unknown field `init_image`"), "{msg}");
     }
 
     /// The Director re-parses a STORED timeline `request` document with plain

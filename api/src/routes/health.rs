@@ -7,7 +7,7 @@
 //! hardcoding it.
 //!
 //! The llama probe (`/health` + `/v1/models`) is safe to call even while an
-//! Avatar/Flux render holds the GPU and the keep-warm LLM is unloaded: the
+//! Flux render holds the GPU and the keep-warm LLM is unloaded: the
 //! worker-isolation parent serves both endpoints itself and `/v1/models` no
 //! longer lazily respawns the child (fixed in the hbd-llama-cpp-turboquant
 //! fork — `proxy_noflight` does not spawn). So a poll can't re-fork the worker

@@ -434,7 +434,6 @@ mod tests {
     fn engine_aliases_resolve() {
         assert_eq!(Engine::parse("ltx").unwrap(), LTX_VIDEO);
         assert_eq!(Engine::parse("ltx-video").unwrap(), LTX_VIDEO);
-        assert!(Engine::parse("wan").is_err());
         assert!(Engine::parse("sora").is_err());
     }
 

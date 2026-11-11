@@ -70,7 +70,7 @@ impl MusicClient {
             .build()
             .expect("failed to build HTTP client");
         let normalized = base_url.map(|s| s.trim_end_matches('/').to_string());
-        // Self-register on the gate (like Avatar/Flux) so a higher-priority
+        // Self-register on the gate (like Flux) so a higher-priority
         // consumer (TTS) — or the peer songgen engine acquiring the music lane —
         // can SIGKILL-unload acestep's GPU worker via /v1/admin/unload instead of
         // waiting out its idle window.

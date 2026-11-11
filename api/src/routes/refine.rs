@@ -1,6 +1,6 @@
 //! Shared "improve this draft" plumbing for the creative-draft LLM endpoints.
 //!
-//! Every creative drafter (lyrics, image prompts, avatar scripts, …) pairs a
+//! Every creative drafter (lyrics, image prompts, …) pairs a
 //! feature-specific system prompt — the *rules and output format* — with a
 //! from-scratch user message. Refining reuses the exact same system prompt (so
 //! the same rules apply) and only swaps the user message for one that hands the

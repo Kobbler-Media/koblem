@@ -568,7 +568,7 @@ mod tests {
     #[test]
     fn the_doorstop_reads_game_assets_and_nothing_else() {
         assert!(doorstop_may_read(three_d::SERVICE));
-        for other in ["images", "matting", "depth", "summon", "avatar", "music"] {
+        for other in ["images", "matting", "depth", "summon", "music"] {
             assert!(!doorstop_may_read(other), "{other}");
         }
     }

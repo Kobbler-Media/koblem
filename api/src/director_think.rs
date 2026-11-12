@@ -41,7 +41,10 @@ pub fn enable(body: &mut Value, client: &LlamaClient, answer_tokens: u32) {
 /// [`enable`] with the model decided by the caller — the pure half, so it is testable without a
 /// live client.
 pub fn apply(body: &mut Value, beefy: bool, answer_tokens: u32) {
-    if !body.get("chat_template_kwargs").is_some_and(Value::is_object) {
+    if !body
+        .get("chat_template_kwargs")
+        .is_some_and(Value::is_object)
+    {
         body["chat_template_kwargs"] = json!({});
     }
     let kwargs = &mut body["chat_template_kwargs"];
@@ -70,7 +73,8 @@ mod tests {
     /// The bug this module exists to close: every Director surface sent `enable_thinking: false`.
     #[test]
     fn a_pinned_off_switch_is_turned_on() {
-        let mut body = json!({"max_tokens": 1500, "chat_template_kwargs": {"enable_thinking": false}});
+        let mut body =
+            json!({"max_tokens": 1500, "chat_template_kwargs": {"enable_thinking": false}});
         apply(&mut body, false, 2400);
         assert_eq!(body["chat_template_kwargs"]["enable_thinking"], json!(true));
     }
@@ -79,11 +83,18 @@ mod tests {
     fn beefy_runs_at_xhigh_and_the_12b_at_its_default() {
         let mut beefy = json!({});
         apply(&mut beefy, true, 2400);
-        assert_eq!(beefy["chat_template_kwargs"]["reasoning_effort"], json!("xhigh"));
+        assert_eq!(
+            beefy["chat_template_kwargs"]["reasoning_effort"],
+            json!("xhigh")
+        );
 
         let mut small = json!({"chat_template_kwargs": {"reasoning_effort": "xhigh"}});
         apply(&mut small, false, 2400);
-        assert!(small["chat_template_kwargs"].get("reasoning_effort").is_none());
+        assert!(
+            small["chat_template_kwargs"]
+                .get("reasoning_effort")
+                .is_none()
+        );
     }
 
     /// An answer-sized cap is how xhigh "returned nothing": the reasoning ate it.

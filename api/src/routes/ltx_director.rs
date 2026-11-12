@@ -5934,7 +5934,12 @@ async fn plan(
             "new_scene": new_scene,
             "beats": shot_beats,
         });
-        if let Some(g) = shot.gist.as_deref().map(str::trim).filter(|g| !g.is_empty()) {
+        if let Some(g) = shot
+            .gist
+            .as_deref()
+            .map(str::trim)
+            .filter(|g| !g.is_empty())
+        {
             clip["gist"] = json!(g);
         }
         // The shot's audio intent, carried onto the clip so the per-shot writer expands the sound
@@ -8827,7 +8832,9 @@ fn h3_director_user_prompt(
             "STORY SO FAR (continue from here; do NOT repeat what is already planned):\n{recap}\n"
         ));
         if let Some(prev) = prev_render.filter(|p| !p.is_empty()) {
-            user.push_str(&format!("The render immediately before, as planned:\n{prev}\n"));
+            user.push_str(&format!(
+                "The render immediately before, as planned:\n{prev}\n"
+            ));
         }
         user.push('\n');
     }
@@ -9454,7 +9461,10 @@ mod tests {
         // Order as the model gave it; the editor revises in this order.
         assert_eq!(out[1]["shots"], json!(["g3333333", "g1111111"]));
         assert_eq!(out[2]["shots"], json!(["g2222222"]));
-        assert!(warnings.iter().any(|w| w.contains("no instruction")), "{warnings:?}");
+        assert!(
+            warnings.iter().any(|w| w.contains("no instruction")),
+            "{warnings:?}"
+        );
         // On the clip arm there is no render writer to hand it to.
         let (out, warnings) = validate_chat_actions(
             vec![json!({"type": "revise", "shots": "all", "instruction": "x"})],

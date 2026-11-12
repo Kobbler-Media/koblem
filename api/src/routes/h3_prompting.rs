@@ -3809,7 +3809,10 @@ mod tests {
             .iter()
             .filter_map(|p| p.pointer("/image_url/url").and_then(Value::as_str))
             .collect();
-        assert_eq!(urls, ["data:image/png;base64,AAAA", "data:image/jpeg;base64,BBBB"]);
+        assert_eq!(
+            urls,
+            ["data:image/png;base64,AAAA", "data:image/jpeg;base64,BBBB"]
+        );
         let labels: Vec<&str> = parts
             .iter()
             .filter_map(|p| p.get("text").and_then(Value::as_str))
@@ -3818,7 +3821,10 @@ mod tests {
         // The ordinal follows the roster, not the attachment count: the can is still <Picture 2>.
         assert!(labels[1].contains("<Picture 3>"), "{labels:?}");
         assert!(clause.contains("MATCH"), "{clause}");
-        assert_eq!(reference_picture_parts(&[img(None, "x")]), (String::new(), vec![]));
+        assert_eq!(
+            reference_picture_parts(&[img(None, "x")]),
+            (String::new(), vec![])
+        );
     }
 
     /// The reviewer cannot know the checkpoint, so it gets both guides and is told how to tell.

@@ -431,6 +431,24 @@ describe('shotContext on H3', () => {
   });
 
   /**
+   * The writers were told each reference's label and never shown the picture, so every character
+   * was described from a caption and the reference image then fought the prose. The picture rides
+   * with the brief now; a sound or video reference has no picture to send.
+   */
+  it('sends an image reference its picture, and nothing else gets one', () => {
+    const c = ctx({
+      engine: 'h3',
+      h3References: [
+        { id: '1', kind: 'image', label: 'hero', image: 'asset:abc' },
+        { id: '2', kind: 'audio', audio: 'asset:def' }
+      ]
+    });
+    const refs = shotContext(c, c.clips[0], 0).h3_references ?? [];
+    expect(refs[0]).toEqual({ kind: 'image', has_audio: false, label: 'hero', image: 'asset:abc' });
+    expect(refs[1]).not.toHaveProperty('image');
+  });
+
+  /**
    * `fl2va` and `ref2va` are different weight sets, so a pinned shot carries no references at all —
    * and the PIN wins, because it is the thing the author placed by hand. Telling the writer about
    * references the render will not carry gets prose addressing `<Picture 1>` on a checkpoint that

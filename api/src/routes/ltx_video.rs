@@ -967,6 +967,14 @@ struct H3Envelope<T> {
     /// H3 only: how many seconds of song this generation is conditioned on.
     #[serde(default)]
     h3_song_slice_seconds: Option<f64>,
+    /// The author's brief for the WHOLE video, verbatim — the auto-direct brief.
+    ///
+    /// 🔴 The per-render writer used to be handed the planner's one-liner and nothing of the brief,
+    /// so whatever the planner dropped was gone for good. Named `project_brief`, not `brief`,
+    /// because this envelope flattens over `LtxScriptFromLlmRequest`, which owns a `brief` of its
+    /// own, and serde hands a flattened field to the OUTER struct first.
+    #[serde(default)]
+    project_brief: Option<String>,
     #[serde(flatten)]
     inner: T,
 }
@@ -1050,9 +1058,19 @@ async fn script_from_llm(
         }
     }
 
-    let mut user = format!(
-        "Break this into {n} shots that tell the story in order. Each shot lasts about {secs:.0}s."
-    );
+    // 🔴 The H3 arm used to get the LTX sentence — "break this into N shots" — under a system
+    // prompt that says N GENERATIONS, each holding several shots. Told two different units, the
+    // model picks one, and it was usually the wrong one.
+    let mut user = if h3 {
+        format!(
+            "Write the {n} generations in order, one complete prompt block each. Each runs about \
+             {secs:.0}s unless the brief below gives its own length."
+        )
+    } else {
+        format!(
+            "Break this into {n} shots that tell the story in order. Each shot lasts about {secs:.0}s."
+        )
+    };
     if !brief.is_empty() {
         user.push_str(&format!("\nBrief: {brief}"));
     } else {
@@ -1080,12 +1098,20 @@ async fn script_from_llm(
             {"role": "system", "content": system},
             {"role": "user", "content": user_content},
         ],
-        // Detailed paragraphs are far longer than the old one-liners — budget generously.
         "max_tokens": (n * 320).max(1024),
         "temperature": 0.7,
-        "chat_template_kwargs": {"enable_thinking": false},
     });
     crate::sampling::apply_sampling(&state.db, "sampling_ltx_video", &mut body).await;
+    // 🔴 An H3 entry is a whole block, ~1,800 tokens at the cap. The old 320 a unit was a fifth of
+    // one, so every block after the first came back cut off — and a cut-off block still parses,
+    // stores and renders without whatever fell off its end. The Director no longer writes H3 here
+    // (it drafts one render per call); this keeps the other callers whole.
+    let per_unit = if h3 {
+        crate::routes::h3_prompting::H3_BLOCK_ANSWER_TOKENS
+    } else {
+        320
+    };
+    crate::director_think::enable(&mut body, &state.llama, (n * per_unit).max(1024));
     let text = match state
         .llama
         .chat_completion_json_logged(&body, &state.db, "ltx_prompt_from_llm")
@@ -1246,6 +1272,12 @@ async fn prompt_from_llm(
     let h3_song_asset = body.h3_song_asset.clone();
     let h3_song_offset_seconds = body.h3_song_offset_seconds;
     let h3_song_slice_seconds = body.h3_song_slice_seconds;
+    let project_brief = body
+        .project_brief
+        .as_deref()
+        .map(str::trim)
+        .filter(|b| !b.is_empty())
+        .map(str::to_string);
     let mut req = body.inner;
     // The length the shot will ACTUALLY render at — H3's prompts carry their own timings, so the
     // writer must be given the snapped number and not the authored one.
@@ -1366,6 +1398,12 @@ async fn prompt_from_llm(
     if !story.is_empty() {
         system = format!("{} {system}", ltx_prompting::story_context_block(&story));
     }
+    let (picture_clause, picture_parts) = if h3 && !gist_only {
+        crate::routes::h3_prompting::reference_picture_parts(&h3_references)
+    } else {
+        (String::new(), Vec::new())
+    };
+    system.push_str(&picture_clause);
     // When a gist is wanted alongside the prompt, switch the reply contract to JSON so we get both
     // in one call. gist_only asks for just the gist.
     if gist_only {
@@ -1407,6 +1445,17 @@ async fn prompt_from_llm(
         user.push_str(&format!(
             "\n\nThe audio intent planned here — expand it into `overall_soundscape` and \
              `non_diegetic_music`, do not replace it: {a}"
+        ));
+    }
+    if h3
+        && !gist_only
+        && let Some(b) = project_brief.as_deref()
+    {
+        user.push_str(&format!(
+            "\n\nTHE AUTHOR'S BRIEF for the whole video — this generation is one part of it. \
+             Everything the brief asks for that belongs in THIS generation goes in at full \
+             strength: dialogue and on-screen text word for word, every gag, prop and reaction. \
+             Leave the parts that belong to other generations to them.\n<<<\n{b}\n>>>"
         ));
     }
     if !prior.is_empty() && !gist_only {
@@ -1589,6 +1638,9 @@ async fn prompt_from_llm(
             }));
         }
         content.extend(ltx_prompting::story_context_images(&story));
+        // Labelled one by one, so the positional clauses above still count right: these are
+        // character references too, and each carries its own ordinal beside it.
+        content.extend(picture_parts);
         // LAST, after every image — `reference_clause` and the story clause above both make
         // POSITIONAL claims about "the next / remaining attached images", and an audio part slipped
         // in among them would break the count those clauses depend on.
@@ -1613,6 +1665,16 @@ async fn prompt_from_llm(
         "chat_template_kwargs": {"enable_thinking": false},
     });
     crate::sampling::apply_sampling(&state.db, "sampling_ltx_video", &mut body).await;
+    // A gist is a one-line label; everything else here writes the render's document. An H3 block
+    // runs to the 7,000-character serving cap (~1,800 tokens) plus its gist line.
+    if !gist_only {
+        let answer = if h3 {
+            crate::routes::h3_prompting::H3_BLOCK_ANSWER_TOKENS
+        } else {
+            2000
+        };
+        crate::director_think::enable(&mut body, &state.llama, answer);
+    }
     let text = match state
         .llama
         .chat_completion_json_logged(&body, &state.db, "h3_prompt_from_llm")

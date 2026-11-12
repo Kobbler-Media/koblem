@@ -129,13 +129,14 @@
     chatHistory,
     revertChatEdit,
     revertH3ChatEdit,
+    splitRevisions,
     type ChatEdit,
     type ChatMsg,
+    type ChatRevision,
     type ChatTarget,
     type H3ChatTarget
   } from '#lib/director/chat.ts';
   import {
-    aspectPhrase,
     beatWordsFor,
     editorShots,
     shotContext,
@@ -1355,7 +1356,11 @@
         ...(refs.length ? { reference_images: refs } : {})
       });
       noteWarnings(warnings);
-      const valid = Array.isArray(actions) ? actions : [];
+      const all = Array.isArray(actions) ? actions : [];
+      // `revise` runs the render writer once per render AFTER the reply lands; only the
+      // generation space has render ids to run it on (the server refuses it elsewhere).
+      const { revisions, rest: valid } =
+        target === 'generation' ? splitRevisions(all) : { revisions: [], rest: all };
       // 🔴 **What the returned ids are ids OF, decided by the server and never guessed here.** The
       // action vocabulary is identical in both spaces, so nothing about an action's shape says
       // whether `shot` names a clip or a render.
@@ -1382,12 +1387,62 @@
         }
       ];
       markDirty(); // persist the conversation itself, not just applied edits
+      if (revisions.length) await runChatRevisions(revisions);
     } catch (e) {
       chatMessages = [...chatMessages, { role: 'assistant', content: `⚠ ${(e as Error).message}` }];
       markDirty();
     } finally {
       chatBusy = false;
     }
+  }
+
+  /**
+   * Run a chat reply's `revise` actions: the render writer, once per render, in the order named.
+   *
+   * 🔴 One render per call is the point. A chat reply that had to carry every rewritten block
+   * carried one and said it had done them all; here each render gets the instruction, its own
+   * block, the brief, the references and its neighbours, in a call of its own. What actually
+   * changed is then reported from what ran, not from what the model claimed.
+   */
+  async function runChatRevisions(revisions: ChatRevision[]) {
+    const total = revisions.reduce((n, r) => n + r.shots.length, 0);
+    captureRestore('Chat revision');
+    chatMessages = [
+      ...chatMessages,
+      {
+        role: 'assistant',
+        content: `Rewriting ${total} ${total === 1 ? vocab.renderUnit : vocab.renderUnitPlural}, one at a time…`
+      }
+    ];
+    const done: number[] = [];
+    const failed: string[] = [];
+    let gone = 0;
+    for (const r of revisions) {
+      for (const genId of r.shots) {
+        // Re-resolved per render: each write changes `packedGenerations`.
+        const at = packedGenerations.findIndex((g) => g.id === genId);
+        const clip = at >= 0 ? packedGenerations[at].shots[0]?.clip : undefined;
+        if (!clip) {
+          gone++;
+          continue;
+        }
+        try {
+          await reworkClipCore(clip, r.instruction);
+          done.push(at + 1);
+        } catch (e) {
+          failed.push(`${at + 1} (${(e as Error).message})`);
+        }
+      }
+    }
+    const lines = [
+      done.length
+        ? `Rewrote ${vocab.renderUnit} ${done.join(', ')}.`
+        : `No ${vocab.renderUnit} was rewritten.`
+    ];
+    if (failed.length) lines.push(`Failed: ${failed.join('; ')} — ask again to retry.`);
+    if (gone) lines.push(`${gone} had left the timeline before their turn came.`);
+    chatMessages = [...chatMessages, { role: 'assistant', content: lines.join('\n') }];
+    markDirty();
   }
 
   function clearChat() {
@@ -3354,8 +3409,12 @@
   // drafting in order means that context is already written. Never blocks the editor.
   async function draftAllShots(only?: string[], keepSummary = false) {
     if (draftAllRunning) return;
-    const targets = clips.filter(
-      (c) => (only ? only.includes(c.id) : !c.prompt.trim()) && c.idea?.trim()
+    // An explicit list may name a render that has a prompt and no idea (a hand-written project);
+    // `draftClipCore` drafts from the prompt then, so it is not skipped.
+    const targets = clips.filter((c) =>
+      only
+        ? only.includes(c.id) && (c.idea?.trim() || c.prompt.trim())
+        : !c.prompt.trim() && c.idea?.trim()
     );
     if (targets.length === 0) {
       if (!only) renderError = 'No shots with an idea left to draft.';
@@ -3551,6 +3610,26 @@
       renderError = `Add a ${vocab.renderUnit} before writing the whole project.`;
       return;
     }
+    // 🔴 H3 writes ONE render per call. One call for every block had to fit them all in one reply,
+    // and a reply big enough for N blocks of up to 7,000 characters each — plus the thinking it
+    // takes to write them well — is not one a local model returns whole. Each render gets the
+    // brief, its neighbours and its own call instead (`draftClipCore`, as Draft all does).
+    if (engine === 'h3') {
+      if (
+        !confirm(
+          `Write all ${units.length} ${vocab.renderUnitPlural}, one at a time?\n\n` +
+            `This REPLACES every ${vocab.renderUnit}'s prompt — hand-written text included. ` +
+            `The timeline itself is untouched.\n\nRevert undoes it.`
+        )
+      ) {
+        return;
+      }
+      const firsts = units
+        .map((u) => packedGenerations.find((g) => g.id === u.id)?.shots[0]?.clip.id)
+        .filter((id): id is string => !!id);
+      await draftAllShots(firsts);
+      return;
+    }
     if (units.length > SCRIPT_PASS_MAX_UNITS) {
       // Refused rather than truncated: the endpoint clamps `n_segments` to 24 and would answer with
       // 24 blocks for a longer timeline, which lands on the first 24 units and leaves the rest
@@ -3575,7 +3654,6 @@
     scriptingAll = true;
     renderError = null;
     try {
-      const aspect = aspectPhrase(outW, outH);
       // The SHORTEST unit — the endpoint takes one scalar for the whole batch and cannot be told to
       // omit it. `scriptPassSeconds` carries the reasoning for why short is the safe direction and
       // why the per-unit lengths in the brief are what actually bind.
@@ -3584,92 +3662,30 @@
         // 🔴 The author's brief AND the timeline listing. Without the listing this endpoint writes
         // N units from one line and every idea already on the timeline is thrown away — which is
         // auto-direct wearing this button. `script-pass.ts` explains the wording.
-        brief: scriptPassBrief(
-          brief,
-          units,
-          engine === 'h3' ? { unit: 'generation', part: 'shot' } : { unit: 'shot', part: null }
-        ),
+        brief: scriptPassBrief(brief, units, { unit: 'shot', part: null }),
         n_segments: units.length,
         ...(perUnitSeconds ? { seconds_per_segment: perUnitSeconds } : {}),
         ...storyArg(),
         ...castArg(),
         ...engineArg(),
-        ...h3RefsArg(),
-        ...vocalLaneArg(),
-        // H3 only — the spec line the corpus opens nearly every prompt with. The OUTPUT target,
-        // which is the canvas the shots are composed for.
-        ...(engine === 'h3' && aspect ? { aspect } : {}),
-        // LTX only, and only when the project brings its own track: it tells the writer not to
-        // describe sound. H3 generates its own soundtrack and its arm of the endpoint never reads
-        // this flag, so sending it there would be noise.
-        ...(engine === 'ltx25' && (audioKind === 'voice' || audioKind === 'mixed')
-          ? { audio_supplied: true }
-          : {})
+        // Only when the project brings its own track: it tells the writer not to describe sound.
+        ...(audioKind === 'voice' || audioKind === 'mixed' ? { audio_supplied: true } : {})
       });
       // 🔴 NOT filtered. A blank entry is skipped BY INDEX below — compacting the array would slide
       // every later block one unit earlier, which is the silent mis-application this whole design
       // is built to avoid.
       const blocks = res.segments ?? [];
-      const typedDrafts = res.h3_generations ?? [];
       const outcome = scriptPassOutcome(units.length, blocks.length, vocab.renderUnitPlural);
       noteWarnings(outcome.warnings);
-      // Units whose reply was prose rather than a block — kept, and reported. See below.
-      const prose: number[] = [];
-      // Units that stopped existing between the request and the reply (a concurrent edit, an undo).
-      // Vanishingly rare and reported anyway: a block that landed nowhere must never look like one
-      // that landed somewhere.
-      const lost: number[] = [];
       let wrote = 0;
       for (let i = 0; i < outcome.applied; i++) {
         const text = blocks[i]?.trim();
         // Nothing written rather than a unit blanked: an empty reply for one entry must not delete
         // the prompt that entry already had.
         if (!text) continue;
-        if (engine === 'h3') {
-          // 🔴 Re-resolved every iteration, never from the captured `units`: `packedGenerations` is
-          // `$derived` and the previous write changed its inputs. Boundaries cannot move (they are
-          // decided by lengths, forced breaks and frame pins, none of which a body edit touches),
-          // but reading the live packing is what makes that a fact rather than an assumption.
-          const gen = packedGenerations.find((g) => g.id === units[i].id);
-          if (!gen) {
-            lost.push(i + 1);
-            continue;
-          }
-          // ⚠️ The typed carrier is index-aligned to `segments` ONLY when the server populated it
-          // all-or-nothing (it parses every segment or returns none), so the lengths agreeing is
-          // the test for whether zipping them is legal. Normally it is empty — a BLOCK does not
-          // parse as an `H3PromptDraft` — and `h3DraftFrom` reads the block out of the text.
-          const typed = typedDrafts.length === blocks.length ? typedDrafts[i] : undefined;
-          if (absorbH3ReplyInto(gen.id, typed, text)) {
-            wrote++;
-            continue;
-          }
-          // The writer answered with prose. Nothing is lost: it lands on the unit's first beat,
-          // which is where the single-unit path puts prose too — and if the unit has no block yet,
-          // the seed composes it straight back into `[Shot 1]`. Where it does have one, the
-          // composer's drift box reports the beat and the block disagreeing, which is what it is
-          // for. Repairing it here would mean guessing which section each paragraph belongs to.
-          const first = gen.shots[0]?.clip.id;
-          if (first) {
-            patchClip(first, { prompt: text });
-            wrote++;
-          }
-          prose.push(i + 1);
-          continue;
-        }
-        // LTX: a render IS a clip, so the unit id is the clip id.
+        // A render IS a clip on LTX (H3 returned above), so the unit id is the clip id.
         patchClip(units[i].id, { prompt: text });
         wrote++;
-      }
-      if (prose.length) {
-        noteWarnings([
-          `The writer answered with prose instead of a prompt block for ${prose.length === 1 ? vocab.renderUnit : vocab.renderUnitPlural} ${prose.join(', ')} — it was kept on the opening ${vocab.subUnit ?? vocab.renderUnit}, not written into the prompt. Check those before rendering.`
-        ]);
-      }
-      if (lost.length) {
-        noteWarnings([
-          `The timeline changed while the writer was working, so the prompts for ${vocab.renderUnitPlural} ${lost.join(', ')} had nowhere to go and were dropped.`
-        ]);
       }
       if (wrote) markDirty();
       else renderError = 'The one-pass writer returned nothing usable.';
@@ -4108,6 +4124,7 @@
     h3_generation_seconds?: number;
     h3_shot_count?: number;
     h3_shot_focus?: number;
+    project_brief?: string;
   }
   function h3GenerationScope(clip: DirectorClip): H3GenerationScope {
     if (engine !== 'h3') return {};
@@ -4119,7 +4136,10 @@
       // and therefore the span the cut times in the block have to fit inside.
       h3_generation_seconds: gen.seconds,
       h3_shot_count: gen.shots.length,
-      h3_shot_focus: Math.max(0, focus)
+      h3_shot_focus: Math.max(0, focus),
+      // Every draft, reroll and rework writes against the author's own words, not just the
+      // planner's reading of them.
+      ...(autoBrief.trim() ? { project_brief: autoBrief.trim() } : {})
     };
   }
 
@@ -4267,9 +4287,19 @@
   // Revises the existing prompt in place, keeping continuity; refreshes the gist.
   async function reworkClipCore(clip: DirectorClip, instruction: string) {
     const idx = clips.findIndex((c) => c.id === clip.id);
+    // 🔴 On H3 the render's BLOCK is the document, and the clip's own prompt is only the seed of
+    // its first shot. Reworking the seed revised a fragment and threw the block's soundscape,
+    // score and other shots away — so the block goes in when there is one.
+    const block =
+      engine === 'h3'
+        ? packedGenerations
+            .find((g) => g.shots.some((s) => s.clip.id === clip.id))
+            ?.doc.prompt?.trim()
+        : undefined;
+    const base = block || clip.prompt.trim();
     const res = await ltxPromptFromLlm({
       instruction,
-      ...(clip.prompt.trim() ? { rewrite: clip.prompt.trim() } : { idea: clip.idea?.trim() }),
+      ...(base ? { rewrite: base } : { idea: clip.idea?.trim() }),
       want_gist: true,
       ...shotContextFor(clip, idx),
       ...h3GenerationScope(clip)

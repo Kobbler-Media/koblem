@@ -288,6 +288,38 @@ export function h3RescaleBeats(current: number[], total: number): number[] {
   return out;
 }
 
+/** One `revise` from a chat reply: an instruction, and the renders to run it on, in order. */
+export interface ChatRevision {
+  shots: string[];
+  instruction: string;
+}
+
+/**
+ * Split a generation-space reply into the `revise` actions — which the editor runs through the
+ * render writer, one call per render — and everything else, which applies synchronously.
+ *
+ * 🔴 `revise` exists because a chat reply that had to carry every rewritten block wrote one and
+ * said it had fixed them all. It carries an instruction, never a block, so it cannot go through
+ * {@link applyH3ChatActions}: there is no value to write until the writer has run.
+ */
+export function splitRevisions(actions: DirectorChatAction[]): {
+  revisions: ChatRevision[];
+  rest: DirectorChatAction[];
+} {
+  const revisions: ChatRevision[] = [];
+  const rest: DirectorChatAction[] = [];
+  for (const a of actions) {
+    if (a.type !== 'revise') {
+      rest.push(a);
+      continue;
+    }
+    const shots = (a.shots ?? []).filter((s) => typeof s === 'string' && s.length > 0);
+    const instruction = a.instruction?.trim() ?? '';
+    if (shots.length && instruction) revisions.push({ shots, instruction });
+  }
+  return { revisions, rest };
+}
+
 export function applyH3ChatActions(t: H3ChatTarget, actions: DirectorChatAction[]): ChatEdit[] {
   const edits: ChatEdit[] = [];
   for (const a of actions) {
@@ -323,6 +355,8 @@ function applyH3ChatAction(t: H3ChatTarget, a: DirectorChatAction): ChatEdit | n
   }
 
   if (a.type === 'add_shot') return addH3Generation(t, a, mk);
+  // Run by the editor through the render writer — see `splitRevisions`. Never a field write here.
+  if (a.type === 'revise') return null;
 
   // 🔴 Resolved by EXACT id against the live packing, and an unresolvable one is dropped. Never
   // fall back to a neighbour, an index or the nearest match: a dropped edit is recoverable, an edit

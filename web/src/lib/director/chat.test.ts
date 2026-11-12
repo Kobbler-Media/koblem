@@ -8,6 +8,7 @@ import {
   h3RescaleBeats,
   revertChatEdit,
   revertH3ChatEdit,
+  splitRevisions,
   type ChatMsg,
   type ChatTarget,
   type H3ChatTarget
@@ -396,5 +397,24 @@ describe('selection across a batch', () => {
     ]);
     // The add moved the selection onto the new tail shot, which the delete left alone.
     expect(t.selectedIds).toEqual([t.clips[t.clips.length - 1].id]);
+  });
+});
+
+/**
+ * "Fix every shot" used to change one: the reply had to carry every rewritten block and carried
+ * one. A `revise` carries the instruction and the list of renders instead, and the editor runs the
+ * writer once per render — so it must never reach the synchronous field applier.
+ */
+describe('splitRevisions', () => {
+  it('pulls every revise out, in order, and leaves the rest to apply', () => {
+    const actions: DirectorChatAction[] = [
+      { type: 'set_gist', shot: 'g1', value: 'x' },
+      { type: 'revise', shots: ['g2', 'g1'], instruction: 'make it rain' },
+      { type: 'revise', shots: [], instruction: 'nothing named' },
+      { type: 'revise', shots: ['g3'], instruction: '   ' }
+    ];
+    const { revisions, rest } = splitRevisions(actions);
+    expect(revisions).toEqual([{ shots: ['g2', 'g1'], instruction: 'make it rain' }]);
+    expect(rest).toEqual([{ type: 'set_gist', shot: 'g1', value: 'x' }]);
   });
 });

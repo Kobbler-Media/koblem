@@ -2590,6 +2590,11 @@ export interface LtxPromptFromLlmRequest {
   h3_song_offset_seconds?: number;
   /** H3 only: how many seconds of song this generation is conditioned on. */
   h3_song_slice_seconds?: number;
+  /**
+   * H3: the author's brief for the WHOLE video, verbatim. The writer used to see only the planner's
+   * idea for this render, so anything the planner dropped never came back.
+   */
+  project_brief?: string;
   /** Also return a one-sentence plain-language `gist` of the shot alongside the prompt. */
   want_gist?: boolean;
   /** Let the writer PROPOSE Prompt Relay beats when the idea holds a moment rather than one
@@ -3726,6 +3731,12 @@ export interface H3PromptReference {
   diegetic?: boolean;
   /** What the project does with this soundtrack at delivery. `audio_reuse` only. */
   soundtrack_mode?: 'replace' | 'keep' | 'mix';
+  /**
+   * `kind: 'image'` — the picture itself, as the editor's `asset:<hash>` ref. Every LLM route
+   * expands it server-side (`AssetJson`) and shows it to the model beside its ordinal, so the
+   * planner, the writers and chat see the characters instead of only reading their labels.
+   */
+  image?: string;
 }
 
 /** The project-level soundtrack facts the writer needs, which live on the timeline, not the ref. */
@@ -3833,7 +3844,8 @@ export function h3RefBriefs(
     // `<Audio k>` in the roster the writer is told to address for a render that cannot happen —
     // and shift every later audio ordinal in the prompt while it did so.
     has_audio: r.kind === 'audio' ? true : r.kind === 'video' ? !!r.with_audio : false,
-    ...(r.label?.trim() ? { label: r.label.trim() } : {})
+    ...(r.label?.trim() ? { label: r.label.trim() } : {}),
+    ...(r.kind === 'image' && r.image?.trim() ? { image: r.image.trim() } : {})
   }));
 }
 
@@ -5266,8 +5278,16 @@ export interface DirectorChatAction {
     | 'set_seconds'
     | 'add_shot'
     | 'delete_shot'
-    | 'set_story';
+    | 'set_story'
+    | 'revise';
   shot?: string;
+  /**
+   * `revise` only: every render the change applies to, already resolved to render ids (the server
+   * expands `"all"`). The editor runs the render writer once per id with `instruction`.
+   */
+  shots?: string[];
+  /** `revise` only: the change to apply, worded so it stands on its own for one render. */
+  instruction?: string;
   after?: string;
   field?: 'backstory' | 'tone' | 'rules';
   value?: string | number;

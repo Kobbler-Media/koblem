@@ -5,6 +5,7 @@ mod config;
 mod context;
 mod depth;
 mod director_assets;
+mod director_think;
 mod fixtures;
 mod flux2;
 mod jobs;

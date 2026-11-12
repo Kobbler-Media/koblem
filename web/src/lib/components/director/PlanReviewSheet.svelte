@@ -106,9 +106,14 @@
               >✕</button
             >
           </div>
+          {#if b.gist?.trim()}
+            <div class="hint">{b.gist}</div>
+          {/if}
+          <!-- An H3 plan entry is the render's whole shooting script, which is what the writer
+               expands — so it gets room to be read and edited, not a two-line box. -->
           <textarea
             class="inp"
-            rows="2"
+            rows={b.idea && b.idea.length > 160 ? 10 : 2}
             placeholder="what happens in this {unit}…"
             bind:value={b.idea}></textarea>
           <div class="plan-row">

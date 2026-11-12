@@ -5557,10 +5557,16 @@ struct LlmShot {
     start_word: Option<usize>,
     #[serde(default)]
     seconds: Option<f64>,
-    /// The whole of what the planner writes per shot: a terse one-liner a human can yes/no at a
-    /// glance, which the per-shot Draft path later expands into the full LTX prompt.
-    #[serde(default)]
+    /// What the planner writes per shot, which the per-shot Draft path later expands into the full
+    /// prompt. On LTX a terse one-liner; on H3 the render's whole shooting script, which the H3
+    /// schema calls `description` — see `h3_prompting::director_system_prompt` for why the
+    /// one-liner was retired there.
+    #[serde(default, alias = "description")]
     idea: String,
+    /// H3 only: the one plain sentence the timeline shows for the render. The `idea` is now far too
+    /// long to scan, so the planner writes the label alongside it.
+    #[serde(default)]
+    gist: Option<String>,
     /// H3 only: what this shot SOUNDS like, in a few words.
     ///
     /// H3 generates the soundtrack per shot from noise, so audio is a per-shot authoring decision
@@ -5609,7 +5615,8 @@ struct LlmBeat {
 /// window continues from (see [`run_director_llm`]).
 #[derive(Debug, Deserialize)]
 struct LlmChunk {
-    #[serde(default)]
+    /// `renders` on H3, where a planned entry is a whole render.
+    #[serde(default, alias = "renders")]
     shots: Vec<LlmShot>,
     #[serde(default)]
     summary: Option<String>,
@@ -5802,7 +5809,19 @@ async fn plan(
     //    shot starts at its word's onset and runs until the next shot's onset
     //    (last shot → end of the last word); without lyrics, use the LLM's own
     //    `seconds` (or an even split of target_seconds).
-    let durations = resolve_durations(&shots, &lyrics, req.target_seconds, fps);
+    let mut durations = resolve_durations(&shots, &lyrics, req.target_seconds, fps);
+    // 🔴 On H3 a planned entry is a RENDER. With no transcript, an entry that forgot its length
+    // takes the full budget rather than the 4 s LTX fallback (the bug that made every render 4 s),
+    // and nothing leaves here outside what one generation can render. With a transcript the length
+    // is the gap between onsets, which the planner chose; it is kept, and the editor flags a
+    // render that runs over.
+    if h3 && lyrics.is_empty() {
+        use crate::routes::h3_prompting::{MAX_GENERATION_SECONDS, MIN_GENERATION_SECONDS};
+        for (d, shot) in durations.iter_mut().zip(&shots) {
+            let want = shot.seconds.unwrap_or(MAX_GENERATION_SECONDS);
+            *d = h3_snapped_seconds(want.clamp(MIN_GENERATION_SECONDS, MAX_GENERATION_SECONDS));
+        }
+    }
 
     // 4. Build clips + the compiled render request + inline assets.
     let mut clips: Vec<Value> = Vec::with_capacity(shots.len());
@@ -5915,6 +5934,9 @@ async fn plan(
             "new_scene": new_scene,
             "beats": shot_beats,
         });
+        if let Some(g) = shot.gist.as_deref().map(str::trim).filter(|g| !g.is_empty()) {
+            clip["gist"] = json!(g);
+        }
         // The shot's audio intent, carried onto the clip so the per-shot writer expands the sound
         // the planner heard rather than inventing its own. H3 only — on LTX the field has no
         // meaning and is omitted so an LTX doc stays byte-identical.
@@ -6918,11 +6940,18 @@ async fn rework(
         // truncates and the whole rework fails. ~340 tok/shot; ceiling sized for large scripts.
         "max_tokens": (shots.len() as u32 * 400).clamp(4096, 32000),
         "temperature": 0.6,
-        "chat_template_kwargs": {"enable_thinking": false},
     });
     crate::sampling::apply_sampling(&state.db, "sampling_director", &mut body).await;
 
     let client = state.director_llm.as_ref().unwrap_or(&state.llama);
+    // 🔴 An H3 entry is a WHOLE block, ~1,800 tokens at the cap — 400 a shot truncated the JSON
+    // after the first couple of renders and the rest of the rework was lost.
+    let per_shot = if h3 {
+        crate::routes::h3_prompting::H3_BLOCK_ANSWER_TOKENS
+    } else {
+        400
+    };
+    crate::director_think::enable(&mut body, client, (shots.len() as u32 * per_shot).max(4096));
     let text = match client.chat_completion_json(&body).await {
         Ok((_permit, resp)) => resp
             .pointer("/choices/0/message/content")
@@ -7151,11 +7180,11 @@ async fn review(
         // Findings scale with shot count — a fixed cap truncated the JSON on long scripts.
         "max_tokens": (n as u32 * 160).clamp(2048, 16000),
         "temperature": 0.4,
-        "chat_template_kwargs": {"enable_thinking": false},
     });
     crate::sampling::apply_sampling(&state.db, "sampling_director", &mut body).await;
 
     let client = state.director_llm.as_ref().unwrap_or(&state.llama);
+    crate::director_think::enable(&mut body, client, (n as u32 * 160).clamp(2048, 16000));
     let text = match client.chat_completion_json(&body).await {
         Ok((_permit, resp)) => resp
             .pointer("/choices/0/message/content")
@@ -7560,11 +7589,16 @@ async fn extend(
         ],
         "max_tokens": (count as u32 * 400).clamp(2048, 8192),
         "temperature": 0.8,
-        "chat_template_kwargs": {"enable_thinking": false},
     });
     crate::sampling::apply_sampling(&state.db, "sampling_director", &mut body).await;
 
     let client = state.director_llm.as_ref().unwrap_or(&state.llama);
+    let per_shot = if h3 {
+        crate::routes::h3_prompting::H3_BLOCK_ANSWER_TOKENS
+    } else {
+        400
+    };
+    crate::director_think::enable(&mut body, client, (count as u32 * per_shot).max(2048));
     let text = match client.chat_completion_json(&body).await {
         Ok((_permit, resp)) => resp
             .pointer("/choices/0/message/content")
@@ -7853,7 +7887,8 @@ Rules: include actions ONLY when the user asks for a change in their LATEST mess
 ///   document — the one-line label for a render is its `gist`. Offering the action anyway would
 ///   produce edits with nowhere to land, which `validate_chat_actions` then drops with a warning
 ///   the user has to read to discover their request went nowhere.
-const CHAT_SPEC_ACTIONS_GENERATION: &str = r#"{"type":"set_prompt","shot":"<id>","value":"<the shot's COMPLETE prompt block>"}
+const CHAT_SPEC_ACTIONS_GENERATION: &str = r#"{"type":"revise","shots":["<id>", ...] | "all","instruction":"<the change, written so it can be applied to one shot on its own>"}
+{"type":"set_prompt","shot":"<id>","value":"<the shot's COMPLETE prompt block>"}
 {"type":"set_gist","shot":"<id>","value":"<one plain-language sentence, no camera jargon>"}
 {"type":"set_seconds","shot":"<id>","value":<number>}
 {"type":"add_shot","after":"<id>"|"@start","idea":"<one-liner>","prompt":"<the new shot's COMPLETE prompt block>"}
@@ -7872,7 +7907,8 @@ const CHAT_SPEC_ACTIONS_GENERATION: &str = r#"{"type":"set_prompt","shot":"<id>"
 const CHAT_SPEC_GENERATION_MEANINGS: &str = r#"
 
 🔴 ON THIS ENGINE ONE SHOT = ONE RENDER = ONE PROMPT BLOCK. That block is the shot's whole document: every section header, every `[Shot N] At MM:SS.mmm` mark inside it, the soundscape and the score. The `[Shot N]` marks INSIDE a block are moments within that single render — they are NOT shots you can name, they have no ids of their own, and changing one means rewriting the block that holds it. So:
-- "set_prompt" REPLACES the entire block. Repeat every section and every mark you are not changing, verbatim; anything you leave out is deleted from the render.
+- "revise" is how you change what a shot's block says. You give the INSTRUCTION, not the text: the editor hands it to the prompt writer once per shot you list, and each shot is rewritten in its own pass with the brief, the references and its neighbours in hand. Whenever a change applies to more than one render — "every shot", "all of them", a character or a continuity fix that runs through the video — list EVERY shot it applies to, or "all". Only say in your reply that you changed what your actions actually change.
+- "set_prompt" REPLACES the entire block with text you write yourself. Use it only when the user dictates the exact block or a small literal edit to one shot; for anything else, use "revise". Repeat every section and every mark you are not changing, verbatim; anything you leave out is deleted from the render.
 - "set_seconds" is how long the whole render is, in seconds. One render is at most 15.08 s — a shot that wants longer has to become two shots.
 - "set_gist" is the one-line label the editor shows for the shot. It is a caption for a human and is never sent to the video model, so it is not a place to put schema text.
 - "add_shot" creates a new render after the one you name, and its "prompt" is a complete block.
@@ -7968,6 +8004,60 @@ fn validate_chat_actions(
                  prompt block is the only other thing stored"
                     .to_string(),
             );
+            continue;
+        }
+        // 🔴 `revise` names MANY renders and carries an instruction, not a value: the editor runs
+        // the render writer once per render. It exists because a reply that had to carry every
+        // rewritten block wrote one and claimed all of them. `"all"` is expanded HERE, against the
+        // listing the model was shown, so "every shot" is a fact the client can count.
+        if kind == "revise" {
+            if !matches!(space, ChatIdSpace::Generation { .. }) {
+                ids.warnings.push(
+                    "dropped a revise — it needs the render ids, which this editor did not send"
+                        .to_string(),
+                );
+                continue;
+            }
+            let Some(instruction) = a
+                .get("instruction")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+            else {
+                ids.warnings
+                    .push("dropped a revise with no instruction to apply".to_string());
+                continue;
+            };
+            let named = a.get("shots").or_else(|| a.get("shot")).cloned();
+            let mut targets: Vec<String> = Vec::new();
+            match named {
+                Some(Value::String(v)) if v.trim().eq_ignore_ascii_case("all") => {
+                    targets.extend(
+                        tokens
+                            .order
+                            .iter()
+                            .filter_map(|t| tokens.by_token.get(t).cloned()),
+                    );
+                }
+                Some(Value::String(v)) => targets.extend(ids.lookup(Some(&v)).map(|(_, id)| id)),
+                Some(Value::Array(vs)) => {
+                    for v in vs.iter().filter_map(Value::as_str) {
+                        if let Some((_, id)) = ids.lookup(Some(v)) {
+                            targets.push(id);
+                        }
+                    }
+                }
+                _ => {}
+            }
+            let mut unique = std::collections::HashSet::new();
+            targets.retain(|id| unique.insert(id.clone()));
+            if targets.is_empty() {
+                ids.warnings
+                    .push("dropped a revise that named no shot on the timeline".to_string());
+                continue;
+            }
+            out.push(json!({"type": "revise", "shots": targets, "instruction": instruction}));
             continue;
         }
         // `after` is a POSITION, not an edit target — several new shots may legitimately share one
@@ -8173,7 +8263,14 @@ async fn chat(
         .filter(|s| !s.trim().is_empty())
         .take(6)
         .collect();
-    if !refs.is_empty() {
+    // The H3 reference pictures, each labelled with the ordinal the blocks address it by — the
+    // characters the user is talking about, rather than only their captions.
+    let pictures = if h3 {
+        crate::routes::h3_prompting::reference_picture_parts(&req.h3_references).1
+    } else {
+        Vec::new()
+    };
+    if !refs.is_empty() || !pictures.is_empty() {
         let mut content: Vec<Value> = vec![json!({
             "type": "text",
             "text": "Reference images for the characters / look in this project:",
@@ -8184,6 +8281,7 @@ async fn chat(
                 "image_url": {"url": as_data_uri_local(r)},
             }));
         }
+        content.extend(pictures);
         messages.push(json!({"role": "user", "content": content}));
         messages
             .push(json!({"role": "assistant", "content": "Got it — I can see the references."}));
@@ -8212,11 +8310,11 @@ async fn chat(
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": 0.5,
-        "chat_template_kwargs": {"enable_thinking": false},
     });
     crate::sampling::apply_sampling(&state.db, "sampling_director", &mut body).await;
 
     let client = state.director_llm.as_ref().unwrap_or(&state.llama);
+    crate::director_think::enable(&mut body, client, max_tokens);
     let text = match client.chat_completion_json(&body).await {
         Ok((_permit, resp)) => resp
             .pointer("/choices/0/message/content")
@@ -8407,7 +8505,8 @@ async fn run_director_llm(state: &AppState, plan: DirectorPlan<'_>) -> Vec<LlmSh
     // 🔴 `new_scene` means different things per engine and the client compiles it differently: on
     // LTX it is a hard cut, on H3 it is "start a NEW generation". See
     // `h3_prompting::director_system_prompt`.
-    let system = if engine == ENGINE_H3 {
+    let h3 = engine == ENGINE_H3;
+    let system = if h3 {
         crate::routes::h3_prompting::director_system_prompt(story, h3_references, cast)
     } else {
         director_system_prompt(story, ref_images, cast, allow_beats)
@@ -8425,6 +8524,7 @@ async fn run_director_llm(state: &AppState, plan: DirectorPlan<'_>) -> Vec<LlmSh
         let k = remaining.min(CHUNK_SHOTS);
 
         let user = director_user_prompt(
+            h3,
             brief,
             ref_images,
             story_so_far.as_deref(),
@@ -8444,26 +8544,31 @@ async fn run_director_llm(state: &AppState, plan: DirectorPlan<'_>) -> Vec<LlmSh
                 "image_url": {"url": as_data_uri_local(&r.image_b64)},
             }));
         }
+        // The H3 reference pictures themselves, each labelled with its ordinal — the planner names
+        // characters by ordinal in every description, so it has to be able to see who they are.
+        if h3 {
+            content.extend(crate::routes::h3_prompting::reference_picture_parts(h3_references).1);
+        }
+        // 🔴 An H3 entry is a render's whole shooting script — a paragraph a shot, ~1,000 tokens a
+        // render — where an LTX entry is a one-liner. A truncated chunk drops the WHOLE window.
+        let answer = if h3 {
+            (k as u32 * 1200).max(2048)
+        } else {
+            (k as u32 * 180).max(1024)
+        };
 
         let mut body = json!({
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": content},
             ],
-            // Each chunk now emits k STRUCTURE entries — a start_word, a 4-10 word idea, a mode, a
-            // ref_image and a new_scene flag land around 45 tokens, where the old prompt-writing
-            // contract needed ~340. 120/shot keeps ~2.5x headroom over that, because the failure
-            // being guarded against has not changed: a truncated chunk JSON drops the WHOLE window
-            // and leaves holes in the script. The floor covers the trailing rolling `summary`,
-            // which a small k would otherwise squeeze out.
-            // Beats add up to ~3 x {start_word, idea} on the minority of shots that take them,
-            // which is why this went from 120 to 180 per shot: a truncated chunk JSON drops the
-            // WHOLE window and leaves holes in the script, so the headroom is the point.
-            "max_tokens": (k as u32 * 180).max(1024),
+            // `answer` is sized per engine above. LTX: k structure entries of ~45 tokens plus beats,
+            // with ~2.5x headroom, because a truncated chunk JSON drops the WHOLE window.
+            "max_tokens": answer,
             "temperature": 0.7,
-            "chat_template_kwargs": {"enable_thinking": false},
         });
         crate::sampling::apply_sampling(&state.db, "sampling_director", &mut body).await;
+        crate::director_think::enable(&mut body, client, answer);
 
         let reply = match client.chat_completion_json(&body).await {
             Ok((_permit, resp)) => resp
@@ -8511,12 +8616,18 @@ async fn run_director_llm(state: &AppState, plan: DirectorPlan<'_>) -> Vec<LlmSh
         {
             story_so_far = Some(s);
         }
+        let before = all_shots.len();
         all_shots.extend(
             chunk
                 .shots
                 .into_iter()
                 .filter(|s| !s.idea.trim().is_empty()),
         );
+        // H3 with no transcript is told to stop once the brief is told rather than pad the video
+        // out to `max_shots`. A short window is that signal — another window would invent material.
+        if h3 && !has_lyrics && all_shots.len() - before < k {
+            break;
+        }
     }
 
     all_shots.truncate(max_shots);
@@ -8615,6 +8726,7 @@ fn director_system_prompt(
 /// this window's lyric slice (or the instrumental instruction), asking for up to `k` shots.
 #[allow(clippy::too_many_arguments)]
 fn director_user_prompt(
+    h3: bool,
     brief: &str,
     ref_images: &[RefImage],
     story_so_far: Option<&str>,
@@ -8624,6 +8736,16 @@ fn director_user_prompt(
     lyrics: &[LyricWord],
     k: usize,
 ) -> String {
+    if h3 {
+        return h3_director_user_prompt(
+            brief,
+            story_so_far,
+            prev_shot,
+            word_range.filter(|_| has_lyrics),
+            lyrics,
+            k,
+        );
+    }
     let mut user = String::new();
     if !brief.is_empty() {
         user.push_str(&format!("Brief / concept:\n{brief}\n\n"));
@@ -8673,6 +8795,67 @@ fn director_user_prompt(
                 "There are no lyric timings. Produce up to {k} shots that continue the story in \
                  order; give each shot its own \"seconds\" duration (roughly 2-10s, sized to the \
                  beat it plays) instead of \"start_word\"."
+            ));
+        }
+    }
+    user
+}
+
+/// The per-window user prompt on H3: the brief VERBATIM, where the story has got to, and either
+/// this window's transcript or the instruction to size each render itself.
+///
+/// 🔴 The unit is the RENDER (one clip, 4-15 s) — see `h3_prompting::director_system_prompt`. The
+/// LTX prompt's "2-10s" per shot is exactly the guidance that produced a timeline of 4-second
+/// renders, so this arm says nothing of the kind.
+fn h3_director_user_prompt(
+    brief: &str,
+    story_so_far: Option<&str>,
+    prev_render: Option<&str>,
+    word_range: Option<(usize, usize)>,
+    lyrics: &[LyricWord],
+    k: usize,
+) -> String {
+    use crate::routes::h3_prompting::{MAX_GENERATION_SECONDS, MIN_GENERATION_SECONDS};
+    let mut user = String::new();
+    if !brief.is_empty() {
+        user.push_str(&format!(
+            "The author's brief — work from ALL of it:\n<<<\n{brief}\n>>>\n\n"
+        ));
+    }
+    if let Some(recap) = story_so_far {
+        user.push_str(&format!(
+            "STORY SO FAR (continue from here; do NOT repeat what is already planned):\n{recap}\n"
+        ));
+        if let Some(prev) = prev_render.filter(|p| !p.is_empty()) {
+            user.push_str(&format!("The render immediately before, as planned:\n{prev}\n"));
+        }
+        user.push('\n');
+    }
+    match word_range {
+        Some((ws, we)) => {
+            user.push_str(&format!(
+                "Transcript with word onsets — each token is [index @onset-seconds] word. It is \
+                 machine-transcribed and often WRONG, so trust the timing, not the spelling. Choose \
+                 each render's start by the word index it begins on: the gap between consecutive \
+                 start_words IS that render's length, so space them {MIN_GENERATION_SECONDS:.0} to \
+                 {MAX_GENERATION_SECONDS:.0} seconds apart, filling toward \
+                 {MAX_GENERATION_SECONDS:.0}. Put the cuts INSIDE each render on the music.\n"
+            ));
+            user.push_str(&lyrics_transcript_range(lyrics, ws, we));
+            let last = we.saturating_sub(1);
+            let span = section_span(lyrics, ws, we);
+            user.push_str(&format!(
+                "\n\nThis section spans word {ws} to {last}, about {span:.0}s of audio. Produce up \
+                 to {k} renders covering ONLY this section; the first render MUST start at word \
+                 {ws}, and every start_word must fall within {ws}..={last}."
+            ));
+        }
+        None => {
+            user.push_str(&format!(
+                "There are no lyric timings. Produce up to {k} renders that continue the story in \
+                 order, each with its own \"seconds\" — as long as its material allows, up to \
+                 {MAX_GENERATION_SECONDS:.0}. If the whole brief is told before you reach {k}, stop \
+                 there: never pad the video out with renders the brief did not ask for."
             ));
         }
     }
@@ -9245,6 +9428,51 @@ mod tests {
             ChatIdSpace::Clip,
         );
         assert_eq!(out.len(), 1);
+    }
+
+    /// 🔴 The owner's report: "tell it to fix every shot and only one shot will get changed (but it
+    /// thinks it's fixing every shot)". A chat reply had to carry every rewritten block — up to
+    /// 7,000 characters each — inside one JSON string, so it wrote one and said it had done them
+    /// all. `revise` carries the INSTRUCTION instead, and the editor runs the render writer once
+    /// per render. `"all"` is expanded here, so "every shot" cannot quietly mean one.
+    #[test]
+    fn a_revise_names_every_render_it_touches() {
+        let cuts = ShotTokens::new(&["aaaa1111"]);
+        let gens = ShotTokens::new(&["g1111111", "g2222222", "g3333333"]);
+        let space = ChatIdSpace::Generation { cuts: &cuts };
+        let raw = vec![
+            json!({"type": "revise", "shots": "all", "instruction": "make the nurse older"}),
+            json!({"type": "revise", "shots": [gens.token(2), gens.token(0)], "instruction": "rain"}),
+            json!({"type": "revise", "shot": gens.token(1), "instruction": "night"}),
+            json!({"type": "revise", "shots": "all", "instruction": "  "}),
+            json!({"type": "revise", "shots": ["ffffff"], "instruction": "x"}),
+        ];
+        let (out, warnings) = validate_chat_actions(raw, &gens, space);
+        assert_eq!(out.len(), 3, "{out:?}");
+        assert_eq!(out[0]["shots"], json!(["g1111111", "g2222222", "g3333333"]));
+        assert_eq!(out[0]["instruction"], json!("make the nurse older"));
+        // Order as the model gave it; the editor revises in this order.
+        assert_eq!(out[1]["shots"], json!(["g3333333", "g1111111"]));
+        assert_eq!(out[2]["shots"], json!(["g2222222"]));
+        assert!(warnings.iter().any(|w| w.contains("no instruction")), "{warnings:?}");
+        // On the clip arm there is no render writer to hand it to.
+        let (out, warnings) = validate_chat_actions(
+            vec![json!({"type": "revise", "shots": "all", "instruction": "x"})],
+            &cuts,
+            ChatIdSpace::Clip,
+        );
+        assert!(out.is_empty());
+        assert_eq!(warnings.len(), 1);
+    }
+
+    /// The generation contract offers `revise` and says when it is the only right answer.
+    #[test]
+    fn the_generation_contract_offers_revise_for_multi_render_changes() {
+        let cuts = ShotTokens::new(&["aaaa1111"]);
+        let s = chat_actions_spec(ChatIdSpace::Generation { cuts: &cuts });
+        assert!(s.contains("{\"type\":\"revise\""), "{s}");
+        assert!(s.contains("more than one render"), "{s}");
+        assert!(!chat_actions_spec(ChatIdSpace::Clip).contains("revise"));
     }
 
     /// The client cannot tell a generation id from a clip id by looking at it, so the response says

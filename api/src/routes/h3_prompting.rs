@@ -135,6 +135,15 @@ pub const AUDIO_WORD: &str = "Audio";
 /// tree returns nothing. Authoritative-but-external. A 400 carrying a length complaint settles it.
 pub const PROMPT_CHAR_CAP: usize = 7000;
 
+/// The ANSWER budget, in tokens, for a reply that is one whole H3 block: [`PROMPT_CHAR_CAP`] at
+/// ~4 characters a token is ~1,750, plus a gist line and slack.
+///
+/// 🔴 Per block, and the writers that return several blocks multiply it. The batch writer used to
+/// get 320 tokens a generation — a fifth of one block — so every reply past the first was cut off,
+/// and a cut-off block still parses, stores and renders without whatever fell off its end.
+/// Reasoning headroom is added on top by `director_think`, never taken out of this.
+pub const H3_BLOCK_ANSWER_TOKENS: u32 = 2400;
+
 /// One generation's DOCUMENTED output duration: `README:48`, *"Output duration | 4-15 seconds"*.
 ///
 /// 🔴 Guidance handed to a planner, never a clamp — nothing here enforces it and nothing should. The
@@ -244,6 +253,17 @@ pub struct H3RefBrief {
     /// and spent `overall_soundscape` on footsteps and room tone that the mux discards.
     #[serde(default)]
     pub soundtrack_mode: Option<H3SoundtrackMode>,
+    /// `kind: image` — the picture itself, as base64 (or a data URI) once `AssetJson` has expanded
+    /// the editor's `asset:<hash>` ref.
+    ///
+    /// 🔴 **The writers were told a reference's NAME and never shown it.** A roster line reading
+    /// `<Picture 1> — "old man, torn olive shirt"` is all the planner, the writers and chat ever
+    /// had of a character, so every description of a subject was written from the label
+    /// and the reference image then fought the prose. With this the model sees what the render will
+    /// see. Absent ⇒ the label alone, exactly as before. An unexpanded `asset:` ref is never
+    /// forwarded — see [`reference_picture_parts`].
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 /// What the project does with the supplied soundtrack when the render is delivered.
@@ -470,6 +490,54 @@ pub fn assign_ordinals(refs: &[H3RefBrief]) -> Vec<H3RefAddress> {
         }
     }
     out.into_iter().flatten().collect()
+}
+
+/// The reference PICTURES, as interleaved VL content parts — a text label naming each one's
+/// ordinal, then the image — plus the system-prompt sentence that says what they are for.
+///
+/// Interleaved rather than "the first N images are…" because every surface attaches other images
+/// too (pinned frames, story canon) in its own order, and a positional sentence that miscounts
+/// puts the wrong face on a character. A label sitting right before its picture cannot drift.
+///
+/// ⚠️ Ordinals follow the ROSTER (`assign_ordinals` numbers images first, in reference order), so
+/// a picture that is skipped still consumes its number. An `asset:` string is skipped: it means the
+/// route did not go through `AssetJson`, and llama-server answers a ref-as-image with a 400.
+pub fn reference_picture_parts(refs: &[H3RefBrief]) -> (String, Vec<Value>) {
+    let mut parts: Vec<Value> = Vec::new();
+    let mut n = 0u32;
+    for r in refs.iter().filter(|r| r.kind == H3ReferenceKind::Image) {
+        n += 1;
+        let Some(img) = r
+            .image
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty() && !s.starts_with("asset:"))
+        else {
+            continue;
+        };
+        let url = if img.starts_with("data:") {
+            img.to_string()
+        } else {
+            format!("data:image/png;base64,{img}")
+        };
+        let label = match r.label.as_deref().map(str::trim).filter(|l| !l.is_empty()) {
+            Some(l) => format!("Reference <{PICTURE_WORD} {n}> — \"{l}\":"),
+            None => format!("Reference <{PICTURE_WORD} {n}>:"),
+        };
+        parts.push(serde_json::json!({"type": "text", "text": label}));
+        parts.push(serde_json::json!({"type": "image_url", "image_url": {"url": url}}));
+    }
+    if parts.is_empty() {
+        return (String::new(), parts);
+    }
+    let clause = String::from(
+        "\n\nTHE REFERENCE PICTURES ARE ATTACHED, each one right after a label naming its ordinal. \
+         Look at them: they are what the render is conditioned on. Describe every subject so it \
+         MATCHES its picture — build, age, face, hair, clothing, colours, props — and never \
+         contradict it. They are references, not frames of the video: say what the subject DOES \
+         here, and let the picture carry what it looks like.",
+    );
+    (clause, parts)
 }
 
 /// The reference roster, handed to the writer as **facts**: which assets are in scope, the exact
@@ -2388,10 +2456,20 @@ pub fn review_system(shows_blocks: bool) -> String {
 
 /// The auto-director's system prompt — H3 arm of `ltx_director::director_system_prompt`.
 ///
-/// 🔴 **No guide here, deliberately.** The planner writes one-line IDEAS and never a block, so
-/// handing it 24 KB of prompt-writing craft would teach it to write finished prompts in a field
-/// sized for four words. What it needs is koblem's own arithmetic: what a generation costs, what a
-/// cut costs, and which references exist.
+/// 🔴 **The planner writes each render's SHOOTING SCRIPT, not a label for it.** It used to emit a
+/// "terse 4-10 word one-liner" per shot, and that one-liner was all the writing pass was ever given
+/// — the brief stopped at the planner. Every line of dialogue, caption and gag in the brief was
+/// gone after this stage and the writer made something up in its place; the owner called the
+/// one-liners "super harmful". The description here is what the writer expands, so it carries
+/// everything the brief asked for, word for word where words matter.
+///
+/// 🔴 **It plans RENDERS, and says how long each one is.** The client packs ONE clip per render,
+/// so a planned shot IS a render. The old schema had no `seconds` field at all, so every shot fell
+/// through to the 4-second fallback and every auto-directed render came out 4 s long. A render is
+/// now as long as its material allows, up to the ceiling, with its cuts inside it.
+///
+/// Still no guide: the description is plain prose for the writing pass, which owns MiniMax's
+/// schema. What the planner needs is what one render can hold and what a render boundary costs.
 ///
 /// ⚠️ [`super::ltx_prompting::story_context_block`] is borrowed and stays borrowed: it is project
 /// canon (backstory, tone, rules, named characters) with no prompt-shape craft in it at all, and
@@ -2403,10 +2481,11 @@ pub fn director_system_prompt(
 ) -> String {
     let plan = H3Inputs::from_refs(refs, false, false).resolve();
     let mut system = String::from(
-        "You are the director of an AI video generator driving MiniMax-H3. You cut the brief (and \
-         the song, if there is one) into SHOTS and give each shot a one-line idea. You do NOT write \
-         the finished prompts — a later pass expands each idea against the model's own writing \
-         guide — so keep every idea light, concrete and expandable: a seed, not a paragraph.",
+        "You are the director of an AI video generator driving MiniMax-H3. You read the author's \
+         brief and lay the whole video out as a sequence of RENDERS. A later pass turns each \
+         render's description into MiniMax-H3's prompt format, and that pass works from what you \
+         write here — so each description is the render's full shooting script, not a label for \
+         it.",
     );
     system.push_str(&current_date_clause());
     if !story.is_empty() {
@@ -2414,30 +2493,37 @@ pub fn director_system_prompt(
         system.push_str(&crate::routes::ltx_prompting::story_context_block(story));
     }
     system.push_str(&format!(
-        "\n\nMiniMax-H3's unit is a GENERATION: one render of {MIN_GENERATION_SECONDS:.0} to \
-         {MAX_GENERATION_SECONDS:.0} seconds that can contain SEVERAL shots with explicit cuts \
-         between them, which the model renders itself. Inside one generation the shots share \
-         everything — the same soundtrack, the same score, and a character carried across a cut by \
-         plain prose — so a cut inside a generation is CHEAP. What is expensive is the GENERATION \
-         BOUNDARY: a new generation restarts the soundtrack from noise, cannot carry a line of \
-         dialogue across, and never joins frame-exactly. So group consecutive shots into as few \
-         generations as the {MAX_GENERATION_SECONDS:.0}-second budget allows, and only start a new \
-         one when the budget runs out or the story genuinely breaks to a new world, time or piece \
-         of music."
+        "\n\nWHAT A RENDER IS — one MiniMax-H3 generation: {MIN_GENERATION_SECONDS:.0} to \
+         {MAX_GENERATION_SECONDS:.0} seconds of picture and its soundtrack, made in one pass. One \
+         render holds SEVERAL shots: the model cuts between them itself, and a timed moment inside \
+         a shot (\"at 6 s she looks up\") needs no cut at all. Shots inside one render share the \
+         soundtrack, the score and the characters for free. The boundary BETWEEN renders is the \
+         expensive seam: the sound restarts from nothing, a line of dialogue cannot run across it, \
+         and the join is never frame-exact. So make every render as long as its material allows, \
+         up to {MAX_GENERATION_SECONDS:.0} seconds, and break the material inside it into shots — \
+         a one-minute advert is four or five renders, not fifteen. Start a new render only when \
+         the {MAX_GENERATION_SECONDS:.0}-second budget is full or the story genuinely breaks to a \
+         new place, time or piece of music."
     ));
     system.push_str(
-        "\n\nGive every shot a short AUDIO INTENT alongside its idea — one phrase saying what it \
-         sounds like (\"rain on the awning, no music\", \"low sub-bass pulse and one hit on the \
-         title\", \"she says the line, close and dry\"). The expansion pass merges the intents of \
-         all the shots in one generation into that generation's single soundscape and single score, \
-         so shots inside one generation should not ask for contradictory beds.",
+        "\n\nWHAT TO WRITE FOR EACH RENDER — its full shooting script, in plain prose:\n\
+         - every shot inside it, in order, with roughly when it starts (\"0-4 s\", \"from 9 s\"), \
+         its framing and camera, who is in it and exactly what they do;\n\
+         - every line of dialogue, word for word in quotes, with who says it and how;\n\
+         - every piece of on-screen text, word for word in quotes, and where it sits;\n\
+         - what it sounds like: ambience, effects, music.\n\
+         KEEP EVERYTHING THE BRIEF ASKS FOR. Every gag, line, prop, reaction, caption and joke \
+         beat the author wrote belongs in some render's description, at full strength — never \
+         summarised, softened or dropped, and in the order the brief tells it. Where the brief is \
+         silent, decide concretely rather than leaving it vague. Write as much as the render needs; \
+         a full render usually takes a solid paragraph per shot.",
     );
     if !refs.is_empty() {
         let addresses = assign_ordinals(refs);
         system.push_str(&format!(
             "\n\nThe project has references the prompts will address by ordinal — these labels are \
-             facts. This is a `{}` request. Say in each shot's idea which of them the shot is \
-             ABOUT, using the names below:",
+             facts. This is a `{}` request. In each description, name which of them a shot is \
+             ABOUT using these names:",
             plan.wire_task
         ));
         for a in &addresses {
@@ -2449,33 +2535,19 @@ pub fn director_system_prompt(
                 system.push_str(&format!(" — \"{label}\""));
             }
         }
+        system.push_str(&reference_picture_parts(refs).0);
     }
     system.push_str(&cast_roster_clause(cast));
-    // 🔴 This paragraph used to read "Never use beats: MiniMax-H3 has no Prompt Relay layout" and
-    // then push a two-moment idea into two shots. The first half is still true — the JSON schema
-    // below has no `beats` field and H3 has no Prompt Relay conditioning — but the conclusion drawn
-    // from it was wrong, and it was the expensive half: a `[Shot N]` written without a transition
-    // expression does not cut (measured; see `shot_and_beat_facts`), so a timed moment inside a
-    // running shot IS available and a planner that splits every one of them off spends a cut on each.
-    system.push_str(
-        "\n\nDo not emit a \"beats\" field — the schema below has none. That is a limit on this \
-         REPLY, not on the video: the writing pass can place a timed moment inside a shot with no \
-         cut at all, so an idea naming two moments (\"she reads the note, then looks up\") is ONE \
-         shot and needs no second one. Split into two shots only where the FRAMING should change.",
-    );
-    system.push_str(
-        "\n\nYou plan the video in successive batches. Reply with STRICT JSON only, no prose: \
-         {\"shots\":[{\"start_word\":<int>,\"idea\":\"<a terse 4-10 word one-liner naming the \
-         shot>\",\"audio\":\"<a few words: what this shot sounds like>\",\"mode\":\"t2v\",\
-         \"ref_image\":<int|null>,\"new_scene\":<bool>}],\
-         \"summary\":\"<1-2 sentences recapping the story THROUGH the shots you just wrote, so the \
-         next batch continues seamlessly>\"}. \"new_scene\" means THIS SHOT STARTS A NEW \
-         GENERATION: set it true only when the previous shots have used up the 15-second budget or \
-         the story breaks to a new world, time or piece of music, and false when the shot is a cut \
-         inside the generation already in progress — which is the common case and the cheaper one. \
-         An \"idea\" is a short human label like \"neon alley chase, rain\" — never a cinematic \
-         paragraph, never camera or lighting jargon. Omit code fences.",
-    );
+    system.push_str(&format!(
+        "\n\nYou plan the video in successive batches. Reply with STRICT JSON only — no prose, no \
+         code fences: {{\"renders\":[{{\"seconds\":<number from {MIN_GENERATION_SECONDS:.0} to \
+         {MAX_GENERATION_SECONDS:.0}>,\"start_word\":<int — only when a transcript is given>,\
+         \"gist\":\"<one plain sentence a person can scan on the timeline>\",\
+         \"description\":\"<the render's full shooting script, as above>\",\
+         \"audio\":\"<a phrase: what it sounds like>\"}}],\
+         \"summary\":\"<2-3 sentences recapping the story THROUGH the renders you just wrote, so \
+         the next batch continues seamlessly>\"}}. Inside a JSON string, write a line break as \\n."
+    ));
     system
 }
 
@@ -2530,6 +2602,7 @@ mod tests {
             label: Some(label.into()),
             diegetic: None,
             soundtrack_mode: None,
+            image: None,
         }
     }
     fn vid(has_audio: bool, role: Option<H3ReferenceRole>) -> H3RefBrief {
@@ -2540,6 +2613,7 @@ mod tests {
             label: None,
             diegetic: None,
             soundtrack_mode: None,
+            image: None,
         }
     }
     fn aud(role: Option<H3ReferenceRole>) -> H3RefBrief {
@@ -2550,6 +2624,7 @@ mod tests {
             label: None,
             diegetic: None,
             soundtrack_mode: None,
+            image: None,
         }
     }
 
@@ -3217,20 +3292,34 @@ mod tests {
         }
     }
 
-    /// 🔴 The planner's retracted paragraph. It used to say H3 had no beats and push a two-moment
-    /// idea into two shots — a cut spent on every timed moment. The `beats` FIELD is still refused
-    /// (the reply schema has none); the conclusion that was drawn from that is gone.
+    /// 🔴 The owner's verdict on the old planner: its "terse 4-10 word one-liner" ideas were "super
+    /// harmful". The writer that expands an idea never saw the brief, so every line of dialogue,
+    /// caption and gag the author wrote was gone after the planner, and the writer invented
+    /// something in its place. The planner now writes each render's full shooting script and is
+    /// told to keep everything the brief asks for.
     #[test]
-    fn the_planner_refuses_the_beats_field_without_refusing_beats() {
+    fn the_planner_writes_a_shooting_script_and_keeps_the_brief() {
         let s = director_system_prompt(&StoryContext::default(), &[], &[]);
-        assert!(s.contains("Do not emit a \"beats\" field"), "{s}");
-        assert!(s.contains("no cut at all"), "{s}");
-        // The retracted claim must not survive anywhere in the planner's prompt.
-        assert!(!s.contains("Never use beats"), "{s}");
-        assert!(!s.contains("no Prompt Relay layout"), "{s}");
-        // Still no guide — the planner writes IDEAS, and this fact did not change that.
+        assert!(!s.contains("4-10 word"), "{s}");
+        assert!(!s.contains("a seed, not a paragraph"), "{s}");
+        assert!(s.contains("word for word"), "{s}");
+        assert!(s.contains("KEEP EVERYTHING THE BRIEF ASKS FOR"), "{s}");
+        assert!(s.contains("\"description\""), "{s}");
+        // Still no guide — the writing pass owns MiniMax's schema.
         assert!(!s.contains(GUIDE_BASE));
         assert!(!s.contains(GUIDE_REF));
+    }
+
+    /// 🔴 Every auto-directed render came out 4 s. The H3 reply schema had no `seconds` field, so
+    /// every shot fell through to the 4 s fallback — and the client packs ONE clip per render. The
+    /// planner now plans renders, says how long each is, and is told to fill the budget.
+    #[test]
+    fn the_planner_plans_renders_that_fill_the_budget() {
+        let s = director_system_prompt(&StoryContext::default(), &[], &[]);
+        assert!(s.contains("\"seconds\""), "{s}");
+        assert!(s.contains("\"renders\""), "{s}");
+        assert!(s.contains("as long as its material allows"), "{s}");
+        assert!(!s.contains("THIS SHOT STARTS A NEW GENERATION"), "{s}");
     }
 
     /// The cast roster is the author's, and an empty one adds nothing.
@@ -3705,14 +3794,31 @@ mod tests {
         assert!(s.contains(GENERATION_SEPARATOR), "{s}");
     }
 
-    /// The planner writes IDEAS, so it must NOT be handed a prompt-writing guide.
+    /// The reference pictures go to the model with their ordinal beside each one, and an `asset:`
+    /// ref that was never expanded is never handed to the VL model as an image.
     #[test]
-    fn the_director_prompt_carries_no_guide() {
-        let s = director_system_prompt(&StoryContext::default(), &[], &[]);
-        assert!(!s.contains(GUIDE_BASE));
-        assert!(!s.contains(GUIDE_REF));
-        assert!(s.contains("THIS SHOT STARTS A NEW GENERATION"));
-        assert!(s.contains("as few generations as the"));
+    fn reference_pictures_are_labelled_and_unexpanded_refs_are_dropped() {
+        let mut a = img(None, "old man, olive shirt");
+        a.image = Some("AAAA".into());
+        let mut b = img(None, "the can");
+        b.image = Some("asset:0123".into());
+        let mut c = img(None, "nurse");
+        c.image = Some("data:image/jpeg;base64,BBBB".into());
+        let (clause, parts) = reference_picture_parts(&[a, b, c]);
+        let urls: Vec<&str> = parts
+            .iter()
+            .filter_map(|p| p.pointer("/image_url/url").and_then(Value::as_str))
+            .collect();
+        assert_eq!(urls, ["data:image/png;base64,AAAA", "data:image/jpeg;base64,BBBB"]);
+        let labels: Vec<&str> = parts
+            .iter()
+            .filter_map(|p| p.get("text").and_then(Value::as_str))
+            .collect();
+        assert!(labels[0].contains("<Picture 1>"), "{labels:?}");
+        // The ordinal follows the roster, not the attachment count: the can is still <Picture 2>.
+        assert!(labels[1].contains("<Picture 3>"), "{labels:?}");
+        assert!(clause.contains("MATCH"), "{clause}");
+        assert_eq!(reference_picture_parts(&[img(None, "x")]), (String::new(), vec![]));
     }
 
     /// The reviewer cannot know the checkpoint, so it gets both guides and is told how to tell.

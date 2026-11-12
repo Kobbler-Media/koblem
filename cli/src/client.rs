@@ -5,6 +5,8 @@ use anyhow::{Context, Result, bail};
 use reqwest::multipart;
 use serde::Serialize;
 
+const UPLOAD_CHUNK: usize = 256 * 1024;
+
 /// The queue knobs, sent as `X-Queue-*` on every request.
 ///
 /// 🔴 Headers rather than body fields because koblem's render routes strict-parse
@@ -285,7 +287,10 @@ pub async fn file_part(path: &Path) -> Result<multipart::Part> {
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "upload.bin".to_string());
     let mime = crate::output::mime_for_path(path);
-    let body = reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(file));
+    let body = reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::with_capacity(
+        file,
+        UPLOAD_CHUNK,
+    ));
     multipart::Part::stream_with_length(body, len)
         .file_name(filename)
         .mime_str(&mime)
